@@ -3,8 +3,12 @@
 **A universal document scanner for Linux.** Scan in **Color** or **Black &
 White** at **High, Medium or Low** quality, check the pages in a preview,
 rotate or remove pages, then **Save As** PDF, PNG, JPEG or TIFF. It works
-with any scanner that Linux's standard scanning system (SANE) can drive: USB
-scanners, network and Wi-Fi scanners, and multifunction printers.
+with any **cable-connected (USB)** scanner or multifunction printer that
+Linux's standard scanning system (SANE) can drive.
+
+> **Supported connection:** linscanner currently supports scanners
+> **connected by cable (USB) only**. Scanning over **Wi-Fi or a network
+> (Ethernet) connection is not supported at this time.**
 
 | | |
 |---|---|
@@ -12,6 +16,8 @@ scanners, network and Wi-Fi scanners, and multifunction printers.
 | Platform | Linux desktop, GTK 3 |
 | Tested on | Linux Mint 22.3 (Ubuntu 24.04 base), kernel 7.0, amd64, with an Epson WorkForce ES-400 II |
 | Part of | [linux-peripherals](../README.md), which has offline installers and device references |
+| Connection | USB cable only (Wi-Fi / network scanning not supported at this time) |
+| License | [linscanner Community License (Noncommercial)](LICENSE): free to use, copy, modify and share; commercial use by permission |
 
 ![Scan page](docs/images/screenshot-scan.png)
 
@@ -25,11 +31,12 @@ scanners, network and Wi-Fi scanners, and multifunction printers.
 4. [Using linscanner](#4-using-linscanner)
 5. [Settings, files and command line](#5-settings-files-and-command-line)
 6. [Troubleshooting](#6-troubleshooting)
-7. [Privacy and security](#7-privacy-and-security)
+7. [Safety, security and privacy](#7-safety-security-and-privacy)
 8. [Themes and appearance](#8-themes-and-appearance)
 9. [Known limits and roadmap](#9-known-limits-and-roadmap)
 10. [Development](#10-development)
 11. [Credits](#11-credits)
+12. [License](#12-license)
 
 ---
 
@@ -37,9 +44,9 @@ scanners, network and Wi-Fi scanners, and multifunction printers.
 
 | Area | What you get |
 |---|---|
-| **Scanning** | Any SANE scanner, plus linscanner's own driverless eSCL client. Flatbed, document feeder and duplex |
+| **Scanning** | Any cable-connected (USB) SANE scanner, plus linscanner's own driverless eSCL client. Flatbed, document feeder and duplex |
 | **Sheet-fed modes** | **All sheets** (the whole stack in one go) or **One sheet at a time** (each press adds a sheet to the same document; a duplex sheet gives front + back) |
-| **Connection fallback** | Tries every way to reach the scanner in order (open-source driver → vendor driver → driverless USB → own eSCL client → network → remote), until one scans. Never retries when you need to act (feeder empty, jam, cover open) |
+| **Connection fallback** | Tries every way to reach the scanner in order over the USB cable (open-source driver → vendor driver → driverless IPP-over-USB → own eSCL client), until one scans. Never retries when you need to act (feeder empty, jam, cover open) |
 | **Scan Device Information** | Every detected scanner with identity, USB connection details, connection methods, permissions, capabilities, live status and firmware, plus **Check for devices again** |
 | **Color / Black & White** | Color, or Black & White. B&W is grayscale by default (keeps faint text); Settings can switch it to pure black-and-white |
 | **Quality** | High 600 dpi, Medium 300 dpi, Low 150 dpi, automatically matched to the nearest resolution your scanner supports |
@@ -79,20 +86,25 @@ every code function is in [`docs/api-reference.md`](docs/api-reference.md).
 
 ### Scanners
 
-linscanner uses **SANE**, so it supports every scanner that has a SANE
-driver on your system:
+linscanner uses **SANE**, so it supports every **cable-connected (USB)**
+scanner that has a SANE driver on your system.
+
+> **Wi-Fi and network scanning is not supported at this time.** Please
+> connect your scanner with a USB cable. Many Wi-Fi models also have a USB
+> port and work well that way. Network support may be added in a future
+> version; until then, network connections are neither tested nor supported.
+
 
 | Scanner type | How Linux talks to it | Driver (package) |
 |---|---|---|
-| **Network / Wi-Fi scanners and multifunction printers** (AirScan, eSCL, Mopria, WSD), most models from about 2015 on | Driverless over the network | `airscan` (**sane-airscan**, installed with linscanner), `escl` (libsane1) |
 | **USB multifunction printers with IPP-over-USB** | Driverless over USB via the `ipp-usb` service | `airscan` + **ipp-usb** |
-| **Epson** ES / DS / WF / Perfection series | USB, or network for some | `epsonds`, `epson2` (libsane1); optional Epson `epsonscan2` |
-| **HP** scanners and all-in-ones | USB / network | `hpaio` (**libsane-hpaio** / hplip) |
-| **Canon** PIXMA / LiDE / imageFORMULA | USB / network | `pixma`, `genesys`, `canon_dr` (libsane1) |
-| **Brother** | USB / network | driverless (`airscan`) for most; Brother's `brscan` for older models |
+| **Epson** ES / DS / WF / Perfection series | USB | `epsonds`, `epson2` (libsane1); optional Epson `epsonscan2` |
+| **HP** scanners and all-in-ones | USB | `hpaio` (**libsane-hpaio** / hplip) |
+| **Canon** PIXMA / LiDE / imageFORMULA | USB | `pixma`, `genesys`, `canon_dr` (libsane1) |
+| **Brother** | USB | driverless over IPP-over-USB (`airscan`) for most; Brother's `brscan` for older models |
 | **Fujitsu / Ricoh** fi-series, ScanSnap | USB | `fujitsu`, `epjitsu` (some need a firmware file) |
 | **Plustek, Avision, Kodak, Panasonic, Visioneer, Xerox, Samsung, …** | USB | `plustek`, `avision`, `kodak*`, `kvs*`, `xerox_mfp`, … (80+ drivers in libsane1) |
-| Scanner attached to another Linux computer | Network (`saned`) | `net` (libsane1) |
+| Network / Wi-Fi scanners, and scanners shared from another computer (`saned`) | **Not supported at this time** | — |
 
 **Verified hardware:** Epson WorkForce ES-400 II (USB `04b8:0181`, driver
 `epsonds`). The initial hardware test passed on 2026-09-21.
@@ -115,7 +127,7 @@ connection method, see
 - Python 3.10+
 - GTK 3.24 with PyGObject (`python3-gi`, `python3-gi-cairo`, `gir1.2-gtk-3.0`)
 - Pillow (`python3-pil`)
-- SANE (`sane-utils`, `libsane1`), plus `sane-airscan` for network scanners
+- SANE (`sane-utils`, `libsane1`), plus `sane-airscan` for IPP-over-USB multifunction printers
 
 No pip packages and no internet at runtime.
 
@@ -279,23 +291,89 @@ send for help). Start with `run.sh --debug` for extra detail.
 | Scanning is slow at High quality | Use a USB 3 port and cable if the scanner supports it (`../bin/device-finder` shows the link speed) |
 | Scanner appears twice in other apps | A vendor driver (e.g. Epson's `epsonscan2`) adds a second entry; linscanner hides it automatically |
 | Only works with sudo | Permissions: log out and in, or re-run the device installer (for the ES-400 II: `devices/scanner/epson-es-400-ii/install.sh`) |
-| Network scanner not found | Same network/subnet? Is eSCL/AirScan enabled in the printer's web page? Run `airscan-discover` |
+| My Wi-Fi / network scanner isn't listed, or doesn't scan | Wi-Fi and network scanning isn't supported at this time. Connect the scanner with a USB cable |
 
 **Scanner-specific notes** are in the device references, e.g.
 [`../devices/scanner/epson-es-400-ii/README.md`](../devices/scanner/epson-es-400-ii/README.md).
 
 ---
 
-## 7. Privacy and security
+## 7. Safety, security and privacy
 
-- Everything runs locally. There's no network access, except to talk to a
-  network scanner you choose.
-- Scans stay in a private temp folder until you save them, and are deleted on exit.
-- Scanner serial numbers are hidden in the interface.
-- linscanner runs as your normal user. The installer asks for your password
-  only to install missing distro packages.
+### Our commitment
 
----
+**Your scans and information never leave your computer.** linscanner does not
+send documents, scan images, text, signatures, settings, logs, device details
+or any other data to anyone else. That includes the linscanner developers,
+cloud services, analytics or advertising companies, AI or OCR services, and
+any other second or third party.
+
+- **No cloud.** Every step runs on the computer that did the scan: scanning,
+  page processing, OCR, PDF creation, Quick Edit and saving.
+- **No accounts, sign-in, telemetry, analytics, crash reporting, ads or
+  update checks.** linscanner never contacts the internet.
+- **OCR is local.** Searchable PDFs use Tesseract, installed on your
+  computer. Your text is never uploaded for recognition.
+- **You decide what leaves.** A file leaves your computer only if you copy,
+  email or upload it yourself.
+
+### Where your data is kept
+
+| Data | Location | Lifetime |
+|---|---|---|
+| Scans in progress | `/tmp/linscanner-*/`, a folder only your user can read | Deleted when linscanner closes |
+| Saved documents | The folder you choose in **Save As** or Auto-save | Until you delete them |
+| Settings and profiles | `~/.config/linscanner/settings.json` | Until you delete them |
+| Signatures | `~/.local/share/linscanner/signatures/` | Until you delete them (Quick Edit → delete) |
+| Logs | `~/.local/state/linscanner/logs/` | 14 days, then deleted automatically |
+
+- **Logs don't contain your content.** They record technical events only: no
+  page images and no Quick Edit text.
+  - Scanner serial numbers are replaced with `…`.
+  - Your home folder path is shown as `~`.
+- **Settings → Diagnostics → Save diagnostics…** writes a zip file to the
+  place you pick on this computer. It is never sent anywhere automatically;
+  sharing it (for example, to get help) is your choice. It contains the same
+  redacted logs and system details, and no scans.
+
+### What linscanner does on your network, and why
+
+For full transparency, here is the only network activity. None of it carries
+your scans or personal information to anyone.
+
+1. **USB scanners that use IPP-over-USB.** linscanner talks to `127.0.0.1`
+   ports 60000–60015. That address is *this computer*: the `ipp-usb` service
+   passes the traffic down the USB cable. It never reaches a network.
+2. **Finding scanners on your local network.** When linscanner looks for
+   scanners (at start-up and on **Refresh** / **Check for devices again**),
+   the SANE drivers and linscanner's detection send short "is there a scanner here?" queries to
+   your local network (mDNS, WS-Discovery and vendor discovery broadcasts).
+   - The queries contain no scans, files or personal data.
+   - Routers don't forward them to the internet.
+3. **No scanning over the network.** Wi-Fi and network scanning isn't
+   supported at this time, so your pages travel only along the USB cable,
+   from the scanner into your computer.
+
+Verified on 2026-09-21: every connection made during device discovery was
+traced (`strace`). They went only to this computer (`127.0.0.1` and local
+system services) and to local-network discovery addresses. There were **no
+connections to any internet address**. A USB-only scanner, such as the
+Epson ES-400 II, never uses the network at all.
+
+### Security
+
+- **No elevated rights.** linscanner runs as your normal user and never asks
+  for administrator access. Access to USB scanners comes from standard
+  desktop permissions (udev `uaccess`).
+- **The installer** asks for your password only to install missing distro
+  packages. It takes them from the repository's offline package pool first,
+  and only falls back to your system's configured Debian/Ubuntu/Mint
+  package sources if that pool isn't available.
+- **Trusted components only.** linscanner uses Python, GTK and the
+  distribution's SANE, Tesseract and Ghostscript packages, plus Epson's own
+  driver for Epson scanners. No code is downloaded at run time.
+- **Private temporary files.** Scans in progress are kept in a folder only
+  your user can open, and are removed on exit.
 
 ## 8. Themes and appearance
 
@@ -330,7 +408,8 @@ do its seven dark themes:
 ## 9. Known limits and roadmap
 
 **Current limits:**
-- Finding scanners takes about 10–20 seconds, because SANE checks every driver and network scanners are discovered over mDNS.
+- Only cable-connected (USB) scanners are supported. Wi-Fi and network scanning is not supported at this time.
+- Finding scanners takes about 10–20 seconds, because SANE checks every driver, including the drivers' own network discovery.
 - Cameras (PTP) and document cameras are detected and explained, but not captured.
 - Settings stored inside the scanner (sleep timer, etc.) can't be changed from Linux.
 - OCR is English only.
@@ -396,3 +475,24 @@ The design is in [`docs/architecture.md`](docs/architecture.md).
 - Build process: [MensuraMedia/universal-instruction-set](https://github.com/MensuraMedia/universal-instruction-set)
 - Scanning: [SANE](http://www.sane-project.org/), [sane-airscan](https://github.com/alexpevzner/sane-airscan), [ipp-usb](https://github.com/OpenPrinting/ipp-usb)
 - Images and PDF: [Pillow](https://python-pillow.org/)
+
+---
+
+## 12. License
+
+linscanner is shared under the
+[**linscanner Community License (Noncommercial)**](LICENSE).
+
+- **You're welcome to** use it free of charge, and to copy, modify and share
+  it for any noncommercial purpose. This includes personal and household
+  use, education, research, and not-for-profit community work. Please keep
+  the license with every copy.
+- **Commercial use** needs our written permission first. This covers
+  selling it, bundling it into a paid product or service, or using it in the
+  operations of a business. We're happy to talk; please contact
+  [MensuraMedia](https://github.com/MensuraMedia).
+- The components linscanner builds on (SANE, GTK, Tesseract, Ghostscript,
+  Pillow, vendor drivers, the dashboard framework, …) keep their own
+  licenses.
+
+This is a summary; the [`LICENSE`](LICENSE) file is the authoritative text.

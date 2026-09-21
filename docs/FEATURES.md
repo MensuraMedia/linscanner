@@ -14,14 +14,14 @@ limits.
 | Capability | How |
 |---|---|
 | Any scanner with a SANE driver | `backends/backend_sane.py` runs `scanimage` (80+ open-source drivers on Mint 22, plus vendor plugins) |
-| Driverless network scanners and MFPs | SANE `airscan` / `escl` (eSCL, WSD) |
+| Network / Wi-Fi scanners | **Not supported at this time**: USB cable only (the network code paths exist but are untested) |
 | Driverless USB MFPs (IPP-over-USB) | via `ipp-usb`; SANE airscan, or linscanner's own eSCL client |
 | linscanner's own eSCL client | `backends/backend_escl.py`: loopback ports 60000+ and mDNS `_uscan(s)._tcp`; capabilities, status, jobs, cancel |
 | One scanner, several drivers | grouped as one physical scanner; methods ranked A1 open driver → A3 vendor → B2 IPP-USB → D1 own eSCL → B1 network → C1 saned |
 | Fallback | on busy / I/O / timeout / access / unsupported / missing driver, it tries the next method. It never does on feeder empty, jam or cover open |
 | USB scanners without a driver | detected from sysfs/udev and listed with advice (permissions, ipp-usb, vendor driver, firmware) |
 | No hardware | `--test-scanner`: SANE's virtual scanner (colour test pattern) |
-| Privacy | serial numbers redacted everywhere |
+| Privacy | nothing leaves the computer; serial numbers redacted everywhere (README §7) |
 
 Verified hardware: Epson ES-400 II (USB `04b8:0181`), reached via epsonds
 (preferred) and epsonscan2 (fallback), firmware ADF 10L5.

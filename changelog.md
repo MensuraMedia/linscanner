@@ -38,3 +38,6 @@
 | 2026-09-21T19:10:00 | Offline deps (tesseract, gs, numpy, fonts); docs/TECHNICAL.md; version 0.2.0 |
 | 2026-09-21T17:05:00 | Logging: daily redacted logs, scan/page/feature/export/engine records, --debug |
 | 2026-09-21T17:06:00 | Settings > Diagnostics: open log folder, save diagnostics zip; 7 logging tests |
+| 2026-09-21T19:30:00 | README: full Safety, security and privacy section (no data leaves the machine; network activity disclosed; strace-verified) |
+| 2026-09-21T19:30:00 | README: supported connection is USB cable only; Wi-Fi / network scanning not supported at this time |
+| 2026-09-21T19:30:00 | LICENSE: linscanner Community License (Noncommercial) 1.0; README section 12 |

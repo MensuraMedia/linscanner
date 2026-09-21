@@ -137,6 +137,18 @@
     {
       "datetime": "2026-09-21T17:06:00",
       "description": "Settings > Diagnostics: open log folder, save diagnostics zip; 7 logging tests"
+    },
+    {
+      "datetime": "2026-09-21T19:30:00",
+      "description": "README: full Safety, security and privacy section (no data leaves the machine; network activity disclosed; strace-verified)"
+    },
+    {
+      "datetime": "2026-09-21T19:30:00",
+      "description": "README: supported connection is USB cable only; Wi-Fi / network scanning not supported at this time"
+    },
+    {
+      "datetime": "2026-09-21T19:30:00",
+      "description": "LICENSE: linscanner Community License (Noncommercial) 1.0; README section 12"
     }
   ]
 }
