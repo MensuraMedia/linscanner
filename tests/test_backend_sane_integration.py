@@ -78,3 +78,31 @@ def test_one_sheet_mode_on_feeder_scans_single_page(backend, tmp_path):
     req = ScanRequest("test:0", str(tmp_path), "Automatic Document Feeder", "Gray", 75, 50, 50, max_pages=1)
     assert "--batch-count=1" in backend.build_command(req)
     assert len(backend.scan(req)) == 1  # the virtual feeder holds 10; only one taken
+
+
+def test_sane_calls_are_serialised(backend):
+    """Concurrent option reads never overlap: a scanner is single-user"""
+    import time
+    from unittest import mock
+
+    from backends import backend_sane
+
+    active, overlap = [0], [False]
+    real_run = backend_sane.subprocess.run
+
+    def tracking_run(*args, **kwargs):
+        active[0] += 1
+        overlap[0] |= active[0] > 1
+        time.sleep(0.05)
+        try:
+            return real_run(*args, **kwargs)
+        finally:
+            active[0] -= 1
+
+    with mock.patch.object(backend_sane.subprocess, "run", tracking_run):
+        threads = [threading.Thread(target=backend.get_capabilities, args=("test:0",)) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+    assert not overlap[0]

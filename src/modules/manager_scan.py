@@ -12,6 +12,7 @@ from gi.repository import GLib
 
 from backends.backend_base import ScanError, ScanRequest
 from backends.backend_sane import SaneBackend
+from modules.manager_connection import ConnectionEngine
 from backends.parser_sane import model_key
 from config.config_scan import (
     COLOR_MODES,
@@ -96,13 +97,31 @@ def filter_devices(devices, show_all=False):
     return [d for d in visible if best[model_key(d)] is d]
 
 
-class ScanManager:
-    """Owns the backend, the current device and the scanned pages of a session"""
+def equivalent_source(source, caps):
+    """The same kind of source (flatbed / feeder / duplex) in another method's names"""
+    if source in caps.sources:
+        return source
+    want_feeder, want_duplex = is_feeder(source), is_duplex(source)
+    for s in caps.sources:
+        if is_feeder(s) == want_feeder and is_duplex(s) == want_duplex:
+            return s
+    for s in caps.sources:
+        if is_feeder(s) == want_feeder:
+            return s
+    return caps.default_source
 
-    def __init__(self, settings, backend=None):
-        """Create the manager with a session temp dir; backend defaults to SANE"""
+
+class ScanManager:
+    """Owns the connection engine, the current device and the scanned pages of a session"""
+
+    def __init__(self, settings, backend=None, engine=None):
+        """Create the manager with a session temp dir.
+
+        engine: a ConnectionEngine (production: SANE + direct eSCL + USB probe).
+        backend: a single backend instead (tests, --test-scanner); no USB probe."""
         self.settings = settings
         self.backend = backend or SaneBackend()
+        self.engine = engine or ConnectionEngine([self.backend], use_usb_probe=backend is None)
         self.devices = []
         self.capabilities = {}
         self.session_dir = tempfile.mkdtemp(prefix="linscanner-")
@@ -130,7 +149,7 @@ class ScanManager:
         """List scanners in the background, filtered for display"""
 
         def work():
-            found = self.backend.list_devices()
+            found = self.engine.discover()
             self.devices = found
             return filter_devices(found, self.settings.get("show_all_backends"))
 
@@ -143,18 +162,32 @@ class ScanManager:
             return
 
         def work():
-            caps = self.backend.get_capabilities(device_id)
+            physical = self.physical(device_id)
+            if physical is None or not physical.methods:
+                hint = physical.hint if physical else "Scanner not found. Check for devices again."
+                raise ScanError(hint, "no_device")
+            method = physical.methods[0]
+            caps = method.backend.get_capabilities(method.device.id)
             self.capabilities[device_id] = caps
             return caps
 
         self._in_thread(work, on_done, on_error)
 
+    def physical(self, device_id):
+        """The PhysicalDevice with this id, or None"""
+        return next((d for d in self.devices if d.id == device_id), None)
+
     # -- scanning ----------------------------------------------------------
     def build_request(self, device_id, source, color_mode, quality, paper, create_dir=True, sheet_mode="all"):
         """create_dir=False builds the request for display only (no temp folder)"""
         caps = self.capabilities[device_id]
+        self.last_choices = (source, color_mode, quality, paper, sheet_mode)
+        return self._request_for(device_id, caps, source, color_mode, quality, paper, sheet_mode, create_dir)
+
+    def _request_for(self, device_id, caps, source, color_mode, quality, paper, sheet_mode, create_dir=True):
+        """ScanRequest for one device/method from the user's choices and its capabilities"""
         width, height = pick_area(caps, paper)
-        source = source if source in caps.sources else caps.default_source
+        source = equivalent_source(source, caps)
         multi_page, max_pages = sheet_limits(source, sheet_mode)
         out_dir = tempfile.mkdtemp(prefix="scan-", dir=self.session_dir) if create_dir else ""
         return ScanRequest(
@@ -173,17 +206,37 @@ class ScanManager:
         """Start a scan in the background; pages are appended as they arrive"""
         self._cancel.clear()
         self.busy = True
+        active = {"request": request}  # the request of the method currently scanning
 
         def page_added(path):
-            page = {"path": path, "rotation": 0, "dpi": request.resolution, "mode": request.mode}
+            r = active["request"]
+            page = {"path": path, "rotation": 0, "dpi": r.resolution, "mode": r.mode}
             self.pages.append(page)
             GLib.idle_add(on_page, page)
 
         def progress(pct):
             GLib.idle_add(on_progress, pct)
 
+        def build(method, caps):
+            """First method: the request as built; fallbacks: same choices, their capabilities"""
+            if method.device.id == request.device_id:
+                active["request"] = request
+            else:
+                choices = getattr(self, "last_choices", None) or (
+                    request.source,
+                    "color",
+                    "medium",
+                    "auto",
+                    "all",
+                )
+                active["request"] = self._request_for(method.device.id, caps, *choices)
+            return active["request"]
+
         def work():
-            return self.backend.scan(request, page_added, progress, self._cancel)
+            physical = self.physical(request.device_id)
+            if physical is None:  # not from discovery (e.g. a direct test call)
+                return self.backend.scan(request, page_added, progress, self._cancel)
+            return self.engine.scan(physical, build, page_added, progress, self._cancel)
 
         def finished(result):
             self.busy = False
@@ -215,8 +268,9 @@ class ScanManager:
     def cleanup(self):
         """Delete session temp files and backend temp config"""
         shutil.rmtree(self.session_dir, ignore_errors=True)
-        if hasattr(self.backend, "close"):
-            self.backend.close()
+        for backend in {id(b): b for b in [self.backend, *self.engine.backends]}.values():
+            if hasattr(backend, "close"):
+                backend.close()
 
     @staticmethod
     def summary(request):

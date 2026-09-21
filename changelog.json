@@ -85,6 +85,26 @@
     {
       "datetime": "2026-09-21T17:05:00",
       "description": "Sheet modes: All sheets / One sheet at a time (duplex sheet = 2 pages)"
+    },
+    {
+      "datetime": "2026-09-21T17:20:00",
+      "description": "Error codes from scanimage exit status; user-action vs fall-through classes"
+    },
+    {
+      "datetime": "2026-09-21T17:30:00",
+      "description": "USB probe (sysfs + udev db), direct eSCL backend (IPP-USB/network), fake-eSCL tests"
+    },
+    {
+      "datetime": "2026-09-21T17:45:00",
+      "description": "Connection engine: grouped devices, ranked methods, fallback scan, driverless hints"
+    },
+    {
+      "datetime": "2026-09-21T17:55:00",
+      "description": "Scan Device Information page + Check for devices again; firmware; live status"
+    },
+    {
+      "datetime": "2026-09-21T18:00:00",
+      "description": "Fix: serialise SANE device access (Device busy between pages); option flags/groups"
     }
   ]
 }

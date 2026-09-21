@@ -44,3 +44,22 @@ def test_device_list_and_serial_redaction():
 def test_progress():
     assert parse_progress("Progress: 3.1%\rProgress: 88.0%\r") == 88.0
     assert parse_progress("scanimage: rounded value") is None
+
+
+def test_groups_flags_and_features():
+    from backends.parser_sane import device_features
+
+    opts = parse_options(fixture_text("epsonds-es400ii-A.txt"))
+    assert opts["source"]["group"] == "standard"
+    assert opts["load"]["flags"] == ["inactive"]
+    assert opts["load"]["default"] == ""  # flag not swallowed into the value
+    feats = device_features(opts)
+    assert "Skew correction" in feats and "Auto-crop" in feats and "Load sheet (inactive)" in feats
+    sensors = parse_options("  Sensors:\n    --scan[=(yes|no)] [no] [hardware]\n")
+    assert sensors["scan"] == {
+        "values": ["yes", "no"],
+        "default": "no",
+        "unit": "",
+        "group": "sensors",
+        "flags": ["hardware"],
+    }

@@ -14,7 +14,7 @@ import tempfile
 import threading
 import time
 
-from backends.backend_base import ScanError, ScannerBackend
+from backends.backend_base import SANE_EXIT_CODES, ScanError, ScannerBackend
 from backends.parser_sane import (
     LIST_FORMAT,
     capabilities_from_options,
@@ -24,11 +24,18 @@ from backends.parser_sane import (
 )
 from config.config_scan import BACKEND_EXTRA_ARGS, LIST_TIMEOUT, OPTIONS_TIMEOUT, PAGE_TIMEOUT
 
+# A scanner is a single-user device: two scanimage processes opening it at once
+# makes one fail with "Device busy". Every SANE call in linscanner (listing,
+# options, status, firmware, scans) takes this lock, so linscanner never competes
+# with itself. Re-entrant so a scan can call helpers that also lock.
+DEVICE_LOCK = threading.RLock()
+
 
 class SaneBackend(ScannerBackend):
     """SANE via the scanimage command-line tool"""
 
     name = "sane"
+    lock = DEVICE_LOCK
 
     def __init__(self, only_backends=None):
         """only_backends: restrict SANE to these drivers (e.g. ["test"]) via a
@@ -56,13 +63,21 @@ class SaneBackend(ScannerBackend):
     def _run(self, args, timeout):
         """Run scanimage with args; raises ScanError on missing tool or timeout"""
         try:
-            r = subprocess.run(
-                ["scanimage", *args], capture_output=True, text=True, timeout=timeout, env=self._env
-            )
+            with DEVICE_LOCK:
+                r = subprocess.run(
+                    ["scanimage", *args],
+                    capture_output=True,
+                    text=True,
+                    errors="replace",
+                    timeout=timeout,
+                    env=self._env,
+                )
         except FileNotFoundError:
-            raise ScanError("SANE is not installed (scanimage not found). Install sane-utils.")
+            raise ScanError("SANE is not installed (scanimage not found). Install sane-utils.", "missing")
         except subprocess.TimeoutExpired:
-            raise ScanError(f"The scanner did not answer within {timeout} s. Power-cycle it and retry.")
+            raise ScanError(
+                f"The scanner did not answer within {timeout} s. Power-cycle it and retry.", "timeout"
+            )
         return r
 
     def list_devices(self):
@@ -76,7 +91,8 @@ class SaneBackend(ScannerBackend):
         options = parse_options(r.stdout)
         if not options:
             detail = (r.stderr.strip().splitlines() or ["no options reported"])[-1]
-            raise ScanError(f"Could not read scanner options: {detail}")
+            code = SANE_EXIT_CODES.get(r.returncode, "no_device" if "open of device" in r.stderr else "error")
+            raise ScanError(f"Could not read scanner options: {detail}", code)
         return capabilities_from_options(options)
 
     def build_command(self, request):
@@ -101,6 +117,11 @@ class SaneBackend(ScannerBackend):
 
     def scan(self, request, on_page=None, on_progress=None, cancel_event=None):
         """Scan per request; report pages/progress live; honour cancel; return page paths"""
+        with DEVICE_LOCK:
+            return self._scan_locked(request, on_page, on_progress, cancel_event)
+
+    def _scan_locked(self, request, on_page, on_progress, cancel_event):
+        """scan() body; runs with DEVICE_LOCK held"""
         os.makedirs(request.out_dir, exist_ok=True)
         cmd = self.build_command(request)
         try:
@@ -108,7 +129,7 @@ class SaneBackend(ScannerBackend):
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self._env, bufsize=0
             )
         except FileNotFoundError:
-            raise ScanError("SANE is not installed (scanimage not found). Install sane-utils.")
+            raise ScanError("SANE is not installed (scanimage not found). Install sane-utils.", "missing")
 
         pages, stderr_tail = [], []
         last_activity = [time.monotonic()]
@@ -154,15 +175,37 @@ class SaneBackend(ScannerBackend):
                 break
             if time.monotonic() - last_activity[0] > PAGE_TIMEOUT:
                 proc.kill()
-                raise ScanError("The scanner stopped responding. Power-cycle it and retry.")
+                raise ScanError("The scanner stopped responding. Power-cycle it and retry.", "timeout")
             time.sleep(0.2)
         err_thread.join(timeout=5)
 
         if cancelled:
             return pages
         if not pages:
-            raise ScanError(self._explain("".join(stderr_tail)))
+            stderr = "".join(stderr_tail)
+            raise ScanError(self._explain(stderr), self.classify(proc.returncode, stderr))
         return pages
+
+    @staticmethod
+    def classify(returncode, stderr):
+        """Error code from scanimage's exit status (= SANE status), falling back to its text"""
+        if returncode in SANE_EXIT_CODES:
+            return SANE_EXIT_CODES[returncode]
+        text = stderr.lower()
+        for needle, code in (
+            ("out of documents", "no_docs"),
+            ("jammed", "jammed"),
+            ("cover is open", "cover_open"),
+            ("device busy", "busy"),
+            ("access", "access"),
+            ("i/o", "io"),
+            ("timed out", "timeout"),
+            ("open of device", "no_device"),
+            ("invalid argument", "unsupported"),
+        ):
+            if needle in text:
+                return code
+        return "error"
 
     @staticmethod
     def _explain(stderr):
@@ -170,6 +213,8 @@ class SaneBackend(ScannerBackend):
         text = stderr.lower()
         if "out of documents" in text or "no docs" in text:
             return "The document feeder is empty. Load pages face down and scan again."
+        if "cover is open" in text:
+            return "The scanner cover is open. Close it and scan again."
         if "jammed" in text:
             return "Paper jam. Open the scanner, clear the paper and retry."
         if "device busy" in text:

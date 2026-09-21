@@ -52,8 +52,38 @@ class ScanRequest:
     max_pages: int = 0  # >0 caps the pages per job (1 = one side, 2 = one duplex sheet)
 
 
+# Error codes. USER_ACTION codes mean the user must fix something (retrying
+# another connection method would fail or double-feed); the others let the
+# connection engine fall through to the next method.
+USER_ACTION_CODES = {"no_docs", "jammed", "cover_open"}
+FALLTHROUGH_CODES = {"busy", "io", "timeout", "access", "unsupported", "missing", "no_device", "error"}
+
+# scanimage exits with the SANE status number (sane-backends frontend/scanimage.c)
+SANE_EXIT_CODES = {
+    3: "busy",  # SANE_STATUS_DEVICE_BUSY
+    4: "unsupported",  # SANE_STATUS_INVAL
+    6: "jammed",  # SANE_STATUS_JAMMED
+    7: "no_docs",  # SANE_STATUS_NO_DOCS
+    8: "cover_open",  # SANE_STATUS_COVER_OPEN
+    9: "io",  # SANE_STATUS_IO_ERROR
+    10: "io",  # SANE_STATUS_NO_MEM
+    11: "access",  # SANE_STATUS_ACCESS_DENIED
+    1: "unsupported",  # SANE_STATUS_UNSUPPORTED
+}
+
+
 class ScanError(Exception):
     """Raised when listing, probing or scanning fails (message is user-facing)"""
+
+    def __init__(self, message, code="error"):
+        """message: shown to the user; code: see USER_ACTION_CODES / FALLTHROUGH_CODES"""
+        super().__init__(message)
+        self.code = code
+
+    @property
+    def needs_user(self):
+        """True if the user must act (feeder empty, jam, cover open)"""
+        return self.code in USER_ACTION_CODES
 
 
 class ScannerBackend(ABC):

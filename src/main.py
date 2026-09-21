@@ -14,7 +14,9 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk  # noqa: E402
 
+from backends.backend_escl import EsclBackend  # noqa: E402
 from backends.backend_sane import SaneBackend  # noqa: E402
+from modules.manager_connection import ConnectionEngine  # noqa: E402
 from config.config_themes import get_theme  # noqa: E402
 from modules.app_context import AppContext  # noqa: E402
 from modules.manager_navigation import NavigationManager  # noqa: E402
@@ -51,11 +53,15 @@ def main(argv=None):
         backend = SaneBackend(only_backends=["test"])
     else:
         settings = SettingsManager()
-        backend = SaneBackend()
+        backend = None  # production: SANE + linscanner's eSCL client + USB probe
 
     theme = ThemeApplicator()
     theme.apply_theme(get_theme(settings.get("theme")))
-    scan = ScanManager(settings, backend)
+    if backend is None:
+        engine = ConnectionEngine([SaneBackend(), EsclBackend()])
+        scan = ScanManager(settings, engine.backends[0], engine=engine)
+    else:
+        scan = ScanManager(settings, backend)
     ctx = AppContext(settings, scan, NavigationManager(), theme)
 
     window = AppWindow(ctx)

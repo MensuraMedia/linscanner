@@ -7,7 +7,7 @@ Pages go to the Preview page as they arrive.
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk  # noqa: E402
+from gi.repository import GLib, Gtk  # noqa: E402
 
 from config.config_scan import COLOR_MODES, PAPER_SIZES, QUALITY_PRESETS, SHEET_MODES  # noqa: E402
 from modules.manager_scan import ScanManager, is_duplex, is_feeder  # noqa: E402
@@ -35,6 +35,9 @@ class ScanPage(BasePage):
         self.refresh_btn = Gtk.Button(label="Refresh")
         self.refresh_btn.connect("clicked", lambda *_: self.refresh_devices())
         row.pack_start(self.refresh_btn, False, False, 0)
+        info_btn = Gtk.Button(label="Device info")
+        info_btn.connect("clicked", lambda *_: self.ctx.nav.navigate_to("devices"))
+        row.pack_start(info_btn, False, False, 0)
         card.pack_start(row, False, False, 0)
         self.device_status = self.label("", "muted", wrap=True)
         card.pack_start(self.device_status, False, False, 0)
@@ -101,8 +104,10 @@ class ScanPage(BasePage):
         self.pack_start(self.status, False, False, 0)
 
         self.ctx.on("settings-changed", self.on_settings_changed)
+        self.ctx.on("devices-changed", self.devices_loaded)
+        self.ctx.on("request-device-refresh", self.refresh_devices)
         self.set_busy(True)
-        self.refresh_devices()
+        GLib.idle_add(self.refresh_devices)  # after every page has subscribed
 
     # -- helpers -----------------------------------------------------------
     def on_settings_changed(self, key):
@@ -150,18 +155,23 @@ class ScanPage(BasePage):
     def refresh_devices(self):
         """Start a background device listing (ignored while scanning)"""
         if self.ctx.scan.busy:
-            return
+            return False
         self.set_busy(True)
-        self.set_status("Looking for scanners… (this can take about 10 seconds)", "status-busy")
-        self.ctx.scan.refresh_devices(self.devices_loaded, self.devices_failed)
+        self.set_status("Looking for scanners… (this can take about 10–20 seconds)", "status-busy")
+        self.ctx.emit("devices-refreshing")
+        self.ctx.scan.refresh_devices(
+            lambda devs: self.ctx.emit("devices-changed", devs), self.devices_failed
+        )
+        return False  # one-shot when scheduled with GLib.idle_add
 
     def devices_loaded(self, devices):
         """Fill the scanner combo; reselect the last used scanner"""
         self.devices = devices
         self.device_combo.remove_all()
         for d in devices:
-            self.device_combo.append(d.id, d.label)
-        self.ctx.emit("devices-changed", devices)
+            self.device_combo.append(
+                d.id, d.label if d.methods else f"{d.vendor} {d.model}  (no working driver)"
+            )
         if not devices:
             self.set_busy(False)
             self.scan_btn.set_sensitive(False)
@@ -184,8 +194,15 @@ class ScanPage(BasePage):
         if not dev:
             return
         self.ctx.settings.set("last_device", dev.id)
+        if not dev.methods:  # detected on USB, but nothing can drive it
+            self.set_busy(False)
+            self.scan_btn.set_sensitive(False)
+            self.device_status.set_text("Detected on USB · no working driver (see Device Info)")
+            self.set_status(dev.hint, "status-error")
+            return
         self.set_busy(True)
-        self.device_status.set_text(f"{dev.kind} · driver: {dev.backend}")
+        methods = " → ".join(m.device.backend for m in dev.methods)
+        self.device_status.set_text(f"{dev.kind} · connection methods: {methods}")
         self.set_status(f"Reading {dev.model} options…", "status-busy")
         self.ctx.scan.load_capabilities(dev.id, self.caps_loaded, self.devices_failed)
 

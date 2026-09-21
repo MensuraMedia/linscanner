@@ -25,3 +25,8 @@
 | 2026-09-21T16:45:00 | Plan approved (7 items + sheet-fed modes); recommended defaults accepted |
 | 2026-09-21T16:55:00 | Flat, square framework styling (sidebar rows, active fill, flat buttons, sections) |
 | 2026-09-21T17:05:00 | Sheet modes: All sheets / One sheet at a time (duplex sheet = 2 pages) |
+| 2026-09-21T17:20:00 | Error codes from scanimage exit status; user-action vs fall-through classes |
+| 2026-09-21T17:30:00 | USB probe (sysfs + udev db), direct eSCL backend (IPP-USB/network), fake-eSCL tests |
+| 2026-09-21T17:45:00 | Connection engine: grouped devices, ranked methods, fallback scan, driverless hints |
+| 2026-09-21T17:55:00 | Scan Device Information page + Check for devices again; firmware; live status |
+| 2026-09-21T18:00:00 | Fix: serialise SANE device access (Device busy between pages); option flags/groups |

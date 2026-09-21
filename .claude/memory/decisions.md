@@ -6,6 +6,14 @@ type: project
 
 # Decisions
 
+### 2026-09-21: Serialise all SANE device access with one lock
+- Reason: on real hardware, the Device Info firmware probe and the Scan page's option read opened the ES-400 II at the same time → "Device busy" (root cause found in testing).
+- Impact: `backend_sane.DEVICE_LOCK` (re-entrant) wraps every scanimage call and every scan. linscanner never competes with itself; real conflicts with other apps still fall through the engine.
+
+### 2026-09-21: Connection engine with ranked fallback (research-based)
+- Reason: user requirement. Work through connection methods until a scan succeeds.
+- Impact: A1 open SANE → A3 vendor SANE → B2 eSCL/IPP-USB → D1 own eSCL client → B1 network eSCL/WSD → C1 saned. It never falls through on no_docs/jammed/cover_open. Devices from different drivers are merged per physical scanner.
+
 ### 2026-09-21: Plan approved with recommended defaults
 - Reason: user approval ("approve, use your recommended defaults").
 - Impact:

@@ -14,6 +14,29 @@ _SERIAL = re.compile(r"[0-9A-F]{12,}")
 # "    --mode Lineart|Gray|Color [Color]"  /  "    -x 0..215.9mm [215.9]"
 # "    --adf-skew[=(yes|no)] [no]"  (boolean: no value list)
 _OPTION = re.compile(r"^\s+(--?[A-Za-z][\w-]*)(\[=\([^)]*\)\])?(?:\s+(.*?))?\s+\[(.*)\]\s*$")
+_GROUP = re.compile(r"^  (\S[^:]*):\s*$")  # "  Standard:" / "  Geometry:"
+_FLAGS = ("inactive", "hardware", "read-only", "advanced")  # suffixes scanimage appends
+# Option names -> features worth showing (see docs/research/device-capabilities.md §1)
+FEATURE_OPTIONS = {
+    "adf-skew": "Skew correction",
+    "swdeskew": "Skew correction (software)",
+    "hwdeskewcrop": "Hardware deskew + crop",
+    "adf-crp": "Auto-crop",
+    "swcrop": "Auto-crop (software)",
+    "double-feed": "Double-feed sensor",
+    "df-action": "Double-feed detection",
+    "df-thickness": "Double-feed detection (thickness)",
+    "df-length": "Double-feed detection (length)",
+    "swskip": "Blank-page skip",
+    "eject": "Eject sheet",
+    "load": "Load sheet",
+    "page-loaded": "Paper-loaded sensor",
+    "cover-open": "Cover-open sensor",
+    "scan": "Scan button",
+    "email": "Email button",
+    "roller-counter": "Roller counter",
+    "counter": "Page counter",
+}
 _RANGE = re.compile(r"^(-?[\d.]+)\.\.(-?[\d.]+)")
 
 
@@ -50,9 +73,31 @@ def model_key(device):
 def parse_options(text):
     """Parse `scanimage -d DEV -A` output into {option: {values, default, unit}}"""
     options = {}
+    group = ""
     for line in text.splitlines():
-        m = _OPTION.match(line)
+        g = _GROUP.match(line)
+        if g:
+            group = g.group(1).strip().lower()
+            continue
+        flags = []
+        stripped = line.rstrip()
+        while True:  # peel trailing " [inactive]" / " [advanced]" / ... markers
+            tail = re.search(r"\s\[(" + "|".join(re.escape(f) for f in _FLAGS) + r")\]$", stripped)
+            if not tail:
+                break
+            flags.insert(0, tail.group(1))
+            stripped = stripped[: tail.start()]
+        m = _OPTION.match(stripped)
         if not m:
+            bare = re.match(r"^\s+(--?[A-Za-z][\w-]*)$", stripped)  # e.g. "--load [inactive]"
+            if bare and flags:
+                options[bare.group(1).lstrip("-")] = {
+                    "values": [],
+                    "default": "",
+                    "unit": "",
+                    "group": group,
+                    "flags": flags,
+                }
             continue
         name, boolean, spec, default = m.group(1).lstrip("-"), m.group(2), m.group(3), m.group(4)
         spec = boolean.strip("[=()]") if boolean else (spec or "")  # "(yes|no)" -> "yes|no"
@@ -67,8 +112,19 @@ def parse_options(text):
             values = {"min": float(rng.group(1)), "max": float(rng.group(2))}
         else:
             values = [v.strip() for v in spec.split("|") if v.strip()]
-        options[name] = {"values": values, "default": default, "unit": unit}
+        options[name] = {"values": values, "default": default, "unit": unit, "group": group, "flags": flags}
     return options
+
+
+def device_features(options):
+    """Friendly names of notable device features found among its options"""
+    found = []
+    for name, label in FEATURE_OPTIONS.items():
+        if name in options and label not in found:
+            opt = options[name]
+            note = " (inactive)" if "inactive" in opt.get("flags", []) else ""
+            found.append(label + note)
+    return found
 
 
 def _resolutions(opt):
