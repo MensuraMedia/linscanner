@@ -72,3 +72,9 @@ def test_test_scanner_uses_color_pattern(backend, tmp_path):
     assert "--test-picture" in backend.build_command(req)
     img = Image.open(backend.scan(req)[0])
     assert max(ImageStat.Stat(img).mean) > 20  # not the default solid black
+
+
+def test_one_sheet_mode_on_feeder_scans_single_page(backend, tmp_path):
+    req = ScanRequest("test:0", str(tmp_path), "Automatic Document Feeder", "Gray", 75, 50, 50, max_pages=1)
+    assert "--batch-count=1" in backend.build_command(req)
+    assert len(backend.scan(req)) == 1  # the virtual feeder holds 10; only one taken

@@ -73,6 +73,18 @@
     {
       "datetime": "2026-09-21T16:40:00",
       "description": "Comprehensive README (usage, compatibility, troubleshooting); docs updated"
+    },
+    {
+      "datetime": "2026-09-21T16:45:00",
+      "description": "Plan approved (7 items + sheet-fed modes); recommended defaults accepted"
+    },
+    {
+      "datetime": "2026-09-21T16:55:00",
+      "description": "Flat, square framework styling (sidebar rows, active fill, flat buttons, sections)"
+    },
+    {
+      "datetime": "2026-09-21T17:05:00",
+      "description": "Sheet modes: All sheets / One sheet at a time (duplex sheet = 2 pages)"
     }
   ]
 }

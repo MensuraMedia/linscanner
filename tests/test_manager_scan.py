@@ -41,3 +41,12 @@ def test_duplicate_backends_hidden_and_test_scanner_hidden():
     visible = filter_devices(devices)
     assert [d.backend for d in visible] == ["epsonds"]
     assert len(filter_devices(devices, show_all=True)) == 3
+
+
+def test_sheet_modes():
+    from modules.manager_scan import sheet_limits
+
+    assert sheet_limits("Flatbed", "all") == (False, 1)
+    assert sheet_limits("ADF Front", "all") == (True, 0)  # whole stack
+    assert sheet_limits("ADF Front", "one") == (False, 1)  # one sheet, one side
+    assert sheet_limits("ADF Duplex", "one") == (False, 2)  # one sheet, front + back

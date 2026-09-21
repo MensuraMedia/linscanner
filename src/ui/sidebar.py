@@ -33,14 +33,20 @@ class Sidebar(Gtk.Box):
 
         self.build_logo_area()
         top = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        for label, page_id in NAV_ITEMS:
-            top.pack_start(self.create_nav_button(label, page_id), False, False, 0)
+        for i, (label, page_id) in enumerate(NAV_ITEMS):
+            top.pack_start(
+                self.create_nav_button(label, page_id, css="nav-button-top" if i == 0 else None),
+                False,
+                False,
+                0,
+            )
         self.pack_start(top, False, False, 0)
         self.pack_start(Gtk.Box(), True, True, 0)  # spacer pushes Settings down
         bottom = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        bottom.set_margin_bottom(10)
         for label, page_id in BOTTOM_ITEMS:
-            bottom.pack_start(self.create_nav_button(label, page_id), False, False, 0)
+            bottom.pack_start(
+                self.create_nav_button(label, page_id, css="nav-button-bottom"), False, False, 0
+            )
         self.pack_start(bottom, False, False, 0)
 
         self.nav_manager.on_navigate(self.on_navigated)
@@ -58,15 +64,20 @@ class Sidebar(Gtk.Box):
                 box.pack_start(Gtk.Image.new_from_pixbuf(pix), True, True, 0)
             except GLib.Error:
                 pass
-        text = Gtk.Label(label="linscanner")
+        text = Gtk.Label(label="LINSCANNER")
         text.get_style_context().add_class("logo-text")
-        box.pack_start(text, False, False, 4)
+        box.pack_start(text, False, False, 0)
+        sub = Gtk.Label(label="DOCUMENT SCANNER")
+        sub.get_style_context().add_class("logo-subtext")
+        box.pack_start(sub, False, False, 0)
         self.pack_start(box, False, False, 0)
 
-    def create_nav_button(self, label, page_id):
-        """Navigation button for a page id"""
+    def create_nav_button(self, label, page_id, css=None):
+        """Navigation button for a page id (css: extra class for top/bottom borders)"""
         button = Gtk.Button(label=label)
         button.get_style_context().add_class("nav-button")
+        if css:
+            button.get_style_context().add_class(css)
         button.set_relief(Gtk.ReliefStyle.NONE)
         button.get_child().set_xalign(0)
         button.connect("clicked", lambda *_: self.nav_manager.navigate_to(page_id))

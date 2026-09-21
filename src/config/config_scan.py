@@ -38,6 +38,17 @@ DEFAULT_PAPER = "letter"
 
 # Source names that mean "document feeder" (scan until the feeder is empty)
 FEEDER_SOURCE_HINTS = ["adf", "feeder", "duplex", "automatic document"]
+DUPLEX_SOURCE_HINTS = ["duplex"]
+
+# Sheet-fed modes for feeder sources
+SHEET_MODES = {
+    "all": {"label": "All sheets", "help": "Scans every sheet in the feeder in one go"},
+    "one": {
+        "label": "One sheet at a time",
+        "help": "Scans one sheet per press; add more sheets to the same document",
+    },
+}
+DEFAULT_SHEET_MODE = "all"
 
 # Backends preferred when the same scanner is offered by several SANE backends.
 # epsonds scanned the ES-400 II reliably; Epson's own epsonscan2 backend is a

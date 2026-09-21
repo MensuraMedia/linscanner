@@ -75,3 +75,47 @@ def test_scan_preview_save(tmp_path):
     assert open(out[0], "rb").read().startswith(b"%PDF")
     window.destroy()
     scan.cleanup()
+
+
+def build_app():
+    """Real window wired to SANE's virtual scanner with throwaway settings"""
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    from backends.backend_sane import SaneBackend
+    from config.config_themes import get_theme
+    from modules.app_context import AppContext
+    from modules.manager_navigation import NavigationManager
+    from modules.manager_scan import ScanManager
+    from modules.manager_settings import SettingsManager
+    from modules.manager_theme_applicator import ThemeApplicator
+    from ui.app_window import AppWindow
+
+    settings = SettingsManager(os.path.join(tempfile.mkdtemp(), "s.json"))
+    settings.override("show_all_backends", True)
+    theme = ThemeApplicator()
+    theme.apply_theme(get_theme("default"))
+    scan = ScanManager(settings, SaneBackend(only_backends=["test"]))
+    ctx = AppContext(settings, scan, NavigationManager(), theme)
+    window = AppWindow(ctx)
+    window.show_all()
+    ctx.nav.navigate_to("scan")
+    return ctx, window, scan
+
+
+def test_one_sheet_at_a_time_builds_one_document():
+    ctx, window, scan = build_app()
+    page = ctx.nav.get_page_widget("scan")
+    assert wait_for(lambda: page.status.get_text() == "Ready.")
+    page.source_combo.set_active_id("Automatic Document Feeder")
+    assert page.sheets_row.get_visible()  # Sheets choice appears for feeder sources
+    page.sheets.set_active("one")
+    for sheet in (1, 2):
+        page.on_scan(None)
+        assert wait_for(lambda: not scan.busy and page.scan_btn.get_label() == "Scan next sheet")
+        assert len(scan.pages) == sheet  # one sheet per press, same document
+    assert ctx.nav.get_current_page() == "scan"  # waits for the next sheet
+    page.done_btn.clicked()
+    assert ctx.nav.get_current_page() == "preview"
+    window.destroy()
+    scan.cleanup()

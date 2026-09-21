@@ -93,7 +93,9 @@ class SaneBackend(ScannerBackend):
         cmd += BACKEND_EXTRA_ARGS.get(request.device_id.split(":", 1)[0], [])
         pattern = os.path.join(request.out_dir, "page-%03d.png")
         cmd += [f"--batch={pattern}", "--batch-print"]
-        if not request.multi_page:
+        if request.max_pages:
+            cmd += [f"--batch-count={request.max_pages}"]  # one sheet (1 side, or 2 for duplex)
+        elif not request.multi_page:
             cmd += ["--batch-count=1"]  # flatbed: one page, never loop
         return cmd
 

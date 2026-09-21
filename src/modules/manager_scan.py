@@ -15,6 +15,7 @@ from backends.backend_sane import SaneBackend
 from backends.parser_sane import model_key
 from config.config_scan import (
     COLOR_MODES,
+    DUPLEX_SOURCE_HINTS,
     FEEDER_SOURCE_HINTS,
     HIDDEN_BACKENDS_BY_DEFAULT,
     LINEART_MODE_NAMES,
@@ -64,6 +65,20 @@ def pick_area(caps, paper):
 def is_feeder(source):
     """True if a source name means a document feeder (scan until empty)"""
     return any(hint in source.lower() for hint in FEEDER_SOURCE_HINTS)
+
+
+def is_duplex(source):
+    """True if a source scans both sides of each sheet"""
+    return any(hint in source.lower() for hint in DUPLEX_SOURCE_HINTS)
+
+
+def sheet_limits(source, sheet_mode):
+    """(multi_page, max_pages) for a source and sheet mode ("all" / "one")"""
+    if not is_feeder(source):
+        return False, 1  # flatbed: always one page
+    if sheet_mode == "one":
+        return False, 2 if is_duplex(source) else 1  # one sheet: front (+ back)
+    return True, 0  # feeder, all sheets: until empty
 
 
 def filter_devices(devices, show_all=False):
@@ -135,20 +150,23 @@ class ScanManager:
         self._in_thread(work, on_done, on_error)
 
     # -- scanning ----------------------------------------------------------
-    def build_request(self, device_id, source, color_mode, quality, paper, create_dir=True):
+    def build_request(self, device_id, source, color_mode, quality, paper, create_dir=True, sheet_mode="all"):
         """create_dir=False builds the request for display only (no temp folder)"""
         caps = self.capabilities[device_id]
         width, height = pick_area(caps, paper)
+        source = source if source in caps.sources else caps.default_source
+        multi_page, max_pages = sheet_limits(source, sheet_mode)
         out_dir = tempfile.mkdtemp(prefix="scan-", dir=self.session_dir) if create_dir else ""
         return ScanRequest(
             device_id=device_id,
             out_dir=out_dir,
-            source=source if source in caps.sources else caps.default_source,
+            source=source,
             mode=pick_mode(caps.modes, color_mode, self.settings.get("bw_style")),
             resolution=pick_resolution(caps.resolutions, quality),
             width_mm=width,
             height_mm=height,
-            multi_page=is_feeder(source),
+            multi_page=multi_page,
+            max_pages=max_pages,
         )
 
     def start_scan(self, request, on_page, on_progress, on_done, on_error):

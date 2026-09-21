@@ -6,7 +6,7 @@ Loads and saves user preferences as JSON in ~/.config/linscanner/settings.json
 import json
 import os
 
-from config.config_scan import DEFAULT_BW_STYLE, DEFAULT_PAPER, DEFAULT_QUALITY
+from config.config_scan import DEFAULT_BW_STYLE, DEFAULT_PAPER, DEFAULT_QUALITY, DEFAULT_SHEET_MODE
 from config.config_themes import DEFAULT_THEME_ID
 
 DEFAULTS = {
@@ -14,6 +14,7 @@ DEFAULTS = {
     "color_mode": "color",
     "quality": DEFAULT_QUALITY,
     "paper": DEFAULT_PAPER,
+    "sheet_mode": DEFAULT_SHEET_MODE,
     "bw_style": DEFAULT_BW_STYLE,
     "save_folder": os.path.join(os.path.expanduser("~"), "Documents"),
     "last_device": "",

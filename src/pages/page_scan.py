@@ -9,8 +9,8 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk  # noqa: E402
 
-from config.config_scan import COLOR_MODES, PAPER_SIZES, QUALITY_PRESETS  # noqa: E402
-from modules.manager_scan import ScanManager, is_feeder  # noqa: E402
+from config.config_scan import COLOR_MODES, PAPER_SIZES, QUALITY_PRESETS, SHEET_MODES  # noqa: E402
+from modules.manager_scan import ScanManager, is_duplex, is_feeder  # noqa: E402
 from pages.page_base import BasePage  # noqa: E402
 from ui.components.component_segmented import SegmentedControl  # noqa: E402
 
@@ -42,8 +42,18 @@ class ScanPage(BasePage):
         # -- options card
         card = self.add_card("Options")
         self.source_combo = Gtk.ComboBoxText()
-        self.source_combo.connect("changed", lambda *_: self.update_summary())
+        self.source_combo.connect("changed", lambda *_: self.on_source_changed())
         card.pack_start(self.form_row("Source", self.source_combo), False, False, 0)
+
+        # Sheet-fed mode: only shown for feeder sources
+        self.sheets = SegmentedControl(
+            [(k, v["label"]) for k, v in SHEET_MODES.items()],
+            active=s.get("sheet_mode"),
+            on_changed=lambda k: self.remember("sheet_mode", k),
+        )
+        self.sheets_row = self.form_row("Sheets", self.sheets)
+        self.sheets_row.set_no_show_all(True)
+        card.pack_start(self.sheets_row, False, False, 0)
 
         self.color = SegmentedControl(
             [(k, v["label"]) for k, v in COLOR_MODES.items()],
@@ -79,6 +89,10 @@ class ScanPage(BasePage):
         self.cancel_btn.connect("clicked", lambda *_: self.ctx.scan.cancel())
         self.cancel_btn.set_sensitive(False)
         actions.pack_start(self.cancel_btn, False, False, 0)
+        self.done_btn = Gtk.Button(label="Done → Preview")
+        self.done_btn.connect("clicked", lambda *_: self.ctx.nav.navigate_to("preview"))
+        self.done_btn.set_no_show_all(True)
+        actions.pack_start(self.done_btn, False, False, 0)
         self.pack_start(actions, False, False, 4)
 
         self.progress = Gtk.ProgressBar()
@@ -121,6 +135,8 @@ class ScanPage(BasePage):
             self.color,
             self.quality,
             self.paper_combo,
+            self.sheets,
+            self.done_btn,
         ):
             w.set_sensitive(not busy)
         self.cancel_btn.set_sensitive(scanning)
@@ -184,6 +200,18 @@ class ScanPage(BasePage):
         self.set_status("Ready.", "status-ok")
         self.update_summary()
 
+    def sheet_mode(self):
+        """Current sheet mode ("all" / "one"); only meaningful for feeder sources"""
+        return self.sheets.get_active()
+
+    def on_source_changed(self):
+        """Show the Sheets choice for feeder sources only, then refresh the summary"""
+        source = self.source_combo.get_active_id() or ""
+        self.sheets_row.set_visible(is_feeder(source))
+        if is_feeder(source):
+            self.sheets_row.show_all()
+        self.update_summary()
+
     def update_summary(self):
         """Show exactly what will be sent to the scanner"""
         dev = self.current_device()
@@ -191,8 +219,14 @@ class ScanPage(BasePage):
             self.summary.set_text("")
             return
         req = self.build_request(dry_run=True)
-        feeder = "Feeder: scans every loaded page." if req.multi_page else "Single page."
-        self.summary.set_text(f"Will scan: {ScanManager.summary(req)}. {feeder}")
+        if req.multi_page:
+            how = "Feeder: scans every loaded sheet."
+        elif is_feeder(req.source):
+            side = "both sides" if is_duplex(req.source) else "one side"
+            how = f"One sheet per press ({side}); pages are added to the same document."
+        else:
+            how = "Single page."
+        self.summary.set_text(f"Will scan: {ScanManager.summary(req)}. {how}")
 
     def build_request(self, dry_run=False):
         """Build a ScanRequest from the controls (dry_run: no temp folder)"""
@@ -205,6 +239,7 @@ class ScanPage(BasePage):
             self.quality.get_active(),
             self.paper_combo.get_active_id(),
             create_dir=not dry_run,
+            sheet_mode=self.sheet_mode(),
         )
 
     # -- scanning ----------------------------------------------------------
@@ -216,7 +251,12 @@ class ScanPage(BasePage):
         self.set_busy(True, scanning=True)
         self.progress.set_fraction(0)
         self.pages_this_scan = 0
-        what = "pages from the feeder" if is_feeder(self.request.source) else "page"
+        if self.request.multi_page:
+            what = "all sheets from the feeder"
+        elif is_feeder(self.request.source):
+            what = "one sheet"
+        else:
+            what = "page"
         self.set_status(f"Scanning {what}…", "status-busy")
         self.ctx.scan.start_scan(self.request, self.on_page, self.on_progress, self.on_done, self.on_error)
 
@@ -231,16 +271,36 @@ class ScanPage(BasePage):
         self.progress.set_fraction(min(pct, 100) / 100)
 
     def on_done(self, pages, cancelled):
-        """Report the result and open Preview if pages were scanned"""
+        """Report the result; open Preview, or wait for the next sheet in one-sheet mode"""
         self.set_busy(False)
         self.progress.set_fraction(1 if pages else 0)
         n = len(pages)
+        one_sheet = self.request and is_feeder(self.request.source) and not self.request.multi_page
+        total = len(self.ctx.scan.pages)
         if cancelled:
             self.set_status(f"Cancelled. {n} page(s) kept.", "muted")
+        elif one_sheet and n:
+            self.scan_btn.set_label("Scan next sheet")
+            self.done_btn.show()
+            self.set_status(
+                f"Sheet added ({n} page(s)); document now has {total} page(s). "
+                "Load the next sheet and press Scan next sheet, or Done → Preview.",
+                "status-ok",
+            )
+            return  # stay here for the next sheet
         else:
             self.set_status(f"Done: {n} page(s) scanned. Opening preview…", "status-ok")
+        self.scan_btn.set_label("Scan")
+        self.done_btn.hide()
         if n:
             self.ctx.nav.navigate_to("preview")
+
+    def on_shown(self):
+        """Back on the Scan page after a one-sheet session: start fresh labels"""
+        if not self.ctx.scan.busy and self.ctx.nav.get_current_page() == "scan":
+            if not self.ctx.scan.pages:
+                self.scan_btn.set_label("Scan")
+                self.done_btn.hide()
 
     def on_error(self, message):
         """Show a scan error"""

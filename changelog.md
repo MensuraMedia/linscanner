@@ -22,3 +22,6 @@
 | 2026-09-21T16:30:00 | Default theme = framework Default Blue (full framework palette); logo line blue |
 | 2026-09-21T16:31:00 | Removed Black Yellow Gray theme; themes = framework's 7; removed ids fall back |
 | 2026-09-21T16:40:00 | Comprehensive README (usage, compatibility, troubleshooting); docs updated |
+| 2026-09-21T16:45:00 | Plan approved (7 items + sheet-fed modes); recommended defaults accepted |
+| 2026-09-21T16:55:00 | Flat, square framework styling (sidebar rows, active fill, flat buttons, sections) |
+| 2026-09-21T17:05:00 | Sheet modes: All sheets / One sheet at a time (duplex sheet = 2 pages) |

@@ -6,6 +6,15 @@ type: project
 
 # Decisions
 
+### 2026-09-21: Plan approved with recommended defaults
+- Reason: user approval ("approve, use your recommended defaults").
+- Impact:
+  - OCR in English only.
+  - Auto-crop, deskew and blank-page removal on by default; the other roadmap modules off.
+  - Quick Edit on, with 20 system fonts from distro font packages (DejaVu, Liberation, Noto, Ubuntu, URW base35 incl. Z003 script).
+  - Signatures in `~/.local/share/linscanner/signatures/`.
+  - Sheet-fed "All sheets" / "One sheet at a time" added at the user's request.
+
 ### 2026-09-21: Default theme is the framework's "Default Blue"; Black Yellow Gray removed
 - Reason: user correction. The app should follow the original framework styling (gtk-python-dashboard-starter dashboard.png); the black/yellow scheme wasn't needed.
 - Impact:

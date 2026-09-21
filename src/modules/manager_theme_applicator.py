@@ -39,79 +39,93 @@ class ThemeApplicator:
 
     @staticmethod
     def generate_css(t):
-        """Build the application stylesheet from a ThemeDefinition"""
+        """Build the application stylesheet from a ThemeDefinition.
+
+        Layout rules follow gtk-python-dashboard-starter's style.css: flat and
+        square, full-width sidebar rows separated by 1px dark borders, the active
+        row filled with the accent colour, 2px-radius flat buttons."""
+        border = "#1a1a1a"  # framework BORDER_DARK
+        border_mid = "#555555"  # framework BORDER_MEDIUM
         return f"""
-* {{ font-family: Ubuntu, Cantarell, sans-serif; }}
+* {{ font-family: Ubuntu, Cantarell, sans-serif; font-size: 11pt; }}
 window, .content-area {{ background-color: {t.window_bg}; color: {t.text_primary}; }}
 label {{ color: {t.text_primary}; }}
-headerbar {{ background: {t.sidebar_bg}; border-bottom: 1px solid #000; color: {t.text_primary}; }}
+headerbar {{ background: {t.sidebar_bg}; border-bottom: 1px solid {border}; color: {t.text_primary}; }}
 
-/* Sidebar */
-.sidebar {{ background-color: {t.sidebar_bg}; border-right: 1px solid {t.raised_bg}; }}
-.logo-area {{ background-color: {t.sidebar_bg}; padding: 10px; }}
-.logo-text {{ color: {t.accent_color}; font-size: 15pt; font-weight: bold; }}
+/* Sidebar: framework layout */
+.sidebar {{ background-color: {t.sidebar_bg}; border-right: 1px solid {border}; }}
+.logo-area {{ background-color: {t.sidebar_bg}; padding: 12px 0; }}
+.logo-text {{ color: {t.text_primary}; font-size: 13pt; font-weight: bold; }}
+.logo-subtext {{ color: {t.text_secondary}; font-size: 9pt; }}
 .nav-button {{
-    background: transparent; border: none; border-radius: 10px; box-shadow: none;
-    margin: 2px 8px; padding: 6px 12px; min-height: 28px; color: {t.text_muted};
+    background: transparent; background-image: none; border: none; border-bottom: 1px solid {border};
+    border-radius: 0; box-shadow: none; margin: 0; padding: 6px 15px; min-height: 28px;
 }}
-.nav-button label {{ color: {t.text_muted}; }}
+.nav-button label {{ color: {t.text_secondary}; font-size: 10pt; }}
 .nav-button:hover {{ background-color: {t.raised_bg}; }}
-.nav-button:hover label {{ color: {t.text_primary}; }}
-.nav-button.active {{ background-color: {t.raised_bg}; }}
-.nav-button.active label {{ color: {t.accent_color}; font-weight: bold; }}
+.nav-button:hover label {{ color: #ffffff; }}
+.nav-button-top {{ border-top: 1px solid {border}; }}
+.nav-button-bottom {{ border-top: 1px solid {border}; border-bottom: none; }}
+.nav-button.active, .nav-button.active:hover {{ background-color: {t.accent_color}; }}
+.nav-button.active label {{ color: {t.accent_text}; font-weight: bold; }}
 
-/* Pages and cards */
-.page-title {{ font-size: 20pt; font-weight: bold; color: {t.text_primary}; }}
-.page-subtitle {{ font-size: 12pt; font-weight: bold; color: {t.text_primary}; }}
+/* Pages: heading + text, sections instead of cards */
+.page-title {{ font-size: 18pt; font-weight: bold; color: #ffffff; }}
+.page-subtitle {{ font-size: 14pt; font-weight: 500; color: {t.text_secondary}; }}
 .muted {{ color: {t.text_muted}; }}
 .secondary {{ color: {t.text_secondary}; }}
-.card {{ background-color: {t.card_bg}; border-radius: 16px; padding: 18px; }}
-.card-title {{ font-size: 12pt; font-weight: bold; color: {t.text_primary}; }}
+.card {{ background: transparent; border: none; border-top: 1px solid {border}; padding: 12px 0 4px 0; }}
+.card-title {{ font-size: 14pt; font-weight: 500; color: {t.text_secondary}; }}
 .status-ok {{ color: {t.success}; }}
 .status-error {{ color: {t.error}; }}
 .status-busy {{ color: {t.accent_color}; }}
+.info-key {{ color: {t.text_muted}; }}
+.info-value {{ color: {t.text_primary}; }}
 
 /* Inputs */
-combobox button, combobox box, entry, filechooserbutton button {{
-    background: {t.raised_bg}; color: {t.text_primary}; border: none; border-radius: 10px;
-    box-shadow: none; min-height: 30px;
+combobox box {{ border: none; background: transparent; }}
+combobox button, entry, filechooserbutton button, spinbutton {{
+    background: {t.card_bg}; background-image: none; color: {t.text_primary};
+    border: 1px solid {border_mid}; border-radius: 2px; box-shadow: none; min-height: 28px;
 }}
-combobox window menu, menu {{ background: {t.raised_bg}; color: {t.text_primary}; }}
-menuitem:hover {{ background: {t.hover_color}; }}
-checkbutton check {{ background: {t.raised_bg}; border: 1px solid {t.text_muted}; }}
+combobox window menu, menu {{ background: {t.card_bg}; color: {t.text_primary}; }}
+menuitem:hover {{ background: {t.accent_color}; }}
+checkbutton check {{ background: {t.card_bg}; border: 1px solid {border_mid}; border-radius: 2px; }}
 checkbutton check:checked {{ background: {t.accent_color}; }}
+scale trough {{ background: {t.raised_bg}; border-radius: 0; min-height: 4px; }}
+scale highlight {{ background: {t.accent_color}; }}
+scale slider {{ background: {t.text_primary}; border-radius: 2px; min-width: 12px; min-height: 12px; }}
 
-/* Buttons */
+/* Buttons: flat, 2px radius */
 button {{
-    background: {t.raised_bg}; color: {t.text_primary}; border: none; border-radius: 10px;
-    box-shadow: none; padding: 6px 14px;
+    background: {t.raised_bg}; background-image: none; color: {t.text_primary};
+    border: 1px solid {border_mid}; border-radius: 2px; box-shadow: none; padding: 6px 14px;
 }}
 button label {{ color: {t.text_primary}; }}
 button:hover {{ background: {t.hover_color}; }}
+button:disabled {{ background: {t.card_bg}; }}
 button:disabled label {{ color: {t.text_muted}; }}
-.primary-pill {{
-    background: {t.accent_color}; border-radius: 999px; padding: 10px 34px;
-}}
-.primary-pill label {{ color: {t.accent_text}; font-weight: bold; font-size: 12pt; }}
-.primary-pill:hover {{ background: shade({t.accent_color}, 1.08); }}
-.primary-pill:disabled {{ background: {t.raised_bg}; }}
+.primary-pill {{ background: {t.accent_color}; border: 1px solid {t.accent_color}; padding: 8px 24px; }}
+.primary-pill label {{ color: {t.accent_text}; font-weight: bold; }}
+.primary-pill:hover {{ background: shade({t.accent_color}, 1.1); }}
+.primary-pill:disabled {{ background: {t.raised_bg}; border-color: {border_mid}; }}
 
-/* Segmented toggles (Color / B&W, High / Medium / Low) */
-.segment {{ background: {t.raised_bg}; border-radius: 999px; padding: 3px; }}
-.segment button {{ background: transparent; border-radius: 999px; padding: 6px 16px; }}
+/* Segmented toggles: square, joined */
+.segment {{ background: transparent; padding: 0; }}
+.segment button {{ border-radius: 0; margin: 0; padding: 5px 16px; }}
 .segment button label {{ color: {t.text_secondary}; }}
-.segment button:checked {{ background: {t.accent_color}; }}
+.segment button:checked {{ background: {t.accent_color}; border-color: {t.accent_color}; }}
 .segment button:checked label {{ color: {t.accent_text}; font-weight: bold; }}
 
 /* Progress */
-progressbar trough {{ background: {t.raised_bg}; border-radius: 999px; min-height: 8px; }}
-progressbar progress {{ background: {t.accent_color}; border-radius: 999px; min-height: 8px; }}
+progressbar trough {{ background: {t.card_bg}; border: 1px solid {border}; border-radius: 0; min-height: 6px; }}
+progressbar progress {{ background: {t.accent_color}; border-radius: 0; min-height: 6px; }}
 
 /* Preview */
-.preview-frame {{ background-color: #000000; border-radius: 12px; }}
-.thumb {{ background: {t.raised_bg}; border-radius: 10px; padding: 4px; border: 2px solid transparent; }}
+.preview-frame {{ background-color: #1e1e1e; border: 1px solid {border}; }}
+.thumb {{ background: {t.card_bg}; border: 2px solid {border}; border-radius: 0; padding: 3px; }}
 .thumb.selected {{ border: 2px solid {t.accent_color}; }}
 .thumb-label {{ color: {t.text_muted}; font-size: 9pt; }}
-.theme-swatch {{ border-radius: 999px; }}
-scrollbar slider {{ background: {t.raised_bg}; }}
+.toolbar-group {{ border-right: 1px solid {border}; padding-right: 6px; }}
+scrollbar slider {{ background: {t.raised_bg}; border-radius: 0; }}
 """

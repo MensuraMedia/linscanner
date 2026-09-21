@@ -49,6 +49,7 @@ class ScanRequest:
     width_mm: float = 0.0  # 0 = device default (full area)
     height_mm: float = 0.0
     multi_page: bool = False  # feeder: keep scanning until it is empty
+    max_pages: int = 0  # >0 caps the pages per job (1 = one side, 2 = one duplex sheet)
 
 
 class ScanError(Exception):
