@@ -44,3 +44,4 @@
 | 2026-09-21T20:10:00 | USB only: network discovery disabled (private SANE config: no net/escl/dell1600n_net, no Epson/Kodak/Magicolor net lines, pixma networking=no, airscan discovery off with IPP-USB on 127.0.0.1; eSCL client loopback only); strace-verified |
 | 2026-09-21T20:10:00 | Settings: 'Network scanning (Wi-Fi / Ethernet)' shown greyed out, marked Not Supported; tests/test_usb_only.py (5 tests, 74 total) |
 | 2026-09-21T20:10:00 | Docs: README privacy section updated (linscanner doesn't use your network), FEATURES, TECHNICAL §3.0 |
+| 2026-09-21T21:00:00 | Docs: handoff (0.3.0 request list), follow-ups #31/#32, reference, architecture, CLAUDE.md, memory; backup |

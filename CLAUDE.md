@@ -32,6 +32,7 @@ python3 -m black --check src tests && python3 -m pyflakes src tests
 - New pages: subclass `pages/page_base.BasePage`, add one line to `ui/content_area.PAGES` and `ui/sidebar.NAV_ITEMS`.
 - Never show or log scanner serial numbers (`parser_sane.redact`).
 - Optional functionality goes in `src/features/feature_<name>.py` (a `Feature(BaseFeature)`); the core only calls `FeatureRegistry` hooks. A feature must never be imported by the core or by another feature (shared helpers go in `utils/`).
+- USB only: nothing may use the network (`NETWORK_SCANNING = False`); no telemetry, no online services. Keep README §7 (privacy) true.
 - Every `scanimage` call goes through `backend_sane.DEVICE_LOCK` (a scanner is single-user).
 - New connection methods: implement `ScannerBackend`, give it a method code in `manager_connection.method_code`, add it to the engine in `main.py`.
 - Dependencies: distro packages only; add new ones to `app.json` → `offline`, then `../bin/make-offline-bundle linscanner && ../bin/test-offline linscanner`.

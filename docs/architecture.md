@@ -35,8 +35,16 @@ main.py ─ builds AppContext(settings, scan manager, navigation, theme) ─ App
 `ScannerBackend` defines `available()`, `list_devices()`, `get_capabilities(id)`
 and `scan(request, on_page, on_progress, cancel_event)`. SANE is the one
 implementation because it already unifies most drivers (USB backends,
-`sane-airscan` for eSCL/WSD network scanners, `hpaio`). Another backend (for
-example direct eSCL over HTTP) can be added without touching the UI.
+`sane-airscan` for eSCL over IPP-USB, `hpaio`). `EsclBackend` (direct eSCL
+over HTTP) is the second implementation.
+
+**USB only:** `NETWORK_SCANNING = False` (`config/config_scan.py`). Both
+backends then avoid the network entirely:
+- `SaneBackend` uses a private `SANE_CONFIG_DIR` with every network search
+  off.
+- `EsclBackend` uses only 127.0.0.1.
+
+See TECHNICAL.md §3.0.
 
 `SaneBackend` runs `scanimage`:
 - list: `scanimage -f '%d|%v|%m|%t%n'` (about 10 s: probes every SANE backend)

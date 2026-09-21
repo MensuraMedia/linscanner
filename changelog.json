@@ -161,6 +161,10 @@
     {
       "datetime": "2026-09-21T20:10:00",
       "description": "Docs: README privacy section updated (linscanner doesn't use your network), FEATURES, TECHNICAL §3.0"
+    },
+    {
+      "datetime": "2026-09-21T21:00:00",
+      "description": "Docs: handoff (0.3.0 request list), follow-ups #31/#32, reference, architecture, CLAUDE.md, memory; backup"
     }
   ]
 }

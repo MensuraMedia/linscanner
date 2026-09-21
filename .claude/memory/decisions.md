@@ -6,6 +6,19 @@ type: project
 
 # Decisions
 
+### 2026-09-21: USB only; network discovery disabled
+- Reason: user decision. Wi-Fi / network scanning isn't supported at this time, and "no information is sent outside the machine".
+- Impact:
+  - `NETWORK_SCANNING = False`.
+  - SANE gets a private config with network search off: no net / escl / dell1600n_net, Epson/Kodak/Magicolor net lines off, pixma networking=no, airscan discovery off with IPP-USB on 127.0.0.1.
+  - The eSCL client uses loopback only.
+  - Settings shows the option greyed out as "Not Supported".
+  - The system SANE config is untouched.
+
+### 2026-09-21: Noncommercial community license (custom text)
+- Reason: user asked for free use, copying, modifying and distribution, with no commercial use without express permission, in diplomatic wording.
+- Impact: `linscanner/LICENSE` (covers linscanner only; third-party parts keep their licences). It isn't legal advice; PolyForm Noncommercial is the standard alternative.
+
 ### 2026-09-21: Persistent, redacted logging before user testing
 - Reason: user asked whether logging was adequate for testing many pages and styles; it wasn't (screen-only messages).
 - Impact: daily files in `~/.local/state/linscanner/logs` (14 days); every module logs through `utils/util_logging`; serials and the home path are redacted; Diagnostics zip in Settings; `--debug`. Logging never blocks the app.
