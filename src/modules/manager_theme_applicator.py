@@ -1,8 +1,9 @@
 """
 Theme Applicator
 Generates the application CSS from a ThemeDefinition and applies it to the
-screen. Style follows the black-yellow-gray reference: near-black base,
-rounded dark cards, one saturated accent, pill-shaped primary buttons.
+screen. Colours come only from the ThemeDefinition (default: the framework's
+Default Blue). The current layout still uses rounded cards and pill buttons;
+the flat, square framework layout is planned (see docs/HANDOFF.md).
 """
 
 import gi

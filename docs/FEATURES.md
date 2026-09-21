@@ -1,5 +1,7 @@
 # linscanner features and functions (v0.1.0)
 
+> Theme note: the default is the framework's **Default Blue**. Black Yellow Gray was removed on 2026-09-21; see `README.md` §8 for the theme history.
+
 Complete description of what linscanner does, page by page, plus
 command-line options, files, settings and limits. The code-level reference
 (every module, class and function) is generated in
@@ -45,7 +47,7 @@ Every choice (color, quality, paper, last scanner) is remembered.
 | Control | Function |
 |---|---|
 | Large view | Fits the selected page to the window; decoded at display size (fast even for 600 dpi colour) |
-| Thumbnail strip | Every page of the session; click to select (yellow/accent outline) |
+| Thumbnail strip | Every page of the session; click to select (accent-colour outline) |
 | **Rotate left / right / 180°** | Per page. Applied in the preview and on export; the scan files are never modified |
 | **Delete page** | Removes the selected page |
 | **Clear all** | Removes every page after a confirmation |
@@ -72,7 +74,7 @@ sources, modes, resolution range and maximum scan area.
 
 | Setting | Effect |
 |---|---|
-| Color scheme | 8 dark themes. **Nord is the default**; also Black Yellow Gray (from the universal-instruction-set reference), Default Blue, Adapta, Materia, Dracula, Gruvbox, Monokai. Applies instantly, with swatch preview |
+| Color scheme | The framework's 7 dark themes: **Default Blue (default**, as in the framework's example image), Adapta, Materia, Dracula, Nord, Gruvbox, Monokai. Applies instantly, with swatch preview. A saved theme that no longer exists falls back to Default Blue |
 | Black & White | Grayscale (default) or Pure black & white (lineart) |
 | Save folder | Default folder for Save As |
 | Drivers | "Show every driver … and the virtual test scanner": off by default |
@@ -122,7 +124,7 @@ Development tools: `pytest`, `black` and `pyflakes`.
 |---|---|---|
 | Build | `python3 -m compileall -q src` | passes |
 | Lint | `python3 -m black --check src tests && python3 -m pyflakes src tests` | clean |
-| Test | `python3 -m pytest -q` | 28 passed |
+| Test | `python3 -m pytest -q` | 29 passed |
 | Offline | `../bin/test-offline linscanner` | installs in a network-less container |
 | Docs | `python3 tools/gen_api_docs.py` | every symbol documented |
 
@@ -131,5 +133,6 @@ Development tools: `pytest`, `black` and `pyflakes`.
 - Listing scanners takes about 10 s, because SANE probes every driver.
 - The epsonds auto-crop doesn't shorten pages, so choose a paper size.
   ES-400 II pages may come out upside down; use Rotate 180°.
-- There's no OCR, blank-page removal or scanner-button support yet (see the roadmap).
+- There's no OCR, blank-page removal, Quick Edit (text/signatures) or scanner-button support yet (see the roadmap in `README.md`).
+- Colours match the framework's Default Blue, but the shapes are still rounded cards and pills. The flat framework layout is planned.
 - Settings stored inside the scanner (sleep timer, etc.) can't be changed from Linux.

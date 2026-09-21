@@ -6,7 +6,17 @@ type: project
 
 # Decisions
 
-### 2026-09-21: Default theme is Nord
+### 2026-09-21: Default theme is the framework's "Default Blue"; Black Yellow Gray removed
+- Reason: user correction. The app should follow the original framework styling (gtk-python-dashboard-starter dashboard.png); the black/yellow scheme wasn't needed.
+- Impact:
+  - Default is `default` (Default Blue: #2d2d2d window, #353535 sidebar, #0078D7 accent), completed from the framework's config_theme.py.
+  - Themes are exactly the framework's seven.
+  - Saved ids of removed themes fall back to the default.
+  - Logo scan line recoloured to #0078D7.
+- Supersedes: "Default theme is Nord" and "Default theme Black Yellow Gray" below (kept for history).
+- Still open: layout shapes (rounded cards/pills) → the flat square framework layout is planned (awaiting approval).
+
+### 2026-09-21: Default theme is Nord (superseded: Default Blue is default)
 - Reason: user request (supersedes Black Yellow Gray as default; that theme stays selectable).
 - Impact: Nord completed from the official palette (nord0-nord14); existing users keep their saved theme.
 
@@ -26,7 +36,7 @@ type: project
 - Reason: universal-instruction-set defines no app version scheme.
 - Impact: `VERSION` file; changelog records every change.
 
-### 2026-09-21: Default theme "Black Yellow Gray" (superseded: Nord is default)
+### 2026-09-21: Default theme "Black Yellow Gray" (superseded; theme removed)
 - Reason: user chose universal-themes/image-reference/ui-kit-black-yellow-gray.jpg.
 - Impact: colours sampled from the image (#111111, #181818, #212121, #fbd700, #b3b3b3, #82828e, #3fd059, #e8555d); the framework's 7 themes stay selectable.
 

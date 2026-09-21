@@ -10,7 +10,7 @@ gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, Gtk  # noqa: E402
 
 from config.config_scan import BW_STYLES  # noqa: E402
-from config.config_themes import get_all_themes, get_theme  # noqa: E402
+from config.config_themes import DEFAULT_THEME_ID, get_all_themes, get_theme  # noqa: E402
 from pages.page_base import BasePage  # noqa: E402
 
 
@@ -27,7 +27,8 @@ class SettingsPage(BasePage):
         self.theme_combo = Gtk.ComboBoxText()
         for tid, theme in get_all_themes().items():
             self.theme_combo.append(tid, theme.name)
-        self.theme_combo.set_active_id(s.get("theme"))
+        if not self.theme_combo.set_active_id(s.get("theme")):  # e.g. a removed theme
+            self.theme_combo.set_active_id(DEFAULT_THEME_ID)
         self.theme_combo.connect("changed", self.on_theme)
         row = Gtk.Box(spacing=12)
         row.pack_start(self.theme_combo, False, False, 0)

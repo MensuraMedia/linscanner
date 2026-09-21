@@ -21,3 +21,9 @@ See pending.md: real-hardware GUI test, orientation, auto-crop.
 
 ## Files Changed
 linscanner/ (new), bin/make-offline-bundle, offline pool + manifests, repo docs.
+
+## Theme history (added 2026-09-21 16:30)
+- 15:25: Black Yellow Gray (from universal-instruction-set ui-kit-black-yellow-gray.jpg) was the first default.
+- 16:12: switched to Nord at the user's request.
+- 16:30: **user correction**: default is the framework's Default Blue; Black Yellow Gray removed.
+- Earlier commits (827defa, 4632aa3) and the append-only changelog entries still mention those defaults. That's history, not current state.

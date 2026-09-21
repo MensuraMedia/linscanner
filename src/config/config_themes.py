@@ -1,8 +1,9 @@
 """
 Theme Definitions
-Dark themes. The default is Nord (official Nord palette, nordtheme.com).
-"Black Yellow Gray" is sampled from the universal-instruction-set reference
-ui-kit-black-yellow-gray.jpg; the others come from gtk-python-dashboard-starter.
+The seven dark themes of gtk-python-dashboard-starter. The default is the
+framework's standard "Default Blue" (as in its dashboard.png), completed with
+the framework's own palette from its config_theme.py. Nord is completed from the
+official Nord palette.
 """
 
 
@@ -18,12 +19,12 @@ class ThemeDefinition:
         hover_color,
         card_bg=None,
         raised_bg=None,
-        accent_text="#111111",
+        accent_text="#ffffff",
         text_primary="#eeeeee",
-        text_secondary="#b3b3b3",
-        text_muted="#82828e",
-        success="#3fd059",
-        error="#e8555d",
+        text_secondary="#d0d0d0",
+        text_muted="#9a9a9a",
+        success="#27ae60",
+        error="#cc3333",
     ):
         """Store theme colours; optional ones default from the core four"""
         self.name = name
@@ -41,30 +42,23 @@ class ThemeDefinition:
         self.error = error
 
 
-DEFAULT_THEME_ID = "nord"
+DEFAULT_THEME_ID = "default"
 
 DARK_THEMES = {
-    "black-yellow-gray": ThemeDefinition(
-        name="Black Yellow Gray",
-        accent_color="#fbd700",  # sampled: gauge / bars / primary button
-        sidebar_bg="#111111",  # sampled: screen background
-        window_bg="#111111",
-        hover_color="#212121",  # sampled: pills and chips
-        card_bg="#181818",  # sampled: cards
-        raised_bg="#212121",
-        text_primary="#ffffff",
-        text_secondary="#b3b3b3",
-        text_muted="#82828e",  # sampled: neutral progress segment
-        success="#3fd059",  # sampled: green progress segment
-        error="#e8555d",  # sampled: red bar
-    ),
     "default": ThemeDefinition(
         name="Default Blue",
-        accent_color="#0078D7",
-        sidebar_bg="#353535",
-        window_bg="#2d2d2d",
-        hover_color="#404040",
+        accent_color="#0078D7",  # framework PRIMARY_ACCENT / NAV_BUTTON_ACTIVE
+        sidebar_bg="#353535",  # SIDEBAR_BG
+        window_bg="#2d2d2d",  # WINDOW_BG / CONTENT_BG
+        hover_color="#4a4a4a",  # BUTTON_HOVER
+        card_bg="#353535",  # SIDEBAR_BG (panels)
+        raised_bg="#404040",  # BUTTON_BG / NAV_BUTTON_HOVER
         accent_text="#ffffff",
+        text_primary="#eeeeee",  # TEXT_PRIMARY
+        text_secondary="#d0d0d0",  # TEXT_SECONDARY
+        text_muted="#9a9a9a",  # between TEXT_DISABLED (#808080) and secondary: readable on #353535
+        success="#27ae60",  # SUCCESS
+        error="#cc3333",  # ERROR
     ),
     "adapta": ThemeDefinition(
         name="Adapta",

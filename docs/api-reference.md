@@ -29,14 +29,14 @@ Constants: `COLOR_MODES`, `LINEART_MODE_NAMES`, `BW_STYLES`, `DEFAULT_BW_STYLE`,
 
 ### `src/config/config_themes.py`
 
-Theme Definitions Dark themes. The default is Nord (official Nord palette, nordtheme.com). "Black Yellow Gray" is sampled from the universal-instruction-set reference ui-kit-black-yellow-gray.jpg; the others come from gtk-python-dashboard-starter.
+Theme Definitions The seven dark themes of gtk-python-dashboard-starter. The default is the framework's standard "Default Blue" (as in its dashboard.png), completed with the framework's own palette from its config_theme.py. Nord is completed from the official Nord palette.
 
 Constants: `DEFAULT_THEME_ID`, `DARK_THEMES`
 
 | Symbol | Purpose |
 |---|---|
 | class `ThemeDefinition()` | Single theme definition (colours used to generate the app CSS) |
-| &nbsp;&nbsp;`.__init__(self, name, accent_color, sidebar_bg, window_bg, hover_color, card_bg=None, raised_bg=None, accent_text='#111111', text_primary='#eeeeee', text_secondary='#b3b3b3', text_muted='#82828e', success='#3fd059', error='#e8555d')` | Store theme colours; optional ones default from the core four |
+| &nbsp;&nbsp;`.__init__(self, name, accent_color, sidebar_bg, window_bg, hover_color, card_bg=None, raised_bg=None, accent_text='#ffffff', text_primary='#eeeeee', text_secondary='#d0d0d0', text_muted='#9a9a9a', success='#27ae60', error='#cc3333')` | Store theme colours; optional ones default from the core four |
 | `get_theme(theme_id)` | Get theme by ID (falls back to the default theme) |
 | `get_all_themes()` | Get all available themes |
 
@@ -171,7 +171,7 @@ Constants: `DEFAULTS`
 
 ### `src/modules/manager_theme_applicator.py`
 
-Theme Applicator Generates the application CSS from a ThemeDefinition and applies it to the screen. Style follows the black-yellow-gray reference: near-black base, rounded dark cards, one saturated accent, pill-shaped primary buttons.
+Theme Applicator Generates the application CSS from a ThemeDefinition and applies it to the screen. Colours come only from the ThemeDefinition (default: the framework's Default Blue). The current layout still uses rounded cards and pill buttons; the flat, square framework layout is planned (see docs/HANDOFF.md).
 
 | Symbol | Purpose |
 |---|---|
@@ -256,7 +256,7 @@ About Page Version, scanning stack versions and credits.
 
 ### `src/pages/page_base.py`
 
-Base Page Class Base class for all pages (from gtk-python-dashboard-starter), extended with the app context and card helpers for the black-yellow-gray card layout.
+Base Page Class Base class for all pages (from gtk-python-dashboard-starter), extended with the app context and card helpers.
 
 | Symbol | Purpose |
 |---|---|

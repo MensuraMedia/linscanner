@@ -1,7 +1,7 @@
 """
 Base Page Class
 Base class for all pages (from gtk-python-dashboard-starter), extended with
-the app context and card helpers for the black-yellow-gray card layout.
+the app context and card helpers.
 """
 
 import gi

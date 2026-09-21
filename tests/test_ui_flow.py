@@ -40,7 +40,7 @@ def test_scan_preview_save(tmp_path):
     settings = SettingsManager(os.path.join(tempfile.mkdtemp(), "s.json"))
     settings.override("show_all_backends", True)
     theme = ThemeApplicator()
-    assert theme.apply_theme(get_theme("black-yellow-gray"))
+    assert theme.apply_theme(get_theme("default"))
     scan = ScanManager(settings, SaneBackend(only_backends=["test"]))
     ctx = AppContext(settings, scan, NavigationManager(), theme)
     window = AppWindow(ctx)

@@ -61,6 +61,18 @@
     {
       "datetime": "2026-09-21T16:18:00",
       "description": "Research saved: docs/research connection-methods.md, device-capabilities.md"
+    },
+    {
+      "datetime": "2026-09-21T16:30:00",
+      "description": "Default theme = framework Default Blue (full framework palette); logo line blue"
+    },
+    {
+      "datetime": "2026-09-21T16:31:00",
+      "description": "Removed Black Yellow Gray theme; themes = framework's 7; removed ids fall back"
+    },
+    {
+      "datetime": "2026-09-21T16:40:00",
+      "description": "Comprehensive README (usage, compatibility, troubleshooting); docs updated"
     }
   ]
 }

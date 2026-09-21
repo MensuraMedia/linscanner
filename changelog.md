@@ -19,3 +19,6 @@
 | 2026-09-21T16:15:00 | Docstrings for every class, method and function (documentation only) |
 | 2026-09-21T16:16:00 | docs/FEATURES.md and generated docs/api-reference.md (tools/gen_api_docs.py) |
 | 2026-09-21T16:18:00 | Research saved: docs/research connection-methods.md, device-capabilities.md |
+| 2026-09-21T16:30:00 | Default theme = framework Default Blue (full framework palette); logo line blue |
+| 2026-09-21T16:31:00 | Removed Black Yellow Gray theme; themes = framework's 7; removed ids fall back |
+| 2026-09-21T16:40:00 | Comprehensive README (usage, compatibility, troubleshooting); docs updated |
