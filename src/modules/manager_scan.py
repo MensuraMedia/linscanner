@@ -13,6 +13,9 @@ from gi.repository import GLib
 from backends.backend_base import ScanError, ScanRequest
 from backends.backend_sane import SaneBackend
 from modules.manager_connection import ConnectionEngine
+from utils.util_logging import get_logger
+
+log = get_logger("scan")
 from backends.parser_sane import model_key
 from config.config_scan import (
     COLOR_MODES,
@@ -95,6 +98,17 @@ def filter_devices(devices, show_all=False):
     for d in sorted(visible, key=rank):
         best.setdefault(model_key(d), d)
     return [d for d in visible if best[model_key(d)] is d]
+
+
+def _page_notes(page):
+    """What the page processors recorded on a page, for the log"""
+    keys = ("blank_score", "autocropped", "deskew_angle", "autorotated", "separator")
+    notes = [
+        f"{k}={page[k]:.4f}" if isinstance(page.get(k), float) else f"{k}={page[k]}"
+        for k in keys
+        if k in page
+    ]
+    return "[" + ", ".join(notes) + "]" if notes else ""
 
 
 def equivalent_source(source, caps):
@@ -184,7 +198,29 @@ class ScanManager:
         """create_dir=False builds the request for display only (no temp folder)"""
         caps = self.capabilities[device_id]
         self.last_choices = (source, color_mode, quality, paper, sheet_mode)
-        return self._request_for(device_id, caps, source, color_mode, quality, paper, sheet_mode, create_dir)
+        request = self._request_for(
+            device_id, caps, source, color_mode, quality, paper, sheet_mode, create_dir
+        )
+        if create_dir:  # real scans only (not the summary line)
+            log.info(
+                "request: choices source=%s color=%s quality=%s paper=%s sheets=%s bw_style=%s -> "
+                "device=%s source=%s mode=%s %s dpi area=%sx%s mm multi_page=%s max_pages=%s",
+                source,
+                color_mode,
+                quality,
+                paper,
+                sheet_mode,
+                self.settings.get("bw_style"),
+                request.device_id,
+                request.source,
+                request.mode,
+                request.resolution,
+                request.width_mm or "full",
+                request.height_mm or "full",
+                request.multi_page,
+                request.max_pages,
+            )
+        return request
 
     def _request_for(self, device_id, caps, source, color_mode, quality, paper, sheet_mode, create_dir=True):
         """ScanRequest for one device/method from the user's choices and its capabilities"""
@@ -260,22 +296,34 @@ class ScanManager:
 
         Returns False if the page should be dropped. The processed image replaces
         the scan file; any processor failure leaves the page unchanged."""
+        import os
+
         from PIL import Image
 
+        name = os.path.basename(page["path"])
         try:
             with Image.open(page["path"]) as img:
                 img.load()
+                before = img.size
                 result = self.features.process_page(img, page)
                 if result is None:
+                    log.info(
+                        "page %s: DROPPED by %s %s",
+                        name,
+                        page.get("dropped_by", "a processor"),
+                        _page_notes(page),
+                    )
                     return False
                 if result is not img:
                     result.save(page["path"], dpi=(page["dpi"], page["dpi"]))
-        except OSError:
-            pass  # unreadable image: keep it as scanned
+                log.info("page %s: %sx%s -> %sx%s %s", name, *before, *result.size, _page_notes(page))
+        except OSError as e:
+            log.warning("page %s: could not be processed (%s); kept as scanned", name, e)
         return True
 
     def cancel(self):
         """Ask the running scan to stop (pages so far are kept)"""
+        log.info("cancel requested")
         self._cancel.set()
 
     # -- pages -------------------------------------------------------------

@@ -6,6 +6,10 @@ type: project
 
 # Decisions
 
+### 2026-09-21: Persistent, redacted logging before user testing
+- Reason: user asked whether logging was adequate for testing many pages and styles; it wasn't (screen-only messages).
+- Impact: daily files in `~/.local/state/linscanner/logs` (14 days); every module logs through `utils/util_logging`; serials and the home path are redacted; Diagnostics zip in Settings; `--debug`. Logging never blocks the app.
+
 ### 2026-09-21: Blank detection counts any strong colour difference from the paper
 - Reason (root cause, found by the UI test): comparing only "darker than paper" classified SANE's colour test pattern (and would have classified colour charts/photos) as blank, so every page was dropped.
 - Impact: the paper colour is estimated per channel (median); content = any channel differs by more than 60. Colour content is kept; uniform coloured paper stays blank. A regression test was added.

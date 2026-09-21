@@ -20,7 +20,9 @@ class Feature(BaseFeature):
     def process_page(self, image, page):
         """None (drop) for blank pages; mark as separator when batch splitting is on"""
         threshold = float(self.option("threshold", 0.002))
-        if ink_ratio(image) >= threshold:
+        ratio = ink_ratio(image)
+        page["blank_score"] = ratio  # logged per page: content share vs threshold
+        if ratio >= threshold:
             return image
         states = self.settings.get("features") or {}
         if states.get("batch_split"):

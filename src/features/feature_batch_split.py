@@ -23,7 +23,7 @@ class Feature(BaseFeature):
     def process_page(self, image, page):
         """Mark blank pages as separators (kept until export)"""
         if is_blank(image):
-            page["separator"] = True
+            page["separator"] = True  # logged per page
         return image
 
     def split_documents(self, pages):

@@ -4,6 +4,8 @@ Choose scanner, source, colour, quality and paper; scan with live progress.
 Pages go to the Preview page as they arrive.
 """
 
+import logging
+
 import gi
 
 gi.require_version("Gtk", "3.0")
@@ -13,6 +15,9 @@ from config.config_scan import COLOR_MODES, PAPER_SIZES, QUALITY_PRESETS, SHEET_
 from modules.manager_scan import ScanManager, is_duplex, is_feeder  # noqa: E402
 from pages.page_base import BasePage  # noqa: E402
 from ui.components.component_segmented import SegmentedControl  # noqa: E402
+from utils.util_logging import get_logger  # noqa: E402
+
+log = get_logger("ui")
 
 
 class ScanPage(BasePage):
@@ -126,7 +131,9 @@ class ScanPage(BasePage):
         self.update_summary()
 
     def set_status(self, text, css="muted"):
-        """Show a status message styled muted / ok / error / busy"""
+        """Show a status message styled muted / ok / error / busy (errors and results are logged)"""
+        level = {"status-error": logging.WARNING, "status-ok": logging.INFO}.get(css, logging.DEBUG)
+        log.log(level, "scan page: %s", text)
         ctx = self.status.get_style_context()
         for c in ("muted", "status-ok", "status-error", "status-busy"):
             ctx.remove_class(c)

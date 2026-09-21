@@ -15,6 +15,7 @@ from config.config_scan import EXPORT_FORMATS  # noqa: E402
 from modules.manager_export import export_pages, format_for_path  # noqa: E402
 from pages.page_base import BasePage  # noqa: E402
 from ui.components.component_preview import PagePreview  # noqa: E402
+from utils.util_logging import get_logger  # noqa: E402
 
 
 class PreviewPage(BasePage):
@@ -191,6 +192,7 @@ class PreviewPage(BasePage):
         try:
             written = export_pages(pages, path, fmt, registry=self.ctx.features)
         except (OSError, ValueError, RuntimeError) as e:
+            get_logger("ui").warning("save as %s failed: %s", fmt, e)
             self.status.get_style_context().add_class("status-error")
             self.status.set_text(f"Could not save: {e}")
             return

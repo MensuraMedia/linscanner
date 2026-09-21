@@ -74,3 +74,6 @@ class SettingsManager:
         """Store a value and save immediately"""
         self.values[key] = value
         self.save()
+        from utils.util_logging import get_logger
+
+        get_logger("settings").debug("%s = %r", key, value)

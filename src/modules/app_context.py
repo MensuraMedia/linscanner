@@ -19,6 +19,7 @@ class AppContext:
         self.theme = theme_applicator
         self.window = None  # set once the main window exists (dialog parent)
         self.features = None  # FeatureRegistry (optional modules); None = no features
+        self.log_path = None  # today's log file (Settings -> Diagnostics)
         self._listeners = {}
 
     def on(self, event, callback):

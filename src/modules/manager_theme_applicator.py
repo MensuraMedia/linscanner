@@ -27,8 +27,10 @@ class ThemeApplicator:
         self.current_theme = theme
         try:
             self.css_provider.load_from_data(self.generate_css(theme).encode())
-        except Exception as e:  # malformed CSS must not stop the app
-            print(f"Error applying theme {theme.name}: {e}")
+        except Exception:  # malformed CSS must not stop the app
+            from utils.util_logging import get_logger
+
+            get_logger("ui").exception("theme %s could not be applied", theme.name)
             return False
         if not self._registered:
             Gtk.StyleContext.add_provider_for_screen(

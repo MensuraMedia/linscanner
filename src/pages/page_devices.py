@@ -14,6 +14,7 @@ from gi.repository import GLib, Gtk  # noqa: E402
 
 from modules import manager_device_info as info  # noqa: E402
 from pages.page_base import BasePage  # noqa: E402
+from utils.util_logging import get_logger  # noqa: E402
 
 LEVEL_CSS = {"ok": "status-ok", "warn": "status-busy", "busy": "status-busy", "error": "status-error"}
 
@@ -144,6 +145,7 @@ class DevicesPage(BasePage):
         label.set_text("Checking…")
 
         def show(level, text):
+            get_logger("ui").info("status of %s %s: %s (%s)", d.vendor, d.model, text, level)
             ctx = label.get_style_context()
             for c in ("muted", *LEVEL_CSS.values()):
                 ctx.remove_class(c)

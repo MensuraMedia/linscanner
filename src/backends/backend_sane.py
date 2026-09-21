@@ -5,6 +5,7 @@ driver works: USB backends (epsonds, genesys, ...), network scanners via
 sane-airscan (eSCL/WSD), HP via hpaio, and SANE's virtual "test" scanner.
 """
 
+import logging
 import os
 import re
 import shutil
@@ -23,6 +24,9 @@ from backends.parser_sane import (
     parse_progress,
 )
 from config.config_scan import BACKEND_EXTRA_ARGS, LIST_TIMEOUT, OPTIONS_TIMEOUT, PAGE_TIMEOUT
+from utils.util_logging import get_logger
+
+log = get_logger("sane")
 
 # A scanner is a single-user device: two scanimage processes opening it at once
 # makes one fail with "Device busy". Every SANE call in linscanner (listing,
@@ -62,6 +66,7 @@ class SaneBackend(ScannerBackend):
 
     def _run(self, args, timeout):
         """Run scanimage with args; raises ScanError on missing tool or timeout"""
+        start = time.monotonic()
         try:
             with DEVICE_LOCK:
                 r = subprocess.run(
@@ -73,22 +78,33 @@ class SaneBackend(ScannerBackend):
                     env=self._env,
                 )
         except FileNotFoundError:
+            log.error("scanimage not found (sane-utils missing)")
             raise ScanError("SANE is not installed (scanimage not found). Install sane-utils.", "missing")
         except subprocess.TimeoutExpired:
+            log.warning("scanimage %s timed out after %s s", " ".join(args), timeout)
             raise ScanError(
                 f"The scanner did not answer within {timeout} s. Power-cycle it and retry.", "timeout"
+            )
+        took = time.monotonic() - start
+        log.debug("scanimage %s -> exit %s in %.2f s", " ".join(args), r.returncode, took)
+        if r.returncode != 0:
+            log.warning(
+                "scanimage %s failed (exit %s): %s", " ".join(args), r.returncode, r.stderr.strip()[-1500:]
             )
         return r
 
     def list_devices(self):
         """List scanners SANE can see (scanimage -f), as ScannerDevice objects"""
         r = self._run(["-f", LIST_FORMAT], LIST_TIMEOUT)
-        return parse_device_list(r.stdout)
+        devices = parse_device_list(r.stdout)
+        log.info("SANE listed %d device(s): %s", len(devices), ", ".join(d.id for d in devices) or "none")
+        return devices
 
     def get_capabilities(self, device_id):
         """Read a device's options (scanimage -A) as ScannerCapabilities"""
         r = self._run(["-d", device_id, "-A"], OPTIONS_TIMEOUT)
         options = parse_options(r.stdout)
+        log.debug("options for %s: %s", device_id, ", ".join(sorted(options)) or "none")
         if not options:
             detail = (r.stderr.strip().splitlines() or ["no options reported"])[-1]
             code = SANE_EXIT_CODES.get(r.returncode, "no_device" if "open of device" in r.stderr else "error")
@@ -124,6 +140,8 @@ class SaneBackend(ScannerBackend):
         """scan() body; runs with DEVICE_LOCK held"""
         os.makedirs(request.out_dir, exist_ok=True)
         cmd = self.build_command(request)
+        started = time.monotonic()
+        log.info("scan start: %s", " ".join(cmd))
         try:
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=self._env, bufsize=0
@@ -156,6 +174,12 @@ class SaneBackend(ScannerBackend):
         for raw in iter(proc.stdout.readline, b""):
             path = raw.decode(errors="replace").strip()
             if path and os.path.exists(path):
+                log.info(
+                    "page %d received after %.1f s: %s",
+                    len(pages) + 1,
+                    time.monotonic() - started,
+                    os.path.basename(path),
+                )
                 pages.append(path)
                 last_activity[0] = time.monotonic()
                 if on_page:
@@ -174,15 +198,26 @@ class SaneBackend(ScannerBackend):
                     proc.kill()
                 break
             if time.monotonic() - last_activity[0] > PAGE_TIMEOUT:
+                log.warning("no page or progress for %s s: killing scanimage", PAGE_TIMEOUT)
                 proc.kill()
                 raise ScanError("The scanner stopped responding. Power-cycle it and retry.", "timeout")
             time.sleep(0.2)
         err_thread.join(timeout=5)
+        stderr = "".join(stderr_tail)
+        clean = "\n".join(ln for ln in re.split(r"[\r\n]+", stderr) if ln.strip() and "Progress:" not in ln)
+        log.info(
+            "scan end: %d page(s), exit %s, %.1f s%s",
+            len(pages),
+            proc.returncode,
+            time.monotonic() - started,
+            " (cancelled)" if cancelled else "",
+        )
+        if clean:
+            log.log(logging.DEBUG if pages else logging.WARNING, "scanimage messages:\n%s", clean[-3000:])
 
         if cancelled:
             return pages
         if not pages:
-            stderr = "".join(stderr_tail)
             raise ScanError(self._explain(stderr), self.classify(proc.returncode, stderr))
         return pages
 

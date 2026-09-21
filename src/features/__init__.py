@@ -19,7 +19,11 @@ import glob
 import importlib
 import importlib.util
 import os
-import traceback
+import time
+
+from utils.util_logging import get_logger
+
+log = get_logger("features")
 
 
 class BaseFeature:
@@ -64,7 +68,13 @@ class FeatureRegistry:
                 self.features.append(module.Feature(settings))
             except Exception as e:  # a broken feature file must not stop the app
                 self.errors.append((name, f"load failed: {e}"))
+                log.exception("feature %s failed to load", name)
         self.features.sort(key=lambda f: f.order)
+        log.info(
+            "features loaded: %s | enabled: %s",
+            ", ".join(f.id for f in self.features),
+            ", ".join(f.id for f in self.features if self.is_enabled(f)) or "none",
+        )
 
     @staticmethod
     def _load(name, path):
@@ -88,6 +98,7 @@ class FeatureRegistry:
         states = dict(self.settings.get("features") or {})
         states[feature_id] = bool(enabled)
         self.settings.set("features", states)
+        log.info("feature %s %s", feature_id, "enabled" if enabled else "disabled")
 
     def get(self, feature_id):
         """Feature by id (loaded, enabled or not), or None"""
@@ -99,12 +110,15 @@ class FeatureRegistry:
 
     def _call(self, feature, hook, *args):
         """Call one hook, isolating failures; returns (ok, result)"""
+        start = time.monotonic()
         try:
-            return True, getattr(feature, hook)(*args)
+            result = getattr(feature, hook)(*args)
         except Exception as e:
             self.errors.append((feature.id, f"{hook}: {e}"))
-            traceback.print_exc()
+            log.exception("feature %s: %s failed (skipped, the rest continues)", feature.id, hook)
             return False, None
+        log.debug("feature %s: %s done in %.3f s", feature.id, hook, time.monotonic() - start)
+        return True, result
 
     # -- hooks -----------------------------------------------------------------
     def process_page(self, image, page):
@@ -114,6 +128,7 @@ class FeatureRegistry:
             if not ok:
                 continue  # broken feature: keep the image as it was
             if result is None:
+                page["dropped_by"] = f.id
                 return None
             image = result
         return image

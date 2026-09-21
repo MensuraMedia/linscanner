@@ -8,7 +8,7 @@ linscanner Universal document scanner for Linux (SANE). Entry point.
 
 | Symbol | Purpose |
 |---|---|
-| `parse_args(argv)` | Parse command-line options (--version, --test-scanner, --page, --quit-after) |
+| `parse_args(argv)` | Parse command-line options (--version, --test-scanner, --page, --quit-after, --debug) |
 | `main(argv=None)` | Build services and the window, run the GTK loop, clean up temp scans on exit |
 
 ### `src/config/config_layout.py`
@@ -231,6 +231,7 @@ Scan Manager Turns the user's choices (Color / Black & White, High / Medium / Lo
 | `is_duplex(source)` | True if a source scans both sides of each sheet |
 | `sheet_limits(source, sheet_mode)` | (multi_page, max_pages) for a source and sheet mode ("all" / "one") |
 | `filter_devices(devices, show_all=False)` | Hide SANE's test scanner and duplicate backends for the same model |
+| `_page_notes(page)` | What the page processors recorded on a page, for the log |
 | `equivalent_source(source, caps)` | The same kind of source (flatbed / feeder / duplex) in another method's names |
 | class `ScanManager()` | Owns the connection engine, the current device and the scanned pages of a session |
 | &nbsp;&nbsp;`.__init__(self, settings, backend=None, engine=None)` | Create the manager with a session temp dir. |
@@ -417,7 +418,7 @@ Scan Page Choose scanner, source, colour, quality and paper; scan with live prog
 | &nbsp;&nbsp;`.build_content(self)` | Scanner card, options card, Scan/Cancel, progress and status |
 | &nbsp;&nbsp;`.on_settings_changed(self, key)` | Re-list devices if driver visibility changed; else refresh the summary |
 | &nbsp;&nbsp;`.remember(self, key, value)` | Persist an option choice and refresh the summary |
-| &nbsp;&nbsp;`.set_status(self, text, css='muted')` | Show a status message styled muted / ok / error / busy |
+| &nbsp;&nbsp;`.set_status(self, text, css='muted')` | Show a status message styled muted / ok / error / busy (errors and results are logged) |
 | &nbsp;&nbsp;`.set_busy(self, busy, scanning=False)` | Enable or disable controls while working; Cancel only while scanning |
 | &nbsp;&nbsp;`.current_device(self)` | The ScannerDevice selected in the combo, or None |
 | &nbsp;&nbsp;`.refresh_devices(self)` | Start a background device listing (ignored while scanning) |
@@ -449,6 +450,8 @@ Settings Page Theme, default save folder, Black & White style and driver visibil
 | &nbsp;&nbsp;`.save(self, key, value)` | Persist a setting and broadcast settings-changed |
 | &nbsp;&nbsp;`.on_theme(self, combo)` | Apply and remember the selected theme |
 | &nbsp;&nbsp;`.on_feature_toggled(self, check, feature)` | Enable or disable a feature module; pages update immediately |
+| &nbsp;&nbsp;`.open_log_folder(self)` | Open the log folder in the file manager |
+| &nbsp;&nbsp;`.save_diagnostics(self)` | Save a zip with recent logs, system info, device info and feature states |
 | &nbsp;&nbsp;`.on_show_all(self, btn)` | Toggle showing all drivers and the test scanner |
 | &nbsp;&nbsp;`.draw_swatches(self, theme)` | Show colour dots for the theme's main colours |
 | &nbsp;&nbsp;`._draw_dot(area, cr, rgba)` | Cairo draw handler for one swatch |
@@ -476,6 +479,26 @@ Imaging helpers shared by the core and feature modules (Pillow + numpy). Kept in
 | `is_blank(img, threshold=0.002)` | True if the page has (almost) no ink |
 | `overlay_pixels(page, size)` | Overlay position helper: fractions of the page -> pixels for an image of `size` |
 | `flatten(page, img=None)` | Page image with rotation and Quick Edit overlays applied |
+
+### `src/utils/util_logging.py`
+
+Logging One log file per day in ~/.local/state/linscanner/logs/ (or $XDG_STATE_HOME), kept for 14 days and capped in size. Every line is redacted: scanner serial numbers become "…" and the home folder becomes "~". Logging problems never stop the app: if the folder can't be written, logging quietly goes nowhere.  Use:  from utils.util_logging import get_logger;  log = get_logger("scan")
+
+Constants: `KEEP_DAYS`, `MAX_BYTES`, `ROOT`
+
+| Symbol | Purpose |
+|---|---|
+| `log_dir()` | Folder holding the log files |
+| `redact_text(text)` | Remove serial numbers and the home folder path from a log line |
+| class `RedactingFormatter(logging.Formatter)` | Formatter that redacts every formatted line (incl. tracebacks) |
+| &nbsp;&nbsp;`.format(self, record)` | Format, then redact |
+| `_prune(folder)` | Delete log files older than KEEP_DAYS |
+| `setup_logging(debug=False)` | Configure the 'linscanner' logger (idempotent); returns the log file path or None |
+| `get_logger(name)` | Logger for one part of the app, e.g. get_logger('scan') -> 'linscanner.scan' |
+| `timed(logger, what, level=logging.DEBUG)` | Log how long a block took: 'what took 1.23 s' |
+| `install_excepthook()` | Log uncaught exceptions (main thread and worker threads) before the default handling |
+| `system_info()` | Multi-line description of the environment (versions, desktop, tools) |
+| `write_diagnostics(path, extra_sections=None, days=3)` | Zip the recent logs + system info (+ extra sections) for sending; returns path |
 
 ### `src/utils/util_paths.py`
 

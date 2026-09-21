@@ -36,3 +36,5 @@
 | 2026-09-21T18:55:00 | Quick Edit: 20 fonts, PNG signature library, move/resize/apply to all, flatten |
 | 2026-09-21T19:00:00 | Fix: blank detection kept colour pages (per-channel paper colour); autocrop safe |
 | 2026-09-21T19:10:00 | Offline deps (tesseract, gs, numpy, fonts); docs/TECHNICAL.md; version 0.2.0 |
+| 2026-09-21T17:05:00 | Logging: daily redacted logs, scan/page/feature/export/engine records, --debug |
+| 2026-09-21T17:06:00 | Settings > Diagnostics: open log folder, save diagnostics zip; 7 logging tests |

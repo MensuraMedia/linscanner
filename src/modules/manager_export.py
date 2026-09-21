@@ -6,10 +6,14 @@ per page, numbered when there is more than one.
 """
 
 import os
+import time
 
 
 from config.config_scan import EXPORT_FORMATS, JPEG_QUALITY
 from utils.util_imaging import flatten
+from utils.util_logging import get_logger
+
+log = get_logger("export")
 
 
 def load_page(page):
@@ -39,14 +43,34 @@ def export_pages(pages, path, fmt=None, registry=None):
         path += spec["ext"]
     docs = registry.split_documents(pages) if registry else [[p for p in pages if not p.get("separator")]]
     docs = [d for d in docs if d]
+    overlays = sum(len(p.get("overlays") or []) for p in pages)
+    log.info(
+        "export %s: %d page(s) -> %d document(s), %d Quick Edit item(s), to %s",
+        fmt,
+        len(pages),
+        len(docs),
+        overlays,
+        path,
+    )
     if not docs:
+        log.warning("export aborted: every page was a blank separator")
         raise ValueError("Every page was a blank separator: nothing to save.")
-    if len(docs) == 1:
-        return _export_document(docs[0], path, fmt, registry)
-    stem, ext = os.path.splitext(path)
-    written = []
-    for n, doc in enumerate(docs, start=1):
-        written += _export_document(doc, f"{stem}-{n:03d}{ext}", fmt, registry)
+    start = time.monotonic()
+    try:
+        if len(docs) == 1:
+            written = _export_document(docs[0], path, fmt, registry)
+        else:
+            stem, ext = os.path.splitext(path)
+            written = []
+            for n, doc in enumerate(docs, start=1):
+                written += _export_document(doc, f"{stem}-{n:03d}{ext}", fmt, registry)
+    except Exception:
+        log.exception("export failed")
+        raise
+    sizes = ", ".join(
+        f"{os.path.basename(w)} ({os.path.getsize(w) // 1024} KB)" for w in written if os.path.exists(w)
+    )
+    log.info("export done in %.1f s: %s", time.monotonic() - start, sizes)
     return written
 
 

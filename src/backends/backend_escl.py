@@ -22,6 +22,9 @@ import xml.etree.ElementTree as ET
 from backends.backend_base import ScanError, ScannerBackend, ScannerCapabilities, ScannerDevice
 from backends.parser_sane import redact
 from config.config_scan import STANDARD_RESOLUTIONS
+from utils.util_logging import get_logger
+
+log = get_logger("escl")
 
 PREFIX = "escl-direct:"  # device id prefix, e.g. escl-direct:http://127.0.0.1:60000/eSCL
 IPP_USB_PORTS = range(60000, 60016)  # ipp-usb assigns loopback ports from 60000
@@ -201,12 +204,24 @@ class EsclBackend(ScannerBackend):
         req = urllib.request.Request(url, data=data, method=method)
         if data is not None:
             req.add_header("Content-Type", "text/xml")
+        start = time.monotonic()
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
-                return r.status, dict(r.headers), r.read()
+                body = r.read()
+                log.debug(
+                    "%s %s -> %s (%d bytes, %.2f s)",
+                    method,
+                    url,
+                    r.status,
+                    len(body),
+                    time.monotonic() - start,
+                )
+                return r.status, dict(r.headers), body
         except urllib.error.HTTPError as e:
+            log.debug("%s %s -> HTTP %s (%.2f s)", method, url, e.code, time.monotonic() - start)
             return e.code, dict(e.headers or {}), e.read() if e.fp else b""
         except (urllib.error.URLError, socket.timeout, ConnectionError, OSError) as e:
+            log.debug("%s %s -> unreachable: %s", method, url, e)
             raise ScanError(f"Could not reach the scanner at {url}: {e}", "io")
 
     # -- discovery -------------------------------------------------------------
@@ -266,6 +281,7 @@ class EsclBackend(ScannerBackend):
                     backend="escl-direct",
                 )
             )
+        log.info("eSCL found %d scanner(s): %s", len(devices), ", ".join(d.id for d in devices) or "none")
         return devices
 
     def get_capabilities(self, device_id):
@@ -298,6 +314,7 @@ class EsclBackend(ScannerBackend):
             state, adf = self.get_status(request.device_id)
         except ScanError:
             state, adf = "Unknown", ""
+        log.info("eSCL status before scan: State=%s AdfState=%s", state, adf or "-")
         if feeder and adf in STATUS_CODES:
             raise ScanError(self.explain(adf), STATUS_CODES[adf])
         if state in ("Processing", "Testing"):
@@ -311,6 +328,14 @@ class EsclBackend(ScannerBackend):
         if status not in (200, 201) or "Location" not in headers:
             raise ScanError(f"The scanner refused the scan job (HTTP {status}).", "unsupported")
         job = headers["Location"]
+        log.info(
+            "eSCL job created: %s (source %s, mode %s, %s dpi, format %s)",
+            job,
+            request.source,
+            request.mode,
+            request.resolution,
+            fmt,
+        )
         if job.startswith("/"):
             origin = re.match(r"^(https?://[^/]+)", base).group(1)
             job = origin + job
@@ -336,6 +361,7 @@ class EsclBackend(ScannerBackend):
                 if on_page:
                     on_page(path)
             elif code == 404:
+                log.info("eSCL job finished: %d page(s)", len(pages))
                 break  # no more documents in this job
             elif code == 503 and busy_retries < 10:
                 busy_retries += 1

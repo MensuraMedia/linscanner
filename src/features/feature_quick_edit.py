@@ -520,6 +520,16 @@ class QuickEditor:
         self.page["overlays"] = self.items
         for i, extra in self.others.items():
             self.pages[i].setdefault("overlays", []).extend(extra)
+        from utils.util_logging import get_logger
+
+        texts = sum(1 for o in self.items if o["type"] == "text")  # counts only, never the text
+        get_logger("quick_edit").info(
+            "page %d: %d text item(s), %d signature(s); copied to %d other page(s)",
+            self.index + 1,
+            texts,
+            len(self.items) - texts,
+            len(self.others),
+        )
 
     def run(self):
         """Show modally; True if the user applied the changes"""

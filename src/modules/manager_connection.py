@@ -24,6 +24,9 @@ from dataclasses import dataclass, field
 from backends.backend_base import ScanError
 from backends.parser_sane import model_key
 from backends.usb_probe import likely_scanners, probe
+from utils.util_logging import get_logger
+
+log = get_logger("engine")
 
 METHOD_ORDER = ["A1", "A3", "B2", "D1", "B1", "C1", "T"]
 METHOD_LABELS = {
@@ -189,6 +192,20 @@ class ConnectionEngine:
             )
         self.devices = groups
         self.discovery_errors = errors
+        for err in errors:
+            log.warning("discovery error: %s", err)
+        log.info("discovery: %d physical scanner(s)", len(groups))
+        for g in groups:
+            usb = (
+                f"USB {g.usb.usb_id} port {g.usb.port_path} {g.usb.speed_mbps} Mbps access={g.usb.accessible} "
+                f"kinds={','.join(g.usb.kinds)}"
+                if g.usb
+                else "no USB facts"
+            )
+            methods = " > ".join(f"{m.code}:{m.device.id}" for m in g.methods) or "NONE"
+            log.info("  %s %s | %s | methods %s", g.vendor, g.model, usb, methods)
+            if g.hint:
+                log.warning("  %s %s has no working method: %s", g.vendor, g.model, g.hint)
         return groups
 
     @staticmethod
@@ -236,12 +253,26 @@ class ConnectionEngine:
             except ScanError as e:
                 physical.attempts.append((method.label, str(e)))
                 if e.needs_user:
+                    log.warning(
+                        "attempt %s: needs the user (%s): %s. Not trying other methods",
+                        method.label,
+                        e.code,
+                        e,
+                    )
                     raise
+                log.warning("attempt %s failed (%s): %s. Trying the next method", method.label, e.code, e)
                 last = e
                 continue
             physical.attempts.append((method.label, "ok"))
+            log.info("attempt %s succeeded: %d page(s)", method.label, len(pages))
             return pages
         if last is None:
             return []
         tried = "; ".join(label for label, _ in physical.attempts)
+        log.error(
+            "all %d connection method(s) failed for %s %s",
+            len(physical.attempts),
+            physical.vendor,
+            physical.model,
+        )
         raise ScanError(f"{last} (tried: {tried})", last.code)

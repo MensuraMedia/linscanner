@@ -3,6 +3,8 @@ Settings Page
 Theme, default save folder, Black & White style and driver visibility.
 """
 
+import os
+
 import gi
 
 gi.require_version("Gtk", "3.0")
@@ -106,6 +108,28 @@ class SettingsPage(BasePage):
             0,
         )
 
+        # diagnostics (logging)
+        card = self.add_card("Diagnostics")
+        path = self.ctx.log_path or "logging unavailable"
+        card.pack_start(
+            self.label(f"Today's log: {path}", "muted", wrap=True, selectable=True), False, False, 0
+        )
+        row = Gtk.Box(spacing=8)
+        open_btn = Gtk.Button(label="Open log folder")
+        open_btn.connect("clicked", lambda *_: self.open_log_folder())
+        save_btn = Gtk.Button(label="Save diagnostics…")
+        save_btn.connect("clicked", lambda *_: self.save_diagnostics())
+        row.pack_start(open_btn, False, False, 0)
+        row.pack_start(save_btn, False, False, 0)
+        card.pack_start(row, False, False, 0)
+        self.diag_status = self.label(
+            "Logs record detection, every scan (command, pages, what each feature did) and every save. "
+            "Serial numbers are removed. Start with --debug for more detail.",
+            "muted",
+            wrap=True,
+        )
+        card.pack_start(self.diag_status, False, False, 0)
+
     def save(self, key, value):
         """Persist a setting and broadcast settings-changed"""
         self.ctx.settings.set(key, value)
@@ -122,6 +146,61 @@ class SettingsPage(BasePage):
         """Enable or disable a feature module; pages update immediately"""
         self.ctx.features.set_enabled(feature.id, check.get_active())
         self.ctx.emit("features-changed")
+
+    def open_log_folder(self):
+        """Open the log folder in the file manager"""
+        from gi.repository import Gio
+
+        from utils.util_logging import log_dir
+
+        folder = log_dir()
+        os.makedirs(folder, exist_ok=True)
+        try:
+            Gio.AppInfo.launch_default_for_uri(Gio.File.new_for_path(folder).get_uri(), None)
+        except Exception as e:  # no file manager: show the path instead
+            self.diag_status.set_text(f"Log folder: {folder} ({e})")
+
+    def save_diagnostics(self):
+        """Save a zip with recent logs, system info, device info and feature states"""
+        from datetime import datetime
+
+        from modules import manager_device_info as info
+        from utils.util_logging import get_logger, write_diagnostics
+
+        dlg = Gtk.FileChooserDialog(
+            title="Save diagnostics", transient_for=self.ctx.window, action=Gtk.FileChooserAction.SAVE
+        )
+        dlg.add_buttons("_Cancel", Gtk.ResponseType.CANCEL, "_Save", Gtk.ResponseType.ACCEPT)
+        dlg.set_do_overwrite_confirmation(True)
+        dlg.set_current_folder(self.ctx.settings.get("save_folder"))
+        dlg.set_current_name(f"linscanner-diagnostics-{datetime.now():%Y%m%d-%H%M}.zip")
+        path = dlg.get_filename() if dlg.run() == Gtk.ResponseType.ACCEPT else None
+        dlg.destroy()
+        if not path:
+            return
+        sections = {}
+        for d in self.ctx.scan.devices:
+            lines = []
+            for title, rows in info.sections(d, self.ctx.scan.capabilities.get(d.id)):
+                lines.append(f"[{title}]")
+                lines += [f"  {k}: {v}" for k, v in rows]
+            sections[f"Scanner: {d.vendor} {d.model}"] = "\n".join(lines)
+        if self.ctx.features:
+            reg = self.ctx.features
+            sections["Features"] = "\n".join(
+                f"{f.id}: {'on' if reg.is_enabled(f) else 'off'}" for f in reg.features
+            ) + ("\nErrors:\n" + "\n".join(f"  {n}: {e}" for n, e in reg.errors) if reg.errors else "")
+        sections["Settings"] = "\n".join(
+            f"{k}: {self.ctx.settings.get(k)}"
+            for k in ("theme", "color_mode", "quality", "paper", "sheet_mode", "bw_style")
+        )
+        try:
+            write_diagnostics(path, sections)
+        except OSError as e:
+            self.diag_status.set_text(f"Could not save diagnostics: {e}")
+            return
+        get_logger("ui").info("diagnostics saved to %s", path)
+        self.diag_status.set_text(f"Diagnostics saved: {path}")
 
     def on_show_all(self, btn):
         """Toggle showing all drivers and the test scanner"""

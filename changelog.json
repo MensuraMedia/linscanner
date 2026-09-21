@@ -129,6 +129,14 @@
     {
       "datetime": "2026-09-21T19:10:00",
       "description": "Offline deps (tesseract, gs, numpy, fonts); docs/TECHNICAL.md; version 0.2.0"
+    },
+    {
+      "datetime": "2026-09-21T17:05:00",
+      "description": "Logging: daily redacted logs, scan/page/feature/export/engine records, --debug"
+    },
+    {
+      "datetime": "2026-09-21T17:06:00",
+      "description": "Settings > Diagnostics: open log folder, save diagnostics zip; 7 logging tests"
     }
   ]
 }

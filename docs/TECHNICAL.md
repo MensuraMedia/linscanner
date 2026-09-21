@@ -323,6 +323,33 @@ load is reported and the rest load normally. All of this is tested.
 
 ---
 
+## 7b. Logging
+
+`utils/util_logging.py` configures the `linscanner.*` loggers:
+- **Files:** a daily file in `$XDG_STATE_HOME/linscanner/logs/` (default
+  `~/.local/state/…`), rotated at 5 MB, kept 14 days.
+- **Redaction:** `RedactingFormatter` applies `parser_sane.redact` and
+  replaces the home folder with `~` on every line, tracebacks included.
+- **Uncaught exceptions:** `install_excepthook` logs them from the main
+  thread and from worker threads.
+
+| Logger | Records |
+|---|---|
+| `app` | start/exit, environment (`system_info`), settings |
+| `sane` | every scanimage call (args, exit code, time; stderr on failure), scan start/end, pages, messages |
+| `escl` | every HTTP request (method, URL, status, bytes, time), job lifecycle, status before a scan |
+| `engine` | discovery summary per physical scanner (USB facts, ranked methods, hints); each fallback attempt and outcome |
+| `scan` | request mapping (choices → device request), per-page processing notes, drops, cancel |
+| `features` | modules loaded/enabled, on/off changes, each hook's time (debug), failures with traceback |
+| `export` | documents, Quick Edit item count, files and sizes, time, failures |
+| `quick_edit` | item counts per page (never the text) |
+| `ui`, `settings`, `crash` | status and error messages, setting changes (debug), uncaught exceptions |
+
+**Settings → Diagnostics → Save diagnostics…** writes a zip with the last 3
+days of logs, `system-info.txt`, device information, feature states and
+settings, all redacted. Logging never raises: an unwritable location falls
+back to a null handler.
+
 ## 8. Dependencies (all distro packages; all in the offline pool)
 
 `python3`, `python3-gi`, `python3-gi-cairo`, `gir1.2-gtk-3.0`,

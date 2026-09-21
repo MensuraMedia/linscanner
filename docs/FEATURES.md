@@ -102,6 +102,7 @@ Populates automatically; **Check for devices again** re-runs discovery.
 | `./run.sh --page devices` | Open on a page (`scan`, `preview`, `devices`, `settings`, `about`) |
 | `./run.sh --quit-after N` | Close after N seconds (tests) |
 | `./run.sh --version` | Print the version |
+| `./run.sh --debug` | Verbose log, also on the terminal |
 | `bash install.sh` / `--uninstall` | Install dependencies (offline pool first) and the menu entry / remove the menu entry |
 
 ## 8. Files and data
@@ -113,17 +114,28 @@ Populates automatically; **Check for devices again** re-runs discovery.
 | `~/.local/share/linscanner/signatures/` | Signature library |
 | `~/.local/share/applications/linscanner.desktop` | Menu entry |
 
-## 9. Quality gates
+## 9. Logging and diagnostics
+
+| Item | Detail |
+|---|---|
+| Log files | `~/.local/state/linscanner/logs/linscanner-YYYY-MM-DD.log`; 14 days kept; 5 MB × 3 rotations per day |
+| Recorded | start-up environment; features; settings; discovery (devices, methods, USB facts, timing); scan requests (choices → exact request); scanimage commands, exit codes and messages; eSCL requests; each page (size, crop, deskew angle, blank score, rotation, dropped by …); fallback attempts; exports (documents, files, sizes, timing); Quick Edit counts (never the text); status messages; feature errors with tracebacks; uncaught exceptions |
+| Redaction | serial numbers → `…`, home folder → `~` |
+| Settings → Diagnostics | log path, **Open log folder**, **Save diagnostics…** (zip: 3 days of logs, system info, device info, feature states, settings) |
+| `--debug` | DEBUG level (timings, every SANE/eSCL call, option lists, settings changes), also printed to the terminal; `SANE_DEBUG_DLL=1` |
+| Safety | logging failures never affect scanning (tested) |
+
+## 10. Quality gates
 
 | Gate | Command | State at 0.2.0 |
 |---|---|---|
 | Build | `python3 -m compileall -q src` | passes |
 | Lint | `python3 -m black --check src tests && python3 -m pyflakes src tests` | clean |
-| Test | `python3 -m pytest -q` | 62 passed |
+| Test | `python3 -m pytest -q` | 69 passed |
 | Offline | `../bin/test-offline linscanner` | 304 packages install; feature pipeline verified offline |
 | Docs | `python3 tools/gen_api_docs.py` | every symbol documented |
 
-## 10. Known limits
+## 11. Known limits
 
 - Discovery takes about 10–20 s: SANE probes every driver, and mDNS browsing.
 - Auto-crop can't tell an overrun from the paper when both are the same

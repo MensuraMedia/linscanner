@@ -233,6 +233,7 @@ Pages appear as they are scanned, and **Preview** opens when the scan finishes.
 |---|---|
 | `~/.config/linscanner/settings.json` | Your settings (including feature on/off and options) |
 | `~/.local/share/linscanner/signatures/` | Your signature library (Quick Edit) |
+| `~/.local/state/linscanner/logs/` | Daily logs (14 days), redacted |
 | `/tmp/linscanner-*/` | This session's scans (deleted when you close linscanner, so save first) |
 | `~/.local/share/applications/linscanner.desktop` | Menu entry |
 
@@ -245,10 +246,25 @@ Pages appear as they are scanned, and **Preview** opens when the scan finishes.
 | `run.sh --page devices` | Open on a page: `scan`, `preview`, `devices`, `settings`, `about` |
 | `run.sh --version` | Show the version |
 | `run.sh --quit-after N` | Close after N seconds (automated tests) |
+| `run.sh --debug` | Verbose log (also printed to the terminal) plus SANE driver-loading details |
 
 ---
 
 ## 6. Troubleshooting
+
+**Logs:** linscanner keeps a log of every session in
+`~/.local/state/linscanner/logs/` (one file per day, kept 14 days).
+It records:
+- detection: scanners, connection methods, timing;
+- every scan: your choices, the exact scanner command, each page, and what
+  auto-crop, deskew and blank removal did to it;
+- fallback attempts, and errors with the scanner's full message;
+- every save.
+
+Serial numbers and your home folder path are removed. **Settings →
+Diagnostics** has **Open log folder** and **Save diagnostics…** (one zip to
+send for help). Start with `run.sh --debug` for extra detail.
+
 
 | Problem | What to do |
 |---|---|
