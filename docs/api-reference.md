@@ -25,7 +25,7 @@ Layout Configuration Centralized layout dimensions and spacing constants
 
 Scan Configuration Colour modes, quality presets, paper sizes and export formats. Everything here is scanner-independent; backends map these onto what a device supports.
 
-Constants: `COLOR_MODES`, `LINEART_MODE_NAMES`, `BW_STYLES`, `DEFAULT_BW_STYLE`, `QUALITY_PRESETS`, `DEFAULT_QUALITY`, `STANDARD_RESOLUTIONS`, `PAPER_SIZES`, `DEFAULT_PAPER`, `FEEDER_SOURCE_HINTS`, `DUPLEX_SOURCE_HINTS`, `SHEET_MODES`, `DEFAULT_SHEET_MODE`, `PREFERRED_BACKENDS`, `HIDDEN_BACKENDS_BY_DEFAULT`, `BACKEND_EXTRA_ARGS`, `EXPORT_FORMATS`, `JPEG_QUALITY`, `LIST_TIMEOUT`, `OPTIONS_TIMEOUT`, `PAGE_TIMEOUT`
+Constants: `NETWORK_SCANNING`, `COLOR_MODES`, `LINEART_MODE_NAMES`, `BW_STYLES`, `DEFAULT_BW_STYLE`, `QUALITY_PRESETS`, `DEFAULT_QUALITY`, `STANDARD_RESOLUTIONS`, `PAPER_SIZES`, `DEFAULT_PAPER`, `FEEDER_SOURCE_HINTS`, `DUPLEX_SOURCE_HINTS`, `SHEET_MODES`, `DEFAULT_SHEET_MODE`, `PREFERRED_BACKENDS`, `HIDDEN_BACKENDS_BY_DEFAULT`, `BACKEND_EXTRA_ARGS`, `EXPORT_FORMATS`, `JPEG_QUALITY`, `LIST_TIMEOUT`, `OPTIONS_TIMEOUT`, `PAGE_TIMEOUT`
 
 ### `src/config/config_themes.py`
 
@@ -69,6 +69,8 @@ Constants: `PREFIX`, `IPP_USB_PORTS`, `HTTP_TIMEOUT`, `NS`, `MODE_TO_NAME`, `NAM
 
 | Symbol | Purpose |
 |---|---|
+| `ipp_usb_urls()` | eSCL base URLs of IPP-over-USB devices: ipp-usb listens on 127.0.0.1:60000+ |
+| `is_loopback_url(url)` | True if url points at this computer (127.0.0.1 / localhost / ::1) |
 | `_local(tag)` | Tag name without its XML namespace |
 | `_find(elem, name)` | First descendant with this local name (namespace-agnostic) |
 | `_findall(elem, name)` | All descendants with this local name |
@@ -77,7 +79,7 @@ Constants: `PREFIX`, `IPP_USB_PORTS`, `HTTP_TIMEOUT`, `NS`, `MODE_TO_NAME`, `NAM
 | `parse_status(xml_text)` | ScannerStatus XML -> (state, adf_state) |
 | `build_scan_settings(request, fmt)` | ScanSettings XML for a request (regions in 1/300 inch) |
 | class `EsclBackend(ScannerBackend)` | eSCL over HTTP, without SANE |
-| &nbsp;&nbsp;`.__init__(self, extra_urls=None, probe_ipp_usb=True, browse_mdns=True)` | extra_urls: known eSCL base URLs (e.g. http://192.168.1.20/eSCL) |
+| &nbsp;&nbsp;`.__init__(self, extra_urls=None, probe_ipp_usb=True, browse_mdns=True, network=True)` | extra_urls: known eSCL base URLs (e.g. http://192.168.1.20/eSCL); |
 | &nbsp;&nbsp;`.available(self)` | Always available: needs only the Python standard library |
 | &nbsp;&nbsp;`._request(url, method='GET', data=None, timeout=HTTP_TIMEOUT)` | (status, headers, body) for an HTTP request; ScanError on network errors |
 | &nbsp;&nbsp;`._candidate_urls(self)` | eSCL base URLs from ipp-usb loopback ports, mDNS and configured URLs |
@@ -91,12 +93,14 @@ Constants: `PREFIX`, `IPP_USB_PORTS`, `HTTP_TIMEOUT`, `NS`, `MODE_TO_NAME`, `NAM
 
 SANE Backend Talks to scanners through SANE's `scanimage` tool, so any scanner with a SANE driver works: USB backends (epsonds, genesys, ...), network scanners via sane-airscan (eSCL/WSD), HP via hpaio, and SANE's virtual "test" scanner.
 
-Constants: `DEVICE_LOCK`
+Constants: `DEVICE_LOCK`, `NET_LINE_CONFIGS`, `NETWORK_ONLY_DRIVERS`
 
 | Symbol | Purpose |
 |---|---|
+| `usb_only_config(folder)` | Switch off network discovery in a private SANE config folder. |
+| `refresh_airscan_devices(folder)` | airscan.conf with discovery off, listing only IPP-over-USB devices on 127.0.0.1 |
 | class `SaneBackend(ScannerBackend)` | SANE via the scanimage command-line tool |
-| &nbsp;&nbsp;`.__init__(self, only_backends=None)` | only_backends: restrict SANE to these drivers (e.g. ["test"]) via a |
+| &nbsp;&nbsp;`.__init__(self, only_backends=None, network=NETWORK_SCANNING)` | only_backends: restrict SANE to these drivers (e.g. ["test"]); used by |
 | &nbsp;&nbsp;`.close(self)` | Delete the private SANE config dir created for only_backends |
 | &nbsp;&nbsp;`.available(self)` | True if SANE's scanimage tool is installed |
 | &nbsp;&nbsp;`._run(self, args, timeout)` | Run scanimage with args; raises ScanError on missing tool or timeout |
@@ -441,7 +445,7 @@ Scan Page Choose scanner, source, colour, quality and paper; scan with live prog
 
 ### `src/pages/page_settings.py`
 
-Settings Page Theme, default save folder, Black & White style and driver visibility.
+Settings Page Theme, default save folder, Black & White style, network scanning (shown as Not Supported), features, driver visibility and diagnostics.
 
 | Symbol | Purpose |
 |---|---|

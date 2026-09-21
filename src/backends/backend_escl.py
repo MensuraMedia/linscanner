@@ -16,6 +16,7 @@ import socket
 import subprocess
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
@@ -51,6 +52,23 @@ STATUS_CODES = {
     "ScannerAdfMispick": "jammed",
     "ScannerAdfMultipickDetected": "jammed",
 }
+
+
+def ipp_usb_urls():
+    """eSCL base URLs of IPP-over-USB devices: ipp-usb listens on 127.0.0.1:60000+"""
+    urls = []
+    for port in IPP_USB_PORTS:
+        with socket.socket() as s:
+            s.settimeout(0.2)
+            if s.connect_ex(("127.0.0.1", port)) == 0:
+                urls.append(f"http://127.0.0.1:{port}/eSCL")
+    return urls
+
+
+def is_loopback_url(url):
+    """True if url points at this computer (127.0.0.1 / localhost / ::1)"""
+    host = urllib.parse.urlsplit(url).hostname or ""
+    return host in ("localhost", "::1") or host.startswith("127.")
 
 
 def _local(tag):
@@ -186,9 +204,12 @@ class EsclBackend(ScannerBackend):
 
     name = "escl-direct"
 
-    def __init__(self, extra_urls=None, probe_ipp_usb=True, browse_mdns=True):
-        """extra_urls: known eSCL base URLs (e.g. http://192.168.1.20/eSCL)"""
-        self.extra_urls = list(extra_urls or [])
+    def __init__(self, extra_urls=None, probe_ipp_usb=True, browse_mdns=True, network=True):
+        """extra_urls: known eSCL base URLs (e.g. http://192.168.1.20/eSCL);
+        network=False: USB only (no mDNS, only 127.0.0.1 URLs)"""
+        self.network = network
+        self.extra_urls = [u for u in (extra_urls or []) if network or is_loopback_url(u)]
+        browse_mdns = browse_mdns and network
         self.probe_ipp_usb = probe_ipp_usb
         self.browse_mdns = browse_mdns
         self._caps_cache = {}
@@ -229,11 +250,7 @@ class EsclBackend(ScannerBackend):
         """eSCL base URLs from ipp-usb loopback ports, mDNS and configured URLs"""
         urls = list(self.extra_urls)
         if self.probe_ipp_usb:
-            for port in IPP_USB_PORTS:
-                with socket.socket() as s:
-                    s.settimeout(0.2)
-                    if s.connect_ex(("127.0.0.1", port)) == 0:
-                        urls.append(f"http://127.0.0.1:{port}/eSCL")
+            urls += ipp_usb_urls()
         if self.browse_mdns and shutil.which("avahi-browse"):
             for stype, scheme in (("_uscan._tcp", "http"), ("_uscans._tcp", "https")):
                 try:

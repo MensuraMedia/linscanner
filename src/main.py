@@ -16,6 +16,7 @@ from gi.repository import GLib, Gtk  # noqa: E402
 
 from backends.backend_escl import EsclBackend  # noqa: E402
 from backends.backend_sane import SaneBackend  # noqa: E402
+from config.config_scan import NETWORK_SCANNING  # noqa: E402
 from modules.manager_connection import ConnectionEngine  # noqa: E402
 from config.config_themes import get_theme  # noqa: E402
 from features import FeatureRegistry  # noqa: E402
@@ -72,7 +73,7 @@ def main(argv=None):
     theme = ThemeApplicator()
     theme.apply_theme(get_theme(settings.get("theme")))
     if backend is None:
-        engine = ConnectionEngine([SaneBackend(), EsclBackend()])
+        engine = ConnectionEngine([SaneBackend(), EsclBackend(network=NETWORK_SCANNING)])
         scan = ScanManager(settings, engine.backends[0], engine=engine)
     else:
         scan = ScanManager(settings, backend)
@@ -80,6 +81,7 @@ def main(argv=None):
     ctx.features = FeatureRegistry(settings)  # optional modules (src/features/feature_*.py)
     scan.features = ctx.features
     ctx.log_path = log_path
+    log.info("network scanning: %s", "on" if NETWORK_SCANNING else "off (USB only, no network discovery)")
     log.info(
         "settings: theme=%s color=%s quality=%s paper=%s sheets=%s bw_style=%s save_folder=%s",
         *(

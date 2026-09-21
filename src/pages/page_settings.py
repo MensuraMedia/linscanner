@@ -1,6 +1,7 @@
 """
 Settings Page
-Theme, default save folder, Black & White style and driver visibility.
+Theme, default save folder, Black & White style, network scanning (shown as
+Not Supported), features, driver visibility and diagnostics.
 """
 
 import os
@@ -11,7 +12,7 @@ gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, Gtk  # noqa: E402
 
-from config.config_scan import BW_STYLES  # noqa: E402
+from config.config_scan import BW_STYLES, NETWORK_SCANNING  # noqa: E402
 from config.config_themes import DEFAULT_THEME_ID, get_all_themes, get_theme  # noqa: E402
 from pages.page_base import BasePage  # noqa: E402
 
@@ -54,6 +55,23 @@ class SettingsPage(BasePage):
         self.folder_btn.set_filename(s.get("save_folder"))
         self.folder_btn.connect("file-set", lambda b: self.save("save_folder", b.get_filename()))
         card.pack_start(self.form_row("Save folder", self.folder_btn), False, False, 0)
+
+        # network scanning: kept visible, but switched off and not selectable
+        row = Gtk.Box(spacing=10)
+        self.network_check = Gtk.CheckButton(label="Network scanning (Wi-Fi / Ethernet)")
+        self.network_check.set_active(NETWORK_SCANNING)
+        self.network_check.set_sensitive(False)
+        row.pack_start(self.network_check, False, False, 0)
+        row.pack_start(self.label("Not Supported", "muted"), False, False, 0)
+        card.pack_start(row, False, False, 0)
+        desc = self.label(
+            "Only scanners connected by USB cable are supported at this time. linscanner does "
+            "not search the network for scanners.",
+            "muted",
+            wrap=True,
+        )
+        desc.set_margin_start(26)
+        card.pack_start(desc, False, False, 0)
 
         # optional features
         if self.ctx.features:

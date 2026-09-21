@@ -93,10 +93,43 @@ can reach a scanner**, from a MECE taxonomy
 | **A3** | Vendor SANE driver | USB / network | `SaneBackend` (epsonscan2, hpaio, brother*, …) |
 | **B2** | Driverless eSCL over IPP-USB | USB → `ipp-usb` → HTTP | `SaneBackend` via `airscan`/`escl` on 127.0.0.1 |
 | **D1** | linscanner's own eSCL client | HTTP (USB loopback or network) | `EsclBackend` (standard library only) |
-| **B1** | Driverless network scanning | eSCL / WSD over the network | `SaneBackend` via `airscan`, `escl` |
-| **C1** | Remote SANE | TCP 6566 (`saned`) | `SaneBackend` via `net` |
+| **B1** | Driverless network scanning | eSCL / WSD over the network | **Disabled** (USB only, see §3.0) |
+| **C1** | Remote SANE | TCP 6566 (`saned`) | **Disabled** (USB only, see §3.0) |
 | **D4** | Device-side scan-to-USB/folder | files | "Import images" feature module |
 | T | SANE virtual test scanner | none | `--test-scanner`, tests |
+
+### 3.0 USB only: network discovery disabled
+
+Network / Wi-Fi scanning is **not supported at this time**.
+`NETWORK_SCANNING = False` in `config/config_scan.py` is the single switch.
+
+- **SANE.** `SaneBackend(network=False)`, the default, copies `/etc/sane.d`
+  to a private temp folder, sets `SANE_CONFIG_DIR` to it, and runs
+  `usb_only_config()`:
+  - `dll.conf`: `net`, `escl` and `dell1600n_net` are commented out.
+  - `epson2`, `epsonds`, `kodakaio`, `magicolor`: their `net …` lines
+    (autodiscovery broadcasts, SNMP) are commented out.
+  - `pixma.conf`: `networking=no` (BJNP / MFNP broadcasts).
+  - `airscan.conf`: `discovery = disable` and `ws-discovery = off`. IPP-USB
+    devices found on 127.0.0.1:60000–60015 are listed under `[devices]`, and
+    that list is refreshed before every listing, so B2 still works.
+  - The folder is removed by `close()`. The system configuration is never
+    modified.
+- **eSCL client.** `EsclBackend(network=False)` doesn't run `avahi-browse`,
+  and drops any URL that isn't loopback (`is_loopback_url`).
+- **UI.** Settings shows "Network scanning (Wi-Fi / Ethernet)" as a greyed-out
+  check box marked "Not Supported". The start-up log records
+  `network scanning: off`.
+- **Verified with `strace` (2026-09-21, ES-400 II).** Before the change,
+  discovery sent WS-Discovery multicast, broadcasts to UDP 8610/8612
+  (pixma), 3289 and 161 (epson2 / magicolor, SNMP) and 1124
+  (dell1600n_net). After it, discovery and `-A` option reads connect only to
+  127.0.0.1, and both ES-400 II drivers (epsonds A1, epsonscan2 A3) are
+  still found.
+- **Tests:** `tests/test_usb_only.py`.
+- **To add network support later:** set `NETWORK_SCANNING = True`, make the
+  Settings check box active, and test B1 / C1 / D1-over-network on real
+  hardware.
 
 Out of scope (see research): IPP Scan (no devices yet), TWAIN (not on
 Linux), removed kernel drivers, PTP/V4L2 capture (detected and hinted, not
@@ -107,8 +140,10 @@ driven).
 1. Every backend lists what it sees:
    - SANE: `scanimage -f '%d|%v|%m|%t%n'`, about 10 s because it probes
      every backend.
-   - eSCL client: probes loopback ports 60000–60015 and `avahi-browse`
-     `_uscan._tcp` / `_uscans._tcp`, then `GET /eSCL/ScannerCapabilities`.
+   - eSCL client: probes loopback ports 60000–60015, then
+     `GET /eSCL/ScannerCapabilities`. It runs `avahi-browse` for
+     `_uscan._tcp` / `_uscans._tcp` only when network scanning is on (it's
+     off).
 2. Each entry gets a method code (`method_code`).
 3. Entries are **grouped into physical scanners**:
    - They merge if they share a USB bus:device.
@@ -319,7 +354,7 @@ load is reported and the rest load normally. All of this is tested.
 | Serial numbers | redacted in names, IDs and eSCL info |
 | Threads | discovery, options, scans, status and firmware run off the GTK thread (`GLib.idle_add` back) |
 | Page processing | a few tens of ms per page (autocrop/deskew/blank at 300 dpi); OCR only at export |
-| Discovery | about 10–20 s (SANE probes every backend, mDNS browse); the result is cached until "Check for devices again" |
+| Discovery | about 10–20 s (SANE probes every backend); the result is cached until "Check for devices again" |
 
 ---
 

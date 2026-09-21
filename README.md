@@ -91,8 +91,9 @@ scanner that has a SANE driver on your system.
 
 > **Wi-Fi and network scanning is not supported at this time.** Please
 > connect your scanner with a USB cable. Many Wi-Fi models also have a USB
-> port and work well that way. Network support may be added in a future
-> version; until then, network connections are neither tested nor supported.
+> port and work well that way. linscanner doesn't search the network, so
+> network scanners aren't listed. The option appears in Settings as
+> **Not Supported**. Network support may be added in a future version.
 
 
 | Scanner type | How Linux talks to it | Driver (package) |
@@ -237,6 +238,7 @@ Pages appear as they are scanned, and **Preview** opens when the scan finishes.
 | Black & White | Grayscale (default) or Pure black & white |
 | Save folder | Where Save As starts |
 | Features | Switch each module on or off, with its options (blank-page sensitivity, enhancement sliders, PDF/A and size, auto-save folder and name template) |
+| Network scanning (Wi-Fi / Ethernet) | Shown greyed out and marked **Not Supported**. Only USB-connected scanners are supported at this time, and linscanner doesn't search the network |
 | Drivers | Show every driver per scanner, and SANE's virtual test scanner (off by default) |
 
 **Files:**
@@ -291,7 +293,7 @@ send for help). Start with `run.sh --debug` for extra detail.
 | Scanning is slow at High quality | Use a USB 3 port and cable if the scanner supports it (`../bin/device-finder` shows the link speed) |
 | Scanner appears twice in other apps | A vendor driver (e.g. Epson's `epsonscan2`) adds a second entry; linscanner hides it automatically |
 | Only works with sudo | Permissions: log out and in, or re-run the device installer (for the ES-400 II: `devices/scanner/epson-es-400-ii/install.sh`) |
-| My Wi-Fi / network scanner isn't listed, or doesn't scan | Wi-Fi and network scanning isn't supported at this time. Connect the scanner with a USB cable |
+| My Wi-Fi / network scanner isn't listed | Wi-Fi and network scanning isn't supported at this time, so linscanner doesn't search the network. Connect the scanner with a USB cable |
 
 **Scanner-specific notes** are in the device references, e.g.
 [`../devices/scanner/epson-es-400-ii/README.md`](../devices/scanner/epson-es-400-ii/README.md).
@@ -336,29 +338,33 @@ any other second or third party.
   sharing it (for example, to get help) is your choice. It contains the same
   redacted logs and system details, and no scans.
 
-### What linscanner does on your network, and why
+### linscanner doesn't use your network
 
-For full transparency, here is the only network activity. None of it carries
-your scans or personal information to anyone.
+linscanner doesn't search your network for scanners, doesn't send anything
+onto it, and never contacts the internet.
 
-1. **USB scanners that use IPP-over-USB.** linscanner talks to `127.0.0.1`
-   ports 60000–60015. That address is *this computer*: the `ipp-usb` service
-   passes the traffic down the USB cable. It never reaches a network.
-2. **Finding scanners on your local network.** When linscanner looks for
-   scanners (at start-up and on **Refresh** / **Check for devices again**),
-   the SANE drivers and linscanner's detection send short "is there a scanner here?" queries to
-   your local network (mDNS, WS-Discovery and vendor discovery broadcasts).
-   - The queries contain no scans, files or personal data.
-   - Routers don't forward them to the internet.
-3. **No scanning over the network.** Wi-Fi and network scanning isn't
-   supported at this time, so your pages travel only along the USB cable,
-   from the scanner into your computer.
+- **Network discovery is switched off.** linscanner gives the scanner drivers
+  its own private copy of the SANE settings, with every network search turned
+  off:
+  - mDNS / Bonjour, WS-Discovery;
+  - Epson, Canon, Kodak, Konica Minolta and Dell network broadcasts;
+  - SNMP;
+  - remote `saned`.
 
-Verified on 2026-09-21: every connection made during device discovery was
-traced (`strace`). They went only to this computer (`127.0.0.1` and local
-system services) and to local-network discovery addresses. There were **no
-connections to any internet address**. A USB-only scanner, such as the
-Epson ES-400 II, never uses the network at all.
+  Your system's SANE configuration isn't changed, and other scanning apps are
+  unaffected.
+- **USB only.** Scanned pages travel only along the USB cable, from the
+  scanner into your computer.
+- **IPP-over-USB multifunction printers** are reached at `127.0.0.1`, ports
+  60000–60015. That address is *this computer*: the `ipp-usb` service passes
+  the traffic down the USB cable, and it never reaches a network.
+- **Network scanning** (Wi-Fi / Ethernet) is listed in Settings, greyed out
+  and marked **Not Supported**.
+
+**Verified on 2026-09-21 with `strace`:** device discovery and reading the
+scanner's settings (Epson ES-400 II, both drivers). Every network connection
+went to this computer (`127.0.0.1`). None went to your local network, and
+none to the internet.
 
 ### Security
 
@@ -409,7 +415,7 @@ do its seven dark themes:
 
 **Current limits:**
 - Only cable-connected (USB) scanners are supported. Wi-Fi and network scanning is not supported at this time.
-- Finding scanners takes about 10–20 seconds, because SANE checks every driver, including the drivers' own network discovery.
+- Finding scanners takes about 10–20 seconds, because SANE checks every driver, and all of them are checked over USB.
 - Cameras (PTP) and document cameras are detected and explained, but not captured.
 - Settings stored inside the scanner (sleep timer, etc.) can't be changed from Linux.
 - OCR is English only.
@@ -431,7 +437,7 @@ The technical details are in [`docs/TECHNICAL.md`](docs/TECHNICAL.md), and open 
 | Task | Command (in `linscanner/`) |
 |---|---|
 | Run | `./run.sh` (or `./run.sh --test-scanner`) |
-| Test | `python3 -m pytest -q` (62 tests: parser, engine and fallback, fake eSCL server, SANE virtual scanner, every feature module, registry isolation, UI flows) |
+| Test | `python3 -m pytest -q` (74 tests: parser, engine and fallback, USB-only mode, fake eSCL server, SANE virtual scanner, every feature module, registry isolation, UI flows) |
 | Lint | `python3 -m black --check src tests && python3 -m pyflakes src tests` |
 | Format | `python3 -m black src tests` |
 | API docs | `python3 tools/gen_api_docs.py` → `docs/api-reference.md` |

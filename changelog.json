@@ -149,6 +149,18 @@
     {
       "datetime": "2026-09-21T19:30:00",
       "description": "LICENSE: linscanner Community License (Noncommercial) 1.0; README section 12"
+    },
+    {
+      "datetime": "2026-09-21T20:10:00",
+      "description": "USB only: network discovery disabled (private SANE config: no net/escl/dell1600n_net, no Epson/Kodak/Magicolor net lines, pixma networking=no, airscan discovery off with IPP-USB on 127.0.0.1; eSCL client loopback only); strace-verified"
+    },
+    {
+      "datetime": "2026-09-21T20:10:00",
+      "description": "Settings: 'Network scanning (Wi-Fi / Ethernet)' shown greyed out, marked Not Supported; tests/test_usb_only.py (5 tests, 74 total)"
+    },
+    {
+      "datetime": "2026-09-21T20:10:00",
+      "description": "Docs: README privacy section updated (linscanner doesn't use your network), FEATURES, TECHNICAL §3.0"
     }
   ]
 }

@@ -14,9 +14,9 @@ limits.
 | Capability | How |
 |---|---|
 | Any scanner with a SANE driver | `backends/backend_sane.py` runs `scanimage` (80+ open-source drivers on Mint 22, plus vendor plugins) |
-| Network / Wi-Fi scanners | **Not supported at this time**: USB cable only (the network code paths exist but are untested) |
+| Network / Wi-Fi scanners | **Not supported at this time**: USB cable only. `NETWORK_SCANNING = False` (`config/config_scan.py`) switches off all network discovery: SANE drivers get a private config (no `net`/`escl`/`dell1600n_net`, no Epson/Kodak/Magicolor `net` lines, pixma `networking=no`, airscan discovery disabled with IPP-USB devices listed on 127.0.0.1); the eSCL client doesn't use mDNS and only uses loopback URLs |
 | Driverless USB MFPs (IPP-over-USB) | via `ipp-usb`; SANE airscan, or linscanner's own eSCL client |
-| linscanner's own eSCL client | `backends/backend_escl.py`: loopback ports 60000+ and mDNS `_uscan(s)._tcp`; capabilities, status, jobs, cancel |
+| linscanner's own eSCL client | `backends/backend_escl.py`: loopback ports 60000+ (IPP-over-USB); mDNS browsing only when network scanning is on (it's off); capabilities, status, jobs, cancel |
 | One scanner, several drivers | grouped as one physical scanner; methods ranked A1 open driver → A3 vendor → B2 IPP-USB → D1 own eSCL → B1 network → C1 saned |
 | Fallback | on busy / I/O / timeout / access / unsupported / missing driver, it tries the next method. It never does on feeder empty, jam or cover open |
 | USB scanners without a driver | detected from sysfs/udev and listed with advice (permissions, ipp-usb, vendor driver, firmware) |
@@ -73,6 +73,7 @@ Populates automatically; **Check for devices again** re-runs discovery.
 | Color scheme | The framework's 7 themes (Default Blue default); a removed theme falls back to Default Blue |
 | Black & White | Grayscale or Pure black & white |
 | Save folder | Where Save As starts |
+| Network scanning (Wi-Fi / Ethernet) | Shown greyed out, marked **Not Supported** |
 | **Features** | On/off for each module, with its options; load or run errors are listed |
 | Drivers | Show every driver per scanner, and the virtual test scanner |
 
@@ -131,13 +132,14 @@ Populates automatically; **Check for devices again** re-runs discovery.
 |---|---|---|
 | Build | `python3 -m compileall -q src` | passes |
 | Lint | `python3 -m black --check src tests && python3 -m pyflakes src tests` | clean |
-| Test | `python3 -m pytest -q` | 69 passed |
+| Test | `python3 -m pytest -q` | 74 passed |
 | Offline | `../bin/test-offline linscanner` | 304 packages install; feature pipeline verified offline |
 | Docs | `python3 tools/gen_api_docs.py` | every symbol documented |
 
 ## 11. Known limits
 
-- Discovery takes about 10–20 s: SANE probes every driver, and mDNS browsing.
+- Discovery takes about 10–20 s: SANE probes every driver over USB.
+- USB only: network / Wi-Fi scanning is not supported at this time.
 - Auto-crop can't tell an overrun from the paper when both are the same
   colour; use Paper size then.
 - Cameras / PTP devices are detected and explained, not captured.

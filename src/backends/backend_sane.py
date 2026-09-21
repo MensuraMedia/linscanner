@@ -23,7 +23,14 @@ from backends.parser_sane import (
     parse_options,
     parse_progress,
 )
-from config.config_scan import BACKEND_EXTRA_ARGS, LIST_TIMEOUT, OPTIONS_TIMEOUT, PAGE_TIMEOUT
+from config.config_scan import (
+    BACKEND_EXTRA_ARGS,
+    LIST_TIMEOUT,
+    NETWORK_SCANNING,
+    OPTIONS_TIMEOUT,
+    PAGE_TIMEOUT,
+)
+from backends.backend_escl import ipp_usb_urls
 from utils.util_logging import get_logger
 
 log = get_logger("sane")
@@ -34,6 +41,53 @@ log = get_logger("sane")
 # with itself. Re-entrant so a scan can call helpers that also lock.
 DEVICE_LOCK = threading.RLock()
 
+# Drivers whose config has "net ..." lines (network autodiscovery / addresses)
+NET_LINE_CONFIGS = ("epson2.conf", "epsonds.conf", "kodakaio.conf", "magicolor.conf")
+# Network-only drivers, removed from dll.conf in USB-only mode
+# (dell1600n_net broadcasts "std-scan-discovery-all" to UDP port 1124)
+NETWORK_ONLY_DRIVERS = ("net", "escl", "dell1600n_net")
+
+
+def usb_only_config(folder):
+    """Switch off network discovery in a private SANE config folder.
+
+    - dll.conf: drop the network-only drivers (net = saned, escl, dell1600n_net)
+    - epson2/epsonds/kodakaio/magicolor: comment out "net" lines (UDP/SNMP broadcasts)
+    - pixma: networking=no (BJNP/MFNP broadcasts)
+    - airscan: discovery off (mDNS, WS-Discovery); IPP-over-USB devices are
+      listed explicitly at their 127.0.0.1 address (refresh_airscan_devices)
+    """
+    dll = os.path.join(folder, "dll.conf")
+    if os.path.exists(dll):
+        with open(dll) as f:
+            lines = f.read().splitlines()
+        with open(dll, "w") as f:
+            for ln in lines:
+                off = ln.strip() in NETWORK_ONLY_DRIVERS
+                f.write(("# linscanner USB-only: " + ln if off else ln) + "\n")
+    for name in NET_LINE_CONFIGS:
+        path = os.path.join(folder, name)
+        if os.path.exists(path):
+            with open(path) as f:
+                lines = f.read().splitlines()
+            with open(path, "w") as f:
+                for ln in lines:
+                    off = re.match(r"\s*net\b", ln) is not None
+                    f.write(("# linscanner USB-only: " + ln if off else ln) + "\n")
+    with open(os.path.join(folder, "pixma.conf"), "a") as f:
+        f.write("\n# linscanner USB-only\nnetworking=no\n")
+    refresh_airscan_devices(folder)
+
+
+def refresh_airscan_devices(folder):
+    """airscan.conf with discovery off, listing only IPP-over-USB devices on 127.0.0.1"""
+    lines = ["# written by linscanner: USB only, no network discovery", "[devices]"]
+    for i, url in enumerate(ipp_usb_urls(), 1):
+        lines.append(f'"IPP-USB scanner {i}" = {url}, eSCL')
+    lines += ["", "[options]", "discovery = disable", "ws-discovery = off", ""]
+    with open(os.path.join(folder, "airscan.conf"), "w") as f:
+        f.write("\n".join(lines))
+
 
 class SaneBackend(ScannerBackend):
     """SANE via the scanimage command-line tool"""
@@ -41,19 +95,25 @@ class SaneBackend(ScannerBackend):
     name = "sane"
     lock = DEVICE_LOCK
 
-    def __init__(self, only_backends=None):
-        """only_backends: restrict SANE to these drivers (e.g. ["test"]) via a
-        private SANE_CONFIG_DIR; used by tests and by the Devices page."""
+    def __init__(self, only_backends=None, network=NETWORK_SCANNING):
+        """only_backends: restrict SANE to these drivers (e.g. ["test"]); used by
+        tests and --test-scanner. network=False (the default, see config_scan):
+        drivers' network discovery is switched off. Both work through a private
+        copy of /etc/sane.d passed as SANE_CONFIG_DIR; the system config is never changed."""
         self._env = dict(os.environ, LC_ALL="C")
         self._config_dir = None
-        if only_backends:
+        self.network = network
+        if only_backends or not network:
             self._config_dir = tempfile.mkdtemp(prefix="linscanner-sane-")
             if os.path.isdir("/etc/sane.d"):
                 shutil.copytree("/etc/sane.d", self._config_dir, dirs_exist_ok=True)
+            self._env["SANE_CONFIG_DIR"] = self._config_dir
+        if only_backends:
             shutil.rmtree(os.path.join(self._config_dir, "dll.d"), ignore_errors=True)
             with open(os.path.join(self._config_dir, "dll.conf"), "w") as f:
                 f.write("\n".join(only_backends) + "\n")
-            self._env["SANE_CONFIG_DIR"] = self._config_dir
+        if not network:
+            usb_only_config(self._config_dir)
 
     def close(self):
         """Delete the private SANE config dir created for only_backends"""
@@ -95,6 +155,8 @@ class SaneBackend(ScannerBackend):
 
     def list_devices(self):
         """List scanners SANE can see (scanimage -f), as ScannerDevice objects"""
+        if not self.network and self._config_dir:
+            refresh_airscan_devices(self._config_dir)  # IPP-USB devices plugged in since start
         r = self._run(["-f", LIST_FORMAT], LIST_TIMEOUT)
         devices = parse_device_list(r.stdout)
         log.info("SANE listed %d device(s): %s", len(devices), ", ".join(d.id for d in devices) or "none")

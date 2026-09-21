@@ -41,3 +41,6 @@
 | 2026-09-21T19:30:00 | README: full Safety, security and privacy section (no data leaves the machine; network activity disclosed; strace-verified) |
 | 2026-09-21T19:30:00 | README: supported connection is USB cable only; Wi-Fi / network scanning not supported at this time |
 | 2026-09-21T19:30:00 | LICENSE: linscanner Community License (Noncommercial) 1.0; README section 12 |
+| 2026-09-21T20:10:00 | USB only: network discovery disabled (private SANE config: no net/escl/dell1600n_net, no Epson/Kodak/Magicolor net lines, pixma networking=no, airscan discovery off with IPP-USB on 127.0.0.1; eSCL client loopback only); strace-verified |
+| 2026-09-21T20:10:00 | Settings: 'Network scanning (Wi-Fi / Ethernet)' shown greyed out, marked Not Supported; tests/test_usb_only.py (5 tests, 74 total) |
+| 2026-09-21T20:10:00 | Docs: README privacy section updated (linscanner doesn't use your network), FEATURES, TECHNICAL §3.0 |
