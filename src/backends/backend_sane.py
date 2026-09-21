@@ -45,13 +45,16 @@ class SaneBackend(ScannerBackend):
             self._env["SANE_CONFIG_DIR"] = self._config_dir
 
     def close(self):
+        """Delete the private SANE config dir created for only_backends"""
         if self._config_dir:
             shutil.rmtree(self._config_dir, ignore_errors=True)
 
     def available(self):
+        """True if SANE's scanimage tool is installed"""
         return shutil.which("scanimage") is not None
 
     def _run(self, args, timeout):
+        """Run scanimage with args; raises ScanError on missing tool or timeout"""
         try:
             r = subprocess.run(
                 ["scanimage", *args], capture_output=True, text=True, timeout=timeout, env=self._env
@@ -63,10 +66,12 @@ class SaneBackend(ScannerBackend):
         return r
 
     def list_devices(self):
+        """List scanners SANE can see (scanimage -f), as ScannerDevice objects"""
         r = self._run(["-f", LIST_FORMAT], LIST_TIMEOUT)
         return parse_device_list(r.stdout)
 
     def get_capabilities(self, device_id):
+        """Read a device's options (scanimage -A) as ScannerCapabilities"""
         r = self._run(["-d", device_id, "-A"], OPTIONS_TIMEOUT)
         options = parse_options(r.stdout)
         if not options:
@@ -93,6 +98,7 @@ class SaneBackend(ScannerBackend):
         return cmd
 
     def scan(self, request, on_page=None, on_progress=None, cancel_event=None):
+        """Scan per request; report pages/progress live; honour cancel; return page paths"""
         os.makedirs(request.out_dir, exist_ok=True)
         cmd = self.build_command(request)
         try:

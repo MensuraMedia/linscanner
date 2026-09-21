@@ -72,6 +72,7 @@ def parse_options(text):
 
 
 def _resolutions(opt):
+    """Resolution list from a parsed option (lists as-is, ranges as standard steps)"""
     if not opt:
         return []
     vals = opt["values"]
@@ -88,6 +89,7 @@ def _resolutions(opt):
 
 
 def _max(opt):
+    """Upper bound of a range option (0.0 if not a range)"""
     if opt and isinstance(opt["values"], dict):
         return opt["values"]["max"]
     return 0.0

@@ -31,6 +31,7 @@ class PagePreview(Gtk.Box):
     """Selected-page view + thumbnail strip; on_select(index) on thumbnail click"""
 
     def __init__(self, on_select=None):
+        """Large view (scrolled) plus thumbnail strip"""
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=Layout.spacing.MEDIUM)
         self.on_select = on_select
         self.pages = []
@@ -63,6 +64,7 @@ class PagePreview(Gtk.Box):
 
     # -- public ------------------------------------------------------------
     def set_pages(self, pages, selected=None):
+        """Show a page list and select one (keeps selection if possible)"""
         self.pages = pages
         if selected is None:
             selected = min(max(self.selected, 0), len(pages) - 1)
@@ -77,6 +79,7 @@ class PagePreview(Gtk.Box):
 
     # -- internals ---------------------------------------------------------
     def _rebuild_strip(self):
+        """Recreate thumbnails; highlight the selected one"""
         for child in self.strip.get_children():
             self.strip.remove(child)
         th = Layout.dimensions.THUMBNAIL_HEIGHT
@@ -100,6 +103,7 @@ class PagePreview(Gtk.Box):
         self.strip.show_all()
 
     def _thumb_clicked(self, _btn, index):
+        """Select a page from its thumbnail"""
         self.selected = index
         self._rebuild_strip()
         self._render_large()
@@ -107,6 +111,7 @@ class PagePreview(Gtk.Box):
             self.on_select(index)
 
     def _on_resize(self, _widget, alloc):
+        """Re-render the large view after resizing (debounced)"""
         size = (alloc.width, alloc.height)
         if size == self._last_size:
             return
@@ -116,6 +121,7 @@ class PagePreview(Gtk.Box):
         self._resize_source = GLib.timeout_add(120, self._render_large)  # debounce
 
     def _render_large(self):
+        """Render the selected page to fit the view (one-shot timeout)"""
         self._resize_source = None
         if self.selected < 0 or not self.pages:
             self.stack.set_visible_child_name("empty")

@@ -23,6 +23,7 @@ class Sidebar(Gtk.Box):
     """Logo + navigation buttons"""
 
     def __init__(self, navigation_manager):
+        """Logo, navigation buttons and Settings at the bottom"""
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.nav_manager = navigation_manager
         self.set_size_request(Layout.dimensions.SIDEBAR_WIDTH, -1)
@@ -45,6 +46,7 @@ class Sidebar(Gtk.Box):
         self.nav_manager.on_navigate(self.on_navigated)
 
     def build_logo_area(self):
+        """Logo image plus app name"""
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         box.set_size_request(Layout.dimensions.LOGO_AREA_WIDTH, Layout.dimensions.LOGO_AREA_HEIGHT)
         box.get_style_context().add_class("logo-area")
@@ -62,6 +64,7 @@ class Sidebar(Gtk.Box):
         self.pack_start(box, False, False, 0)
 
     def create_nav_button(self, label, page_id):
+        """Navigation button for a page id"""
         button = Gtk.Button(label=label)
         button.get_style_context().add_class("nav-button")
         button.set_relief(Gtk.ReliefStyle.NONE)
@@ -71,6 +74,7 @@ class Sidebar(Gtk.Box):
         return button
 
     def on_navigated(self, page_id):
+        """Highlight the button of the page now shown"""
         button = self.nav_buttons.get(page_id)
         if not button:
             return

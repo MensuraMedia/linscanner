@@ -9,10 +9,12 @@ APP_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 
 
 def resource(*parts):
+    """Absolute path of a file under resources/"""
     return os.path.join(APP_ROOT, "resources", *parts)
 
 
 def read_version():
+    """Version string from the VERSION file"""
     try:
         with open(os.path.join(APP_ROOT, "VERSION")) as f:
             return f.read().strip()

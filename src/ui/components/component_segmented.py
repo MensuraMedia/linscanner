@@ -28,6 +28,7 @@ class SegmentedControl(Gtk.Box):
         self.set_active(active or items[0][0])
 
     def _toggled(self, button, key):
+        """Keep exactly one button active; report user changes"""
         if self._updating:
             return
         if not button.get_active():  # clicking the active one keeps it active
@@ -40,6 +41,7 @@ class SegmentedControl(Gtk.Box):
             self.on_changed(key)
 
     def set_active(self, key):
+        """Select a key without firing on_changed"""
         self._updating = True
         for k, btn in self.buttons.items():
             btn.set_active(k == key)
@@ -47,4 +49,5 @@ class SegmentedControl(Gtk.Box):
         self.active = key
 
     def get_active(self):
+        """Currently selected key"""
         return self.active

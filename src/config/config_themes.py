@@ -1,8 +1,8 @@
 """
 Theme Definitions
-Dark themes. The default "Black Yellow Gray" is sampled from the
-universal-instruction-set reference ui-kit-black-yellow-gray.jpg; the other
-seven come from gtk-python-dashboard-starter.
+Dark themes. The default is Nord (official Nord palette, nordtheme.com).
+"Black Yellow Gray" is sampled from the universal-instruction-set reference
+ui-kit-black-yellow-gray.jpg; the others come from gtk-python-dashboard-starter.
 """
 
 
@@ -25,6 +25,7 @@ class ThemeDefinition:
         success="#3fd059",
         error="#e8555d",
     ):
+        """Store theme colours; optional ones default from the core four"""
         self.name = name
         self.accent_color = accent_color
         self.sidebar_bg = sidebar_bg
@@ -40,7 +41,7 @@ class ThemeDefinition:
         self.error = error
 
 
-DEFAULT_THEME_ID = "black-yellow-gray"
+DEFAULT_THEME_ID = "nord"
 
 DARK_THEMES = {
     "black-yellow-gray": ThemeDefinition(
@@ -88,10 +89,18 @@ DARK_THEMES = {
     ),
     "nord": ThemeDefinition(
         name="Nord",
-        accent_color="#88c0d0",
-        sidebar_bg="#2e3440",
-        window_bg="#3b4252",
-        hover_color="#434c5e",
+        accent_color="#88c0d0",  # nord8 (frost)
+        sidebar_bg="#2e3440",  # nord0 (polar night)
+        window_bg="#2e3440",  # nord0
+        hover_color="#4c566a",  # nord3
+        card_bg="#3b4252",  # nord1
+        raised_bg="#434c5e",  # nord2
+        accent_text="#2e3440",  # dark text on the frost accent
+        text_primary="#eceff4",  # nord6 (snow storm)
+        text_secondary="#d8dee9",  # nord4
+        text_muted="#8f9bb3",  # between nord3 and nord4: readable on nord1
+        success="#a3be8c",  # nord14 (aurora green)
+        error="#bf616a",  # nord11 (aurora red)
     ),
     "gruvbox": ThemeDefinition(
         name="Gruvbox",

@@ -14,3 +14,8 @@
 | 2026-09-21T15:53:00 | Lint toolchain black + pyflakes (ruff not packaged for Ubuntu 24.04) |
 | 2026-09-21T15:55:00 | install.sh (offline pool first) + desktop entry; deps added to offline bundle |
 | 2026-09-21T15:57:00 | Docs: README, CLAUDE.md, architecture, decisions, manifest; v0.1.0 |
+| 2026-09-21T16:12:00 | Default theme changed to Nord (full official palette: cards, pills, status colours) |
+| 2026-09-21T16:20:00 | Initial real-hardware test on Epson ES-400 II passed (user-confirmed) |
+| 2026-09-21T16:15:00 | Docstrings for every class, method and function (documentation only) |
+| 2026-09-21T16:16:00 | docs/FEATURES.md and generated docs/api-reference.md (tools/gen_api_docs.py) |
+| 2026-09-21T16:18:00 | Research saved: docs/research connection-methods.md, device-capabilities.md |

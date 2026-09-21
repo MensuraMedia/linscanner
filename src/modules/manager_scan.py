@@ -62,6 +62,7 @@ def pick_area(caps, paper):
 
 
 def is_feeder(source):
+    """True if a source name means a document feeder (scan until empty)"""
     return any(hint in source.lower() for hint in FEEDER_SOURCE_HINTS)
 
 
@@ -84,6 +85,7 @@ class ScanManager:
     """Owns the backend, the current device and the scanned pages of a session"""
 
     def __init__(self, settings, backend=None):
+        """Create the manager with a session temp dir; backend defaults to SANE"""
         self.settings = settings
         self.backend = backend or SaneBackend()
         self.devices = []
@@ -95,6 +97,8 @@ class ScanManager:
 
     # -- background helpers ------------------------------------------------
     def _in_thread(self, work, on_done, on_error):
+        """Run work() in a thread; deliver result or error on the GTK thread"""
+
         def runner():
             try:
                 result = work()
@@ -108,6 +112,8 @@ class ScanManager:
         threading.Thread(target=runner, daemon=True).start()
 
     def refresh_devices(self, on_done, on_error):
+        """List scanners in the background, filtered for display"""
+
         def work():
             found = self.backend.list_devices()
             self.devices = found
@@ -116,6 +122,7 @@ class ScanManager:
         self._in_thread(work, on_done, on_error)
 
     def load_capabilities(self, device_id, on_done, on_error):
+        """Read (or reuse cached) device capabilities in the background"""
         if device_id in self.capabilities:
             GLib.idle_add(on_done, self.capabilities[device_id])
             return
@@ -145,6 +152,7 @@ class ScanManager:
         )
 
     def start_scan(self, request, on_page, on_progress, on_done, on_error):
+        """Start a scan in the background; pages are appended as they arrive"""
         self._cancel.clear()
         self.busy = True
 
@@ -170,24 +178,30 @@ class ScanManager:
         self._in_thread(work, finished, failed)
 
     def cancel(self):
+        """Ask the running scan to stop (pages so far are kept)"""
         self._cancel.set()
 
     # -- pages -------------------------------------------------------------
     def rotate_page(self, index, degrees):
+        """Rotate a page clockwise by degrees (applied at display/export)"""
         self.pages[index]["rotation"] = (self.pages[index]["rotation"] + degrees) % 360
 
     def delete_page(self, index):
+        """Remove a page from the session"""
         del self.pages[index]
 
     def clear_pages(self):
+        """Remove all pages from the session"""
         self.pages = []
 
     def cleanup(self):
+        """Delete session temp files and backend temp config"""
         shutil.rmtree(self.session_dir, ignore_errors=True)
         if hasattr(self.backend, "close"):
             self.backend.close()
 
     @staticmethod
     def summary(request):
+        """One-line human description of a request (mode, dpi, size, source)"""
         size = "full area" if not request.width_mm else f"{request.width_mm:g}×{request.height_mm:g} mm"
         return f"{request.mode} · {request.resolution} dpi · {size} · {request.source or 'default source'}"

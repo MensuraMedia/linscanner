@@ -16,6 +16,7 @@ class BasePage(Gtk.Box):
     """All pages inherit from this class and implement build_content()"""
 
     def __init__(self, ctx, spacing=None, margin=None):
+        """Apply margins/spacing, keep the app context, then build_content()"""
         super().__init__(
             orientation=Gtk.Orientation.VERTICAL,
             spacing=spacing or Layout.dimensions.CONTENT_SPACING,
@@ -32,6 +33,7 @@ class BasePage(Gtk.Box):
         self.build_content()
 
     def build_content(self):
+        """Create the page's widgets (subclasses must implement)"""
         raise NotImplementedError("Subclasses must implement build_content()")
 
     def on_shown(self):
@@ -40,6 +42,7 @@ class BasePage(Gtk.Box):
     # -- helpers -----------------------------------------------------------
     @staticmethod
     def label(text, css=None, xalign=0, wrap=False, selectable=False):
+        """Create a label with optional CSS classes, alignment and wrapping"""
         lbl = Gtk.Label(label=text)
         lbl.set_xalign(xalign)
         lbl.set_line_wrap(wrap)
@@ -50,11 +53,13 @@ class BasePage(Gtk.Box):
         return lbl
 
     def add_title(self, text, subtitle=None):
+        """Add the page title and an optional muted subtitle"""
         self.pack_start(self.label(text, "page-title"), False, False, 0)
         if subtitle:
             self.pack_start(self.label(subtitle, "muted", wrap=True), False, False, 0)
 
     def add_paragraph(self, text):
+        """Add wrapped secondary text"""
         lbl = self.label(text, "secondary", wrap=True)
         self.pack_start(lbl, False, False, 0)
         return lbl
@@ -68,6 +73,7 @@ class BasePage(Gtk.Box):
         return card, card
 
     def add_card(self, title=None, expand=False):
+        """Add a card to the page and return its inner box"""
         card, inner = self.make_card(title)
         self.pack_start(card, expand, expand, 0)
         return inner

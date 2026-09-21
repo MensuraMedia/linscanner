@@ -41,6 +41,26 @@
     {
       "datetime": "2026-09-21T15:57:00",
       "description": "Docs: README, CLAUDE.md, architecture, decisions, manifest; v0.1.0"
+    },
+    {
+      "datetime": "2026-09-21T16:12:00",
+      "description": "Default theme changed to Nord (full official palette: cards, pills, status colours)"
+    },
+    {
+      "datetime": "2026-09-21T16:20:00",
+      "description": "Initial real-hardware test on Epson ES-400 II passed (user-confirmed)"
+    },
+    {
+      "datetime": "2026-09-21T16:15:00",
+      "description": "Docstrings for every class, method and function (documentation only)"
+    },
+    {
+      "datetime": "2026-09-21T16:16:00",
+      "description": "docs/FEATURES.md and generated docs/api-reference.md (tools/gen_api_docs.py)"
+    },
+    {
+      "datetime": "2026-09-21T16:18:00",
+      "description": "Research saved: docs/research connection-methods.md, device-capabilities.md"
     }
   ]
 }

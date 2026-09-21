@@ -16,11 +16,13 @@ class ThemeApplicator:
     """Applies theme colours to the application"""
 
     def __init__(self):
+        """Create the CSS provider (registered on first apply)"""
         self.css_provider = Gtk.CssProvider()
         self.current_theme = None
         self._registered = False
 
     def apply_theme(self, theme):
+        """Generate and apply CSS for a theme; False if the CSS fails to load"""
         self.current_theme = theme
         try:
             self.css_provider.load_from_data(self.generate_css(theme).encode())
@@ -36,6 +38,7 @@ class ThemeApplicator:
 
     @staticmethod
     def generate_css(t):
+        """Build the application stylesheet from a ThemeDefinition"""
         return f"""
 * {{ font-family: Ubuntu, Cantarell, sans-serif; }}
 window, .content-area {{ background-color: {t.window_bg}; color: {t.text_primary}; }}

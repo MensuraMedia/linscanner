@@ -21,6 +21,7 @@ class PreviewPage(BasePage):
     """Page viewer with editing actions and Save As"""
 
     def build_content(self):
+        """Toolbar (rotate, delete, clear, Save As), preview and status"""
         self.add_title("Preview", "Check your pages, fix their orientation, then save.")
 
         # toolbar
@@ -47,16 +48,19 @@ class PreviewPage(BasePage):
         self.reload()
 
     def _tool(self, bar, text, action):
+        """Add a toolbar button that calls action()"""
         btn = Gtk.Button(label=text)
         btn.connect("clicked", lambda *_: action())
         bar.pack_start(btn, False, False, 0)
         return btn
 
     def on_shown(self):
+        """Reload pages when the page is opened"""
         self.reload()
 
     # -- state -------------------------------------------------------------
     def reload(self, *_):
+        """Show the session's pages and enable/disable actions"""
         pages = self.ctx.scan.pages
         self.preview.set_pages(pages)
         has = bool(pages)
@@ -72,6 +76,7 @@ class PreviewPage(BasePage):
         self.update_info()
 
     def update_info(self):
+        """Show 'Page n of m · mode · dpi' for the selected page"""
         pages = self.ctx.scan.pages
         if not pages:
             self.info.set_text("")
@@ -81,11 +86,13 @@ class PreviewPage(BasePage):
 
     # -- actions -----------------------------------------------------------
     def rotate(self, degrees):
+        """Rotate the selected page and re-render"""
         if self.preview.selected >= 0:
             self.ctx.scan.rotate_page(self.preview.selected, degrees)
             self.preview.refresh_selected()
 
     def delete_page(self):
+        """Delete the selected page and select its neighbour"""
         i = self.preview.selected
         if i >= 0:
             self.ctx.scan.delete_page(i)
@@ -93,11 +100,13 @@ class PreviewPage(BasePage):
             self.reload()
 
     def clear_pages(self):
+        """Remove all pages after confirmation"""
         if self._confirm("Remove all scanned pages?", "Pages that haven't been saved will be lost."):
             self.ctx.scan.clear_pages()
             self.reload()
 
     def _confirm(self, title, detail):
+        """Modal OK/Cancel question; True if OK"""
         dlg = Gtk.MessageDialog(
             transient_for=self.ctx.window,
             modal=True,
@@ -111,6 +120,7 @@ class PreviewPage(BasePage):
         return ok
 
     def on_save_as(self, _btn):
+        """Save As dialog (PDF/PNG/JPEG/TIFF), export, remember the folder"""
         pages = self.ctx.scan.pages
         if not pages:
             return

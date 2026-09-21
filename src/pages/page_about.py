@@ -11,6 +11,7 @@ from utils.util_paths import read_version
 
 
 def sane_version():
+    """First line of `scanimage --version`, or a short status"""
     if not shutil.which("scanimage"):
         return "not installed"
     try:
@@ -24,6 +25,7 @@ class AboutPage(BasePage):
     """About linscanner"""
 
     def build_content(self):
+        """Version, description, SANE version and credits"""
         self.add_title("linscanner", f"Version {read_version()}")
         card = self.add_card("What it is")
         card.pack_start(

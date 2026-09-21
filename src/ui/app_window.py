@@ -18,6 +18,7 @@ class AppWindow(Gtk.Window):
     """Main application window"""
 
     def __init__(self, ctx):
+        """Window with sidebar and content area; registers itself as dialog parent"""
         super().__init__(title="linscanner")
         ctx.window = self
         self.set_default_size(Layout.dimensions.WINDOW_DEFAULT_WIDTH, Layout.dimensions.WINDOW_DEFAULT_HEIGHT)

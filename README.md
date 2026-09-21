@@ -70,5 +70,5 @@ Architecture: [`docs/architecture.md`](docs/architecture.md). Project rules:
 ## Credits
 
 - UI framework: [gtk-python-dashboard-starter](https://github.com/mikesdatawork/gtk-python-dashboard-starter) by mikesdatawork
-- Build process and colour scheme (`ui-kit-black-yellow-gray`): [MensuraMedia/universal-instruction-set](https://github.com/MensuraMedia/universal-instruction-set)
+- Build process and the Black Yellow Gray theme (`ui-kit-black-yellow-gray`): [MensuraMedia/universal-instruction-set](https://github.com/MensuraMedia/universal-instruction-set)
 - Scanning: [SANE](http://www.sane-project.org/)

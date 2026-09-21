@@ -6,6 +6,10 @@ type: project
 
 # Decisions
 
+### 2026-09-21: Default theme is Nord
+- Reason: user request (supersedes Black Yellow Gray as default; that theme stays selectable).
+- Impact: Nord completed from the official palette (nord0-nord14); existing users keep their saved theme.
+
 ### 2026-09-21: Lint with black + pyflakes instead of ruff
 - Reason: ruff is not packaged in Ubuntu 24.04; installing it via pip breaks the distro-packages-only / offline rule.
 - Impact: `python3 -m black --check` + `python3 -m pyflakes`; revisit when ruff is packaged.
@@ -22,7 +26,7 @@ type: project
 - Reason: universal-instruction-set defines no app version scheme.
 - Impact: `VERSION` file; changelog records every change.
 
-### 2026-09-21: Default theme "Black Yellow Gray"
+### 2026-09-21: Default theme "Black Yellow Gray" (superseded: Nord is default)
 - Reason: user chose universal-themes/image-reference/ui-kit-black-yellow-gray.jpg.
 - Impact: colours sampled from the image (#111111, #181818, #212121, #fbd700, #b3b3b3, #82828e, #3fd059, #e8555d); the framework's 7 themes stay selectable.
 

@@ -19,6 +19,7 @@ class ScanPage(BasePage):
     """Scanner selection, scan options and the Scan button"""
 
     def build_content(self):
+        """Scanner card, options card, Scan/Cancel, progress and status"""
         self.devices = []
         self.request = None
         s = self.ctx.settings
@@ -91,16 +92,19 @@ class ScanPage(BasePage):
 
     # -- helpers -----------------------------------------------------------
     def on_settings_changed(self, key):
+        """Re-list devices if driver visibility changed; else refresh the summary"""
         if key == "show_all_backends":
             self.refresh_devices()  # device list filtering changed
         else:
             self.update_summary()  # e.g. Black & White style
 
     def remember(self, key, value):
+        """Persist an option choice and refresh the summary"""
         self.ctx.settings.set(key, value)
         self.update_summary()
 
     def set_status(self, text, css="muted"):
+        """Show a status message styled muted / ok / error / busy"""
         ctx = self.status.get_style_context()
         for c in ("muted", "status-ok", "status-error", "status-busy"):
             ctx.remove_class(c)
@@ -108,6 +112,7 @@ class ScanPage(BasePage):
         self.status.set_text(text)
 
     def set_busy(self, busy, scanning=False):
+        """Enable or disable controls while working; Cancel only while scanning"""
         for w in (
             self.scan_btn,
             self.refresh_btn,
@@ -121,11 +126,13 @@ class ScanPage(BasePage):
         self.cancel_btn.set_sensitive(scanning)
 
     def current_device(self):
+        """The ScannerDevice selected in the combo, or None"""
         dev_id = self.device_combo.get_active_id()
         return next((d for d in self.devices if d.id == dev_id), None)
 
     # -- devices -----------------------------------------------------------
     def refresh_devices(self):
+        """Start a background device listing (ignored while scanning)"""
         if self.ctx.scan.busy:
             return
         self.set_busy(True)
@@ -133,6 +140,7 @@ class ScanPage(BasePage):
         self.ctx.scan.refresh_devices(self.devices_loaded, self.devices_failed)
 
     def devices_loaded(self, devices):
+        """Fill the scanner combo; reselect the last used scanner"""
         self.devices = devices
         self.device_combo.remove_all()
         for d in devices:
@@ -150,10 +158,12 @@ class ScanPage(BasePage):
             self.device_combo.set_active(0)
 
     def devices_failed(self, message):
+        """Show a listing or options error"""
         self.set_busy(False)
         self.set_status(message, "status-error")
 
     def on_device_changed(self, combo):
+        """Remember the device and load its capabilities"""
         dev = self.current_device()
         if not dev:
             return
@@ -164,6 +174,7 @@ class ScanPage(BasePage):
         self.ctx.scan.load_capabilities(dev.id, self.caps_loaded, self.devices_failed)
 
     def caps_loaded(self, caps):
+        """Fill the source combo from capabilities and mark Ready"""
         self.source_combo.remove_all()
         for src in caps.sources or ["Default"]:
             self.source_combo.append(src, src)
@@ -174,6 +185,7 @@ class ScanPage(BasePage):
         self.update_summary()
 
     def update_summary(self):
+        """Show exactly what will be sent to the scanner"""
         dev = self.current_device()
         if not dev or dev.id not in self.ctx.scan.capabilities:
             self.summary.set_text("")
@@ -183,6 +195,7 @@ class ScanPage(BasePage):
         self.summary.set_text(f"Will scan: {ScanManager.summary(req)}. {feeder}")
 
     def build_request(self, dry_run=False):
+        """Build a ScanRequest from the controls (dry_run: no temp folder)"""
         dev = self.current_device()
         source = self.source_combo.get_active_id() or ""
         return self.ctx.scan.build_request(
@@ -196,6 +209,7 @@ class ScanPage(BasePage):
 
     # -- scanning ----------------------------------------------------------
     def on_scan(self, _btn):
+        """Start scanning with the current options"""
         if not self.current_device():
             return
         self.request = self.build_request()
@@ -207,14 +221,17 @@ class ScanPage(BasePage):
         self.ctx.scan.start_scan(self.request, self.on_page, self.on_progress, self.on_done, self.on_error)
 
     def on_page(self, _page):
+        """Count a finished page and notify the Preview page"""
         self.pages_this_scan += 1
         self.set_status(f"Scanned page {self.pages_this_scan}…", "status-busy")
         self.ctx.emit("pages-changed")
 
     def on_progress(self, pct):
+        """Update the progress bar for the page in progress"""
         self.progress.set_fraction(min(pct, 100) / 100)
 
     def on_done(self, pages, cancelled):
+        """Report the result and open Preview if pages were scanned"""
         self.set_busy(False)
         self.progress.set_fraction(1 if pages else 0)
         n = len(pages)
@@ -226,6 +243,7 @@ class ScanPage(BasePage):
             self.ctx.nav.navigate_to("preview")
 
     def on_error(self, message):
+        """Show a scan error"""
         self.set_busy(False)
         self.progress.set_fraction(0)
         self.set_status(message, "status-error")

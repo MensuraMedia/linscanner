@@ -18,6 +18,7 @@ class DevicesPage(BasePage):
     """Detected scanners and their capabilities"""
 
     def build_content(self):
+        """Title, intro and the device list container"""
         self.add_title(
             "Devices",
             "Scanners found through SANE. When one scanner is offered by several drivers, "
@@ -29,6 +30,7 @@ class DevicesPage(BasePage):
         self.show_devices([])
 
     def show_devices(self, _visible):
+        """Rebuild the device cards from the scan manager's last listing"""
         for child in self.list_box.get_children():
             self.list_box.remove(child)
         all_devices = self.ctx.scan.devices
@@ -66,4 +68,5 @@ class DevicesPage(BasePage):
         self.list_box.show_all()
 
     def on_shown(self):
+        """Refresh the cards whenever the page is opened"""
         self.show_devices(None)

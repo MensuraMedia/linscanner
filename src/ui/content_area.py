@@ -28,6 +28,7 @@ class ContentArea(Gtk.Box):
     """Page stack registered with the navigation manager"""
 
     def __init__(self, ctx):
+        """Create every page in PAGES, add to the stack, register for navigation"""
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.get_style_context().add_class("content-area")
         self.stack = Gtk.Stack()

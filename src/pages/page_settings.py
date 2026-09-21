@@ -18,6 +18,7 @@ class SettingsPage(BasePage):
     """User preferences (saved to ~/.config/linscanner/settings.json)"""
 
     def build_content(self):
+        """Theme, scanning and driver setting cards"""
         s = self.ctx.settings
         self.add_title("Settings")
 
@@ -72,19 +73,23 @@ class SettingsPage(BasePage):
         )
 
     def save(self, key, value):
+        """Persist a setting and broadcast settings-changed"""
         self.ctx.settings.set(key, value)
         self.ctx.emit("settings-changed", key)
 
     def on_theme(self, combo):
+        """Apply and remember the selected theme"""
         theme = get_theme(combo.get_active_id())
         self.ctx.settings.set("theme", combo.get_active_id())
         self.ctx.theme.apply_theme(theme)
         self.draw_swatches(theme)
 
     def on_show_all(self, btn):
+        """Toggle showing all drivers and the test scanner"""
         self.save("show_all_backends", btn.get_active())
 
     def draw_swatches(self, theme):
+        """Show colour dots for the theme's main colours"""
         for child in self.swatches.get_children():
             self.swatches.remove(child)
         for color in (
@@ -104,6 +109,7 @@ class SettingsPage(BasePage):
 
     @staticmethod
     def _draw_dot(area, cr, rgba):
+        """Cairo draw handler for one swatch"""
         w, h = area.get_allocated_width(), area.get_allocated_height()
         cr.arc(w / 2, h / 2, min(w, h) / 2 - 1, 0, 6.2832)
         cr.set_source_rgba(rgba.red, rgba.green, rgba.blue, 1)

@@ -22,6 +22,7 @@ DEFAULTS = {
 
 
 def default_path():
+    """Settings file path (honours XDG_CONFIG_HOME)"""
     base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
     return os.path.join(base, "linscanner", "settings.json")
 
@@ -30,12 +31,14 @@ class SettingsManager:
     """Dictionary-style access to persisted settings with defaults"""
 
     def __init__(self, path=None):
+        """Load settings from path (default ~/.config/linscanner/settings.json)"""
         self.path = path or default_path()
         self.values = dict(DEFAULTS)
         self.overrides = {}  # session-only values (e.g. --test-scanner); never saved
         self.load()
 
     def load(self):
+        """Merge stored values over defaults, accepting only known keys of the right type"""
         try:
             with open(self.path) as f:
                 stored = json.load(f)
@@ -47,6 +50,7 @@ class SettingsManager:
                 self.values[key] = stored[key]
 
     def save(self):
+        """Write settings atomically (temp file + rename)"""
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
         tmp = self.path + ".tmp"
         with open(tmp, "w") as f:
@@ -54,6 +58,7 @@ class SettingsManager:
         os.replace(tmp, self.path)  # atomic: never leaves a half-written file
 
     def get(self, key):
+        """Value for key: session override, then saved value, then default"""
         if key in self.overrides:
             return self.overrides[key]
         return self.values.get(key, DEFAULTS.get(key))
@@ -63,5 +68,6 @@ class SettingsManager:
         self.overrides[key] = value
 
     def set(self, key, value):
+        """Store a value and save immediately"""
         self.values[key] = value
         self.save()

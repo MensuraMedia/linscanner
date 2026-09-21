@@ -26,6 +26,7 @@ from utils.util_paths import read_version  # noqa: E402
 
 
 def parse_args(argv):
+    """Parse command-line options (--version, --test-scanner, --page, --quit-after)"""
     p = argparse.ArgumentParser(prog="linscanner", description="Universal document scanner (SANE)")
     p.add_argument("--version", action="version", version=f"linscanner {read_version()}")
     p.add_argument(
@@ -39,6 +40,7 @@ def parse_args(argv):
 
 
 def main(argv=None):
+    """Build services and the window, run the GTK loop, clean up temp scans on exit"""
     args = parse_args(sys.argv[1:] if argv is None else argv)
     if args.test_scanner:
         # isolated session: throwaway settings file, only SANE's virtual scanner

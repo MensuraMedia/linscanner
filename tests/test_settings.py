@@ -8,7 +8,7 @@ from modules.manager_settings import DEFAULTS, SettingsManager
 def test_defaults_and_roundtrip(tmp_path):
     path = tmp_path / "s.json"
     s = SettingsManager(str(path))
-    assert s.get("theme") == DEFAULTS["theme"] == "black-yellow-gray"
+    assert s.get("theme") == DEFAULTS["theme"] == "nord"
     s.set("quality", "high")
     assert SettingsManager(str(path)).get("quality") == "high"
 

@@ -20,6 +20,7 @@ class ScannerDevice:
 
     @property
     def label(self):
+        """Display name: vendor, model and the SANE driver in brackets"""
         return f"{self.vendor} {self.model}  ({self.backend})"
 
 
