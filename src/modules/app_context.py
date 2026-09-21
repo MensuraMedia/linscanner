@@ -18,6 +18,7 @@ class AppContext:
         self.nav = nav_manager
         self.theme = theme_applicator
         self.window = None  # set once the main window exists (dialog parent)
+        self.features = None  # FeatureRegistry (optional modules); None = no features
         self._listeners = {}
 
     def on(self, event, callback):

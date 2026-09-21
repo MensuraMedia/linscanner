@@ -1,5 +1,11 @@
 # linscanner architecture
 
+> Full technical description (USB processes, connection methods, fallback,
+> capability/status interaction, feature modules): [`TECHNICAL.md`](TECHNICAL.md).
+> This page covers the original layering; 0.2.0 adds `modules/manager_connection`
+> (engine), `modules/manager_device_info`, `backends/backend_escl`,
+> `backends/usb_probe` and the `features/` registry.
+
 ```
 main.py ─ builds AppContext(settings, scan manager, navigation, theme) ─ AppWindow
                                     │

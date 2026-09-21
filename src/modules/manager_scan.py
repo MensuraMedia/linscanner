@@ -125,7 +125,9 @@ class ScanManager:
         self.devices = []
         self.capabilities = {}
         self.session_dir = tempfile.mkdtemp(prefix="linscanner-")
-        self.pages = []  # [{"path": str, "rotation": int, "dpi": int, "mode": str}]
+        self.pages = []  # [{"path", "rotation", "dpi", "mode", optional "overlays", "separator"}]
+        self.features = None  # FeatureRegistry: page processors (crop, deskew, blank removal, …)
+        self.dropped_pages = 0  # pages removed by processors during the last scan
         self._cancel = threading.Event()
         self.busy = False
 
@@ -208,9 +210,14 @@ class ScanManager:
         self.busy = True
         active = {"request": request}  # the request of the method currently scanning
 
+        self.dropped_pages = 0
+
         def page_added(path):
             r = active["request"]
             page = {"path": path, "rotation": 0, "dpi": r.resolution, "mode": r.mode}
+            if self.features is not None and not self.process_page(page):
+                self.dropped_pages += 1
+                return  # e.g. a blank page removed
             self.pages.append(page)
             GLib.idle_add(on_page, page)
 
@@ -247,6 +254,25 @@ class ScanManager:
             on_error(message)
 
         self._in_thread(work, finished, failed)
+
+    def process_page(self, page):
+        """Run the enabled page processors on a scanned page (in the scan thread).
+
+        Returns False if the page should be dropped. The processed image replaces
+        the scan file; any processor failure leaves the page unchanged."""
+        from PIL import Image
+
+        try:
+            with Image.open(page["path"]) as img:
+                img.load()
+                result = self.features.process_page(img, page)
+                if result is None:
+                    return False
+                if result is not img:
+                    result.save(page["path"], dpi=(page["dpi"], page["dpi"]))
+        except OSError:
+            pass  # unreadable image: keep it as scanned
+        return True
 
     def cancel(self):
         """Ask the running scan to stop (pages so far are kept)"""

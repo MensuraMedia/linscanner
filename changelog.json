@@ -105,6 +105,30 @@
     {
       "datetime": "2026-09-21T18:00:00",
       "description": "Fix: serialise SANE device access (Device busy between pages); option flags/groups"
+    },
+    {
+      "datetime": "2026-09-21T18:20:00",
+      "description": "Feature registry: feature_*.py modules, isolated hooks, Settings on/off + options"
+    },
+    {
+      "datetime": "2026-09-21T18:35:00",
+      "description": "Modules: autocrop, deskew, blank removal, autorotate, enhance, OCR, PDF options"
+    },
+    {
+      "datetime": "2026-09-21T18:45:00",
+      "description": "Modules: batch split, autosave, profiles, import images; Move page left/right"
+    },
+    {
+      "datetime": "2026-09-21T18:55:00",
+      "description": "Quick Edit: 20 fonts, PNG signature library, move/resize/apply to all, flatten"
+    },
+    {
+      "datetime": "2026-09-21T19:00:00",
+      "description": "Fix: blank detection kept colour pages (per-channel paper colour); autocrop safe"
+    },
+    {
+      "datetime": "2026-09-21T19:10:00",
+      "description": "Offline deps (tesseract, gs, numpy, fonts); docs/TECHNICAL.md; version 0.2.0"
     }
   ]
 }

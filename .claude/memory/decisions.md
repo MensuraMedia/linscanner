@@ -6,6 +6,18 @@ type: project
 
 # Decisions
 
+### 2026-09-21: Blank detection counts any strong colour difference from the paper
+- Reason (root cause, found by the UI test): comparing only "darker than paper" classified SANE's colour test pattern (and would have classified colour charts/photos) as blank, so every page was dropped.
+- Impact: the paper colour is estimated per channel (median); content = any channel differs by more than 60. Colour content is kept; uniform coloured paper stays blank. A regression test was added.
+
+### 2026-09-21: Auto-crop only trims a distinguishable trailing overrun band
+- Reason: cropping to content cut real page margins (synthetic test 1275×1650 → 927×1482).
+- Impact: only a uniform band at the end of the sheet whose tone differs from the paper by 3 or more is removed; nothing is guessed when the tones match.
+
+### 2026-09-21: Optional features are file-based modules behind an isolating registry
+- Reason: user requirement. Features can be removed or disabled without affecting the rest.
+- Impact: `src/features/feature_*.py` are loaded by file path. Hooks are called only on enabled features, each wrapped (errors logged and shown in Settings). The core never imports a feature. Tested with a deleted, a broken and a crashing module.
+
 ### 2026-09-21: Serialise all SANE device access with one lock
 - Reason: on real hardware, the Device Info firmware probe and the Scan page's option read opened the ES-400 II at the same time → "Device busy" (root cause found in testing).
 - Impact: `backend_sane.DEVICE_LOCK` (re-entrant) wraps every scanimage call and every scan. linscanner never competes with itself; real conflicts with other apps still fall through the engine.

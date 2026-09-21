@@ -90,8 +90,8 @@ combobox button, entry, filechooserbutton button, spinbutton {{
 }}
 combobox window menu, menu {{ background: {t.card_bg}; color: {t.text_primary}; }}
 menuitem:hover {{ background: {t.accent_color}; }}
-checkbutton check {{ background: {t.card_bg}; border: 1px solid {border_mid}; border-radius: 2px; }}
-checkbutton check:checked {{ background: {t.accent_color}; }}
+checkbutton check {{ background-image: none; background-color: {t.card_bg}; border: 1px solid {border_mid}; border-radius: 2px; }}
+checkbutton check:checked {{ background-image: none; background-color: {t.accent_color}; border-color: {t.accent_color}; color: #ffffff; }}
 scale trough {{ background: {t.raised_bg}; border-radius: 0; min-height: 4px; }}
 scale highlight {{ background: {t.accent_color}; }}
 scale slider {{ background: {t.text_primary}; border-radius: 2px; min-width: 12px; min-height: 12px; }}

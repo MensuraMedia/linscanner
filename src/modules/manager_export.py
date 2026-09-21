@@ -7,18 +7,14 @@ per page, numbered when there is more than one.
 
 import os
 
-from PIL import Image
 
 from config.config_scan import EXPORT_FORMATS, JPEG_QUALITY
+from utils.util_imaging import flatten
 
 
 def load_page(page):
-    """Open a page image with its rotation applied (rotation is clockwise)"""
-    img = Image.open(page["path"])
-    img.load()
-    if page.get("rotation"):
-        img = img.rotate(-page["rotation"], expand=True)
-    return img
+    """Open a page image with its rotation and Quick Edit overlays applied"""
+    return flatten(page)
 
 
 def format_for_path(path):
@@ -30,21 +26,42 @@ def format_for_path(path):
     return None
 
 
-def export_pages(pages, path, fmt=None):
-    """Write pages to path; returns the list of files written"""
+def export_pages(pages, path, fmt=None, registry=None):
+    """Write pages to path; returns the list of files written.
+
+    registry (FeatureRegistry, optional) may split the pages into several
+    documents (numbered files), write the PDF itself (OCR) and post-process it."""
     if not pages:
         raise ValueError("There are no pages to save.")
     fmt = fmt or format_for_path(path) or "pdf"
     spec = EXPORT_FORMATS[fmt]
     if not path.lower().endswith(spec["ext"]) and format_for_path(path) != fmt:
         path += spec["ext"]
+    docs = registry.split_documents(pages) if registry else [[p for p in pages if not p.get("separator")]]
+    docs = [d for d in docs if d]
+    if not docs:
+        raise ValueError("Every page was a blank separator: nothing to save.")
+    if len(docs) == 1:
+        return _export_document(docs[0], path, fmt, registry)
+    stem, ext = os.path.splitext(path)
+    written = []
+    for n, doc in enumerate(docs, start=1):
+        written += _export_document(doc, f"{stem}-{n:03d}{ext}", fmt, registry)
+    return written
+
+
+def _export_document(pages, path, fmt, registry=None):
+    """Write one document (list of pages) in one format"""
     dpi = pages[0].get("dpi") or 300
     images = [load_page(p) for p in pages]
 
     if fmt == "pdf":
-        # PDF pages must be RGB/L/1; resolution sets the physical page size
-        converted = [im if im.mode in ("RGB", "L", "1") else im.convert("RGB") for im in images]
-        converted[0].save(path, "PDF", save_all=True, append_images=converted[1:], resolution=dpi)
+        if not (registry and registry.export_pdf(pages, path)):  # e.g. OCR writes it itself
+            # PDF pages must be RGB/L/1; resolution sets the physical page size
+            converted = [im if im.mode in ("RGB", "L", "1") else im.convert("RGB") for im in images]
+            converted[0].save(path, "PDF", save_all=True, append_images=converted[1:], resolution=dpi)
+        if registry:
+            registry.postprocess_pdf(path)  # e.g. PDF/A, smaller file
         return [path]
     if fmt == "tiff":
         images[0].save(

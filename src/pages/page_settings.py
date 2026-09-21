@@ -53,6 +53,39 @@ class SettingsPage(BasePage):
         self.folder_btn.connect("file-set", lambda b: self.save("save_folder", b.get_filename()))
         card.pack_start(self.form_row("Save folder", self.folder_btn), False, False, 0)
 
+        # optional features
+        if self.ctx.features:
+            card = self.add_card("Features")
+            card.pack_start(
+                self.label(
+                    "Optional modules. Turn any of them off (or delete its file in src/features/) "
+                    "without affecting scanning.",
+                    "muted",
+                    wrap=True,
+                ),
+                False,
+                False,
+                0,
+            )
+            for feature in self.ctx.features.features:
+                check = Gtk.CheckButton(label=feature.name)
+                check.set_active(self.ctx.features.is_enabled(feature))
+                check.connect("toggled", self.on_feature_toggled, feature)
+                card.pack_start(check, False, False, 0)
+                desc = self.label(feature.description, "muted", wrap=True)
+                desc.set_margin_start(26)
+                card.pack_start(desc, False, False, 0)
+                if hasattr(feature, "settings_widget"):
+                    try:
+                        widget = feature.settings_widget(self.ctx)
+                    except Exception as e:  # a feature's settings UI must not break Settings
+                        widget = self.label(f"(settings unavailable: {e})", "status-error")
+                    if widget is not None:
+                        widget.set_margin_start(26)
+                        card.pack_start(widget, False, False, 4)
+            for name, error in self.ctx.features.errors:
+                card.pack_start(self.label(f"⚠ {name}: {error}", "status-error", wrap=True), False, False, 0)
+
         # drivers
         card = self.add_card("Drivers")
         self.show_all = Gtk.CheckButton(
@@ -84,6 +117,11 @@ class SettingsPage(BasePage):
         self.ctx.settings.set("theme", combo.get_active_id())
         self.ctx.theme.apply_theme(theme)
         self.draw_swatches(theme)
+
+    def on_feature_toggled(self, check, feature):
+        """Enable or disable a feature module; pages update immediately"""
+        self.ctx.features.set_enabled(feature.id, check.get_active())
+        self.ctx.emit("features-changed")
 
     def on_show_all(self, btn):
         """Toggle showing all drivers and the test scanner"""

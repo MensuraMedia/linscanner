@@ -8,7 +8,7 @@ scanners, network and Wi-Fi scanners, and multifunction printers.
 
 | | |
 |---|---|
-| Version | 0.1.0 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
+| Version | 0.2.0 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
 | Platform | Linux desktop, GTK 3 |
 | Tested on | Linux Mint 22.3 (Ubuntu 24.04 base), kernel 7.0, amd64, with an Epson WorkForce ES-400 II |
 | Part of | [linux-peripherals](../README.md), which has offline installers and device references |
@@ -37,25 +37,31 @@ scanners, network and Wi-Fi scanners, and multifunction printers.
 
 | Area | What you get |
 |---|---|
-| **Scanning** | Any SANE scanner. Flatbed, document feeder (scans every loaded page) and duplex (both sides in one pass) |
+| **Scanning** | Any SANE scanner, plus linscanner's own driverless eSCL client. Flatbed, document feeder and duplex |
+| **Sheet-fed modes** | **All sheets** (the whole stack in one go) or **One sheet at a time** (each press adds a sheet to the same document; a duplex sheet gives front + back) |
+| **Connection fallback** | Tries every way to reach the scanner in order (open-source driver → vendor driver → driverless USB → own eSCL client → network → remote), until one scans. Never retries when you need to act (feeder empty, jam, cover open) |
+| **Scan Device Information** | Every detected scanner with identity, USB connection details, connection methods, permissions, capabilities, live status and firmware, plus **Check for devices again** |
 | **Color / Black & White** | Color, or Black & White. B&W is grayscale by default (keeps faint text); Settings can switch it to pure black-and-white |
 | **Quality** | High 600 dpi, Medium 300 dpi, Low 150 dpi, automatically matched to the nearest resolution your scanner supports |
 | **Paper size** | Letter, Legal, A4, A5 or the full scan area, limited to your scanner's maximum |
 | **Clear feedback** | A summary line shows exactly what will be scanned; per-page progress; page count; plain-language errors (feeder empty, paper jam, scanner busy, not responding) |
 | **Cancel** | Stops the scan and keeps the pages already scanned |
 | **Preview** | Large fit-to-window view and a thumbnail strip; opens automatically after scanning |
-| **Page tools** | Rotate left, right or 180° per page; delete a page; clear all |
+| **Page tools** | Rotate left, right or 180°; move pages earlier or later; delete a page; clear all |
+| **Quick Edit** | Add text (20 basic fonts, size, colour) and signatures from transparent PNGs; drag, resize, delete and apply to all pages. Non-destructive until Save As |
+| **Automatic clean-up** | Auto-crop (feeder overrun), deskew and blank-page removal, on by default |
+| **More modules** | Searchable PDF (OCR), auto-rotate, image enhancement, scan profiles, auto-save with file-name templates, batch splitting, PDF/A and smaller PDFs, import images. Each can be switched on or off in Settings |
 | **Save As** | PDF (all pages in one file), TIFF (multi-page), PNG or JPEG (one file per page). Remembers your folder and asks before overwriting |
-| **Devices page** | Every scanner and driver found, with sources, modes, resolutions and scan area |
-| **Smart driver choice** | If one scanner is offered by several drivers, only the most reliable one is shown |
+| **Smart driver choice** | One scanner offered by several drivers is shown once, with the most reliable driver first and the others kept as fallbacks |
 | **Remembers your choices** | Scanner, color, quality, paper, save folder and theme |
-| **Themes** | The framework's seven dark themes; **Default Blue** is the default |
+| **Look** | Flat, square gtk-python-dashboard-starter layout; the framework's seven themes, **Default Blue** by default |
 | **Works offline** | Every dependency is in the repo's offline package pool |
 | **Try without hardware** | `--test-scanner` uses SANE's built-in virtual scanner |
 
 The complete feature and function list is in
-[`docs/FEATURES.md`](docs/FEATURES.md), and every code function is in
-[`docs/api-reference.md`](docs/api-reference.md).
+[`docs/FEATURES.md`](docs/FEATURES.md). How it works (USB processes, connection
+methods, fallback, modules) is in [`docs/TECHNICAL.md`](docs/TECHNICAL.md), and
+every code function is in [`docs/api-reference.md`](docs/api-reference.md).
 
 ---
 
@@ -90,6 +96,8 @@ driver on your system:
 
 **Verified hardware:** Epson WorkForce ES-400 II (USB `04b8:0181`, driver
 `epsonds`). The initial hardware test passed on 2026-09-21.
+
+![Scan Device Information](docs/images/screenshot-device-info.png)
 
 **Check your scanner** before or after installing:
 ```bash
@@ -153,6 +161,10 @@ rm -rf ~/.config/linscanner                # removes your settings (optional)
    seconds; press **Refresh** after plugging one in.
 3. **Source:** *Flatbed* for one page on the glass; a *Feeder* / *ADF*
    source for a stack; *Duplex* for both sides.
+   - **Sheets** (feeder sources): *All sheets* scans the whole stack. *One
+     sheet at a time* scans one sheet per press, so you can feed sheets one
+     by one. The button becomes **Scan next sheet**, and **Done → Preview**
+     finishes the document.
 4. **Color:** *Color* or *Black & White*.
 5. **Quality:** *High* for small print, photos or archiving; *Medium* for
    everyday documents; *Low* for quick copies and small files.
@@ -163,11 +175,27 @@ Pages appear as they are scanned, and **Preview** opens when the scan finishes.
 
 ![Preview page](docs/images/screenshot-preview.png)
 
+![Quick Edit](docs/images/screenshot-quick-edit.png)
+
 ### Fix and save
 - Click a thumbnail to view that page.
 - **Rotate left / right / 180°** to correct orientation, for example if your
   feeder delivers pages upside down.
-- **Delete page** removes a blank or bad page. **Clear all** starts over.
+- **Delete page** removes a bad page, and **Move ← / →** reorders pages.
+  **Clear all** starts over.
+- **Quick Edit…** opens the page editor:
+  - **Text:** type it, choose one of 20 fonts, a size and a colour, then **Add text**.
+  - **Signatures:** **Import PNG…** adds a signature image to your library
+    (`~/.local/share/linscanner/signatures/`). Transparent PNGs work best. If
+    yours has a white background, linscanner offers to make it transparent.
+    Select it, then **Place signature**.
+  - **Editing:** drag items to move them, and drag the blue corner square to
+    resize. **Delete** removes an item, double-click text to edit it, and
+    **Apply to all pages** repeats an item (e.g. a signature or date) on
+    every page.
+  - Edits show in the preview and are added to the file when you **Save As**.
+- **Import images…** adds PNG/JPEG/TIFF files as pages (e.g. scans your
+  scanner saved to a USB stick).
 - **Save As…** asks for a file name and format:
 
 | Format | Best for | Pages |
@@ -196,13 +224,15 @@ Pages appear as they are scanned, and **Preview** opens when the scan finishes.
 | Color scheme | The framework's seven themes (Default Blue by default) |
 | Black & White | Grayscale (default) or Pure black & white |
 | Save folder | Where Save As starts |
+| Features | Switch each module on or off, with its options (blank-page sensitivity, enhancement sliders, PDF/A and size, auto-save folder and name template) |
 | Drivers | Show every driver per scanner, and SANE's virtual test scanner (off by default) |
 
 **Files:**
 
 | Path | Content |
 |---|---|
-| `~/.config/linscanner/settings.json` | Your settings |
+| `~/.config/linscanner/settings.json` | Your settings (including feature on/off and options) |
+| `~/.local/share/linscanner/signatures/` | Your signature library (Quick Edit) |
 | `/tmp/linscanner-*/` | This session's scans (deleted when you close linscanner, so save first) |
 | `~/.local/share/applications/linscanner.desktop` | Menu entry |
 
@@ -222,12 +252,14 @@ Pages appear as they are scanned, and **Preview** opens when the scan finishes.
 
 | Problem | What to do |
 |---|---|
-| "No scanners found" | Check the cable and power, press **Refresh**, and run `scanimage -L`. If that lists nothing, your scanner needs a SANE driver (see [Compatibility](#scanners)) |
+| "No scanners found" | Check the cable and power, then **Device Info → Check for devices again**. A scanner found on USB but with no working driver is listed there with what to do |
 | Scanner listed but "not responding" / timed out | Power-cycle the scanner and press Refresh. On the ES-400 II this happens after the Epson Scan 2 Flatpak crashes |
 | "Document feeder is empty" | Load pages **face down**, top edge first, until the feeder grips them |
 | "Scanner is busy" | Close other scanning apps (Document Scanner, Epson Scan 2, gscan2pdf) |
-| Pages come out upside down | Use **Rotate 180°**. Auto-rotate is on the roadmap |
-| Image is longer than the page | Choose the matching **Paper size** instead of Full scan area |
+| Pages come out upside down | Turn on **Auto-rotate** in Settings → Features (needs text on the page), or use **Rotate 180°** |
+| Image is longer than the page | Auto-crop (on by default) trims the feeder overrun when it's distinguishable from the paper; otherwise choose the matching **Paper size** |
+| A page with content was removed as blank | Lower the blank-page sensitivity in Settings → Features, or turn blank-page removal off |
+| Can't find the text in a saved PDF | Turn on **Searchable PDF (OCR)** in Settings → Features |
 | Scanning is slow at High quality | Use a USB 3 port and cable if the scanner supports it (`../bin/device-finder` shows the link speed) |
 | Scanner appears twice in other apps | A vendor driver (e.g. Epson's `epsonscan2`) adds a second entry; linscanner hides it automatically |
 | Only works with sudo | Permissions: log out and in, or re-run the device installer (for the ES-400 II: `devices/scanner/epson-es-400-ii/install.sh`) |
@@ -275,44 +307,27 @@ do its seven dark themes:
 - Older commits and the append-only change log still mention the earlier
   defaults.
 
-**Known styling gap:**
-- The colours match the framework, but the widget shapes don't yet. The
-  current version has rounded cards and pill buttons; the framework is flat
-  and square, with full-width sidebar rows and a filled active row.
-- The flat framework layout is the first item of the next approved release
-  (see [roadmap](#9-known-limits-and-roadmap)).
+**Styling:** since 0.2.0 linscanner uses the framework's flat, square layout (full-width sidebar rows, active row filled with the accent colour, flat buttons).
 
 ---
 
 ## 9. Known limits and roadmap
 
 **Current limits:**
-- Finding scanners takes about 10 seconds, because SANE checks every driver.
-- There's no OCR, blank-page removal, auto-deskew, auto-crop or auto-rotate yet.
+- Finding scanners takes about 10–20 seconds, because SANE checks every driver and network scanners are discovered over mDNS.
+- Cameras (PTP) and document cameras are detected and explained, but not captured.
 - Settings stored inside the scanner (sleep timer, etc.) can't be changed from Linux.
+- OCR is English only.
 
-**Planned (awaiting approval, see [`../docs/HANDOFF.md`](../docs/HANDOFF.md)):**
-- **0.2.0:**
-  - Flat framework styling.
-  - A **Scan Device Information** section with a "Check for devices again" button.
-  - A connection engine that falls back through every method (SANE → vendor driver → driverless USB → direct eSCL → network eSCL/WSD → remote SANE → camera → import).
-  - A full technical document.
-- **0.3.0:** top-10 modern scanner features as **switchable modules**:
-  - searchable PDF (OCR)
-  - blank-page removal
-  - auto-deskew
-  - auto-crop
-  - auto-rotate
-  - scan profiles
-  - image enhancement
-  - auto-save with file-name templates
-  - batch splitting / page reordering
-  - PDF/A and compression options
-- **Quick Edit** (requested 2026-09-21, also a switchable module), in Preview:
-  - add basic **text** (about 20 common fonts, size, colour);
-  - add **signatures** from transparent PNG files, kept in a small signature library;
-  - drag, resize and remove placed items, and re-apply them to other pages, like mainstream PDF editors;
-  - edits are stored as layers and flattened only on Save As.
+**Done in 0.2.0:**
+- the framework styling;
+- sheet-fed modes;
+- Scan Device Information;
+- the connection engine with fallback and the own eSCL client;
+- all ten roadmap modules;
+- Quick Edit.
+
+The technical details are in [`docs/TECHNICAL.md`](docs/TECHNICAL.md), and open items in [`../docs/FOLLOW-UP.md`](../docs/FOLLOW-UP.md).
 
 ---
 
@@ -321,7 +336,7 @@ do its seven dark themes:
 | Task | Command (in `linscanner/`) |
 |---|---|
 | Run | `./run.sh` (or `./run.sh --test-scanner`) |
-| Test | `python3 -m pytest -q` (29 tests: parser against real scanner output, choice mapping, export, settings/themes, real scans via SANE's virtual scanner, and a full UI flow) |
+| Test | `python3 -m pytest -q` (62 tests: parser, engine and fallback, fake eSCL server, SANE virtual scanner, every feature module, registry isolation, UI flows) |
 | Lint | `python3 -m black --check src tests && python3 -m pyflakes src tests` |
 | Format | `python3 -m black src tests` |
 | API docs | `python3 tools/gen_api_docs.py` → `docs/api-reference.md` |
@@ -332,10 +347,11 @@ do its seven dark themes:
 ```
 src/main.py          entry point
 src/config/          themes, layout, scan presets (all tunables)
-src/backends/        scanner interface + SANE backend + parser (no GTK)
-src/modules/         scan manager, export, settings, theme, navigation, app context
+src/backends/        scanner interface, SANE backend, own eSCL client, USB probe, parser (no GTK)
+src/features/        optional modules (feature_*.py), loaded by the FeatureRegistry
+src/modules/         scan manager, connection engine, device info, export, settings, theme, navigation, context
 src/ui/              window, sidebar, content area, components (segmented control, preview)
-src/pages/           scan, preview, devices, settings, about
+src/pages/           scan, preview, device info, settings, about
 src/utils/           paths, version
 tests/               pytest suite + captured scanner output fixtures
 docs/                FEATURES, api-reference, architecture, research, images
@@ -343,7 +359,8 @@ docs/                FEATURES, api-reference, architecture, research, images
 
 - **Add a page:** subclass `pages/page_base.BasePage`, then add it to
   `ui/content_area.PAGES` and `ui/sidebar.NAV_ITEMS`.
-- **Add a scanner backend:** implement `backends/backend_base.ScannerBackend`.
+- **Add a scanner backend:** implement `backends/backend_base.ScannerBackend` and add it to the engine in `main.py`.
+- **Add a feature:** create `src/features/feature_<name>.py` with a `Feature(BaseFeature)` class. It's loaded automatically, can be switched off in Settings, and deleting the file removes it.
 
 Project rules, from the universal instruction set, are in
 [`CLAUDE.md`](CLAUDE.md):

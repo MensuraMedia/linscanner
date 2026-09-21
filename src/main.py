@@ -18,6 +18,7 @@ from backends.backend_escl import EsclBackend  # noqa: E402
 from backends.backend_sane import SaneBackend  # noqa: E402
 from modules.manager_connection import ConnectionEngine  # noqa: E402
 from config.config_themes import get_theme  # noqa: E402
+from features import FeatureRegistry  # noqa: E402
 from modules.app_context import AppContext  # noqa: E402
 from modules.manager_navigation import NavigationManager  # noqa: E402
 from modules.manager_scan import ScanManager  # noqa: E402
@@ -63,6 +64,8 @@ def main(argv=None):
     else:
         scan = ScanManager(settings, backend)
     ctx = AppContext(settings, scan, NavigationManager(), theme)
+    ctx.features = FeatureRegistry(settings)  # optional modules (src/features/feature_*.py)
+    scan.features = ctx.features
 
     window = AppWindow(ctx)
     window.connect("destroy", Gtk.main_quit)

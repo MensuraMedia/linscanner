@@ -30,3 +30,9 @@
 | 2026-09-21T17:45:00 | Connection engine: grouped devices, ranked methods, fallback scan, driverless hints |
 | 2026-09-21T17:55:00 | Scan Device Information page + Check for devices again; firmware; live status |
 | 2026-09-21T18:00:00 | Fix: serialise SANE device access (Device busy between pages); option flags/groups |
+| 2026-09-21T18:20:00 | Feature registry: feature_*.py modules, isolated hooks, Settings on/off + options |
+| 2026-09-21T18:35:00 | Modules: autocrop, deskew, blank removal, autorotate, enhance, OCR, PDF options |
+| 2026-09-21T18:45:00 | Modules: batch split, autosave, profiles, import images; Move page left/right |
+| 2026-09-21T18:55:00 | Quick Edit: 20 fonts, PNG signature library, move/resize/apply to all, flatten |
+| 2026-09-21T19:00:00 | Fix: blank detection kept colour pages (per-channel paper colour); autocrop safe |
+| 2026-09-21T19:10:00 | Offline deps (tesseract, gs, numpy, fonts); docs/TECHNICAL.md; version 0.2.0 |

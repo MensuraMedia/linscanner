@@ -20,7 +20,18 @@ _ROTATE = {
 
 
 def load_pixbuf(page, max_w, max_h):
-    """Page image scaled to fit max_w x max_h, rotation applied"""
+    """Page image scaled to fit max_w x max_h, rotation (and Quick Edit overlays) applied"""
+    if page.get("overlays"):
+        from PIL import Image
+
+        from utils.util_imaging import flatten
+
+        img = flatten(page).convert("RGB")
+        img.thumbnail((max(max_w, 1), max(max_h, 1)), Image.BILINEAR)
+        data = GLib.Bytes.new(img.tobytes())
+        return GdkPixbuf.Pixbuf.new_from_bytes(
+            data, GdkPixbuf.Colorspace.RGB, False, 8, img.width, img.height, img.width * 3
+        )
     rot = page.get("rotation", 0)
     w, h = (max_h, max_w) if rot in (90, 270) else (max_w, max_h)
     pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(page["path"], max(w, 1), max(h, 1), True)

@@ -19,6 +19,8 @@ DEFAULTS = {
     "save_folder": os.path.join(os.path.expanduser("~"), "Documents"),
     "last_device": "",
     "show_all_backends": False,  # show duplicate backends and SANE's test scanner
+    "features": {},  # feature id -> enabled (missing = the feature's default)
+    "feature_settings": {},  # feature id -> {option: value}
 }
 
 

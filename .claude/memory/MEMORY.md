@@ -10,6 +10,7 @@ type: project
 - [2026-09-21 linscanner build](sessions/2026-09-21_1557_linscanner-build.md): v0.1.0 built; Epson Scan 2 Flatpak crash diagnosed
 
 ## Changes
+- [2026-09-21 linscanner v0.2.0](changes/2026-09-21_linscanner-v0.2.0.md): styling, sheet modes, engine, device info, 12 feature modules
 - [2026-09-21 linscanner v0.1.0](changes/2026-09-21_linscanner-v0.1.0.md): initial feature set, 27 tests
 
 ## Decisions

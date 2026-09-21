@@ -25,7 +25,7 @@ Layout Configuration Centralized layout dimensions and spacing constants
 
 Scan Configuration Colour modes, quality presets, paper sizes and export formats. Everything here is scanner-independent; backends map these onto what a device supports.
 
-Constants: `COLOR_MODES`, `LINEART_MODE_NAMES`, `BW_STYLES`, `DEFAULT_BW_STYLE`, `QUALITY_PRESETS`, `DEFAULT_QUALITY`, `STANDARD_RESOLUTIONS`, `PAPER_SIZES`, `DEFAULT_PAPER`, `FEEDER_SOURCE_HINTS`, `PREFERRED_BACKENDS`, `HIDDEN_BACKENDS_BY_DEFAULT`, `BACKEND_EXTRA_ARGS`, `EXPORT_FORMATS`, `JPEG_QUALITY`, `LIST_TIMEOUT`, `OPTIONS_TIMEOUT`, `PAGE_TIMEOUT`
+Constants: `COLOR_MODES`, `LINEART_MODE_NAMES`, `BW_STYLES`, `DEFAULT_BW_STYLE`, `QUALITY_PRESETS`, `DEFAULT_QUALITY`, `STANDARD_RESOLUTIONS`, `PAPER_SIZES`, `DEFAULT_PAPER`, `FEEDER_SOURCE_HINTS`, `DUPLEX_SOURCE_HINTS`, `SHEET_MODES`, `DEFAULT_SHEET_MODE`, `PREFERRED_BACKENDS`, `HIDDEN_BACKENDS_BY_DEFAULT`, `BACKEND_EXTRA_ARGS`, `EXPORT_FORMATS`, `JPEG_QUALITY`, `LIST_TIMEOUT`, `OPTIONS_TIMEOUT`, `PAGE_TIMEOUT`
 
 ### `src/config/config_themes.py`
 
@@ -44,6 +44,8 @@ Constants: `DEFAULT_THEME_ID`, `DARK_THEMES`
 
 Scanner Backend Interface Every scanner backend (SANE today; others can be added) implements this interface, so the UI never depends on a specific driver technology.
 
+Constants: `USER_ACTION_CODES`, `FALLTHROUGH_CODES`, `SANE_EXIT_CODES`
+
 | Symbol | Purpose |
 |---|---|
 | class `ScannerDevice()` | A scanner as reported by a backend |
@@ -51,15 +53,45 @@ Scanner Backend Interface Every scanner backend (SANE today; others can be added
 | class `ScannerCapabilities()` | What a device can do, normalised from its options |
 | class `ScanRequest()` | One scan job, already resolved to device-specific values |
 | class `ScanError(Exception)` | Raised when listing, probing or scanning fails (message is user-facing) |
+| &nbsp;&nbsp;`.__init__(self, message, code='error')` | message: shown to the user; code: see USER_ACTION_CODES / FALLTHROUGH_CODES |
+| &nbsp;&nbsp;`.needs_user(self)` | True if the user must act (feeder empty, jam, cover open) |
 | class `ScannerBackend(ABC)` | Interface all scanner backends implement |
 | &nbsp;&nbsp;`.available(self)` | True if the backend's tools are installed |
 | &nbsp;&nbsp;`.list_devices(self)` | Return [ScannerDevice]; may take several seconds |
 | &nbsp;&nbsp;`.get_capabilities(self, device_id)` | Return ScannerCapabilities for a device |
 | &nbsp;&nbsp;`.scan(self, request, on_page=None, on_progress=None, cancel_event=None)` | Run a scan; return list of image paths. |
 
+### `src/backends/backend_escl.py`
+
+Direct eSCL Backend linscanner's own driverless client for eSCL (AirScan / Mopria), used when SANE can't reach a scanner that speaks eSCL. Covers:   - IPP-over-USB devices (USB class 07/01/04) exposed by ipp-usb on     http://127.0.0.1:60000+ (loopback), and   - network scanners announced over mDNS as _uscan._tcp / _uscans._tcp. Standard library only (urllib + ElementTree). Protocol notes: docs/research/device-capabilities.md §2.
+
+Constants: `PREFIX`, `IPP_USB_PORTS`, `HTTP_TIMEOUT`, `NS`, `MODE_TO_NAME`, `NAME_TO_MODE`, `STATUS_CODES`
+
+| Symbol | Purpose |
+|---|---|
+| `_local(tag)` | Tag name without its XML namespace |
+| `_find(elem, name)` | First descendant with this local name (namespace-agnostic) |
+| `_findall(elem, name)` | All descendants with this local name |
+| `_text(elem, name, default='')` | Text of the first descendant with this local name |
+| `parse_capabilities(xml_text)` | ScannerCapabilities XML -> (ScannerCapabilities, info dict) |
+| `parse_status(xml_text)` | ScannerStatus XML -> (state, adf_state) |
+| `build_scan_settings(request, fmt)` | ScanSettings XML for a request (regions in 1/300 inch) |
+| class `EsclBackend(ScannerBackend)` | eSCL over HTTP, without SANE |
+| &nbsp;&nbsp;`.__init__(self, extra_urls=None, probe_ipp_usb=True, browse_mdns=True)` | extra_urls: known eSCL base URLs (e.g. http://192.168.1.20/eSCL) |
+| &nbsp;&nbsp;`.available(self)` | Always available: needs only the Python standard library |
+| &nbsp;&nbsp;`._request(url, method='GET', data=None, timeout=HTTP_TIMEOUT)` | (status, headers, body) for an HTTP request; ScanError on network errors |
+| &nbsp;&nbsp;`._candidate_urls(self)` | eSCL base URLs from ipp-usb loopback ports, mDNS and configured URLs |
+| &nbsp;&nbsp;`.list_devices(self)` | eSCL scanners that answer ScannerCapabilities |
+| &nbsp;&nbsp;`.get_capabilities(self, device_id)` | Capabilities from GET ScannerCapabilities (cached per URL) |
+| &nbsp;&nbsp;`.get_status(self, device_id)` | (state, adf_state) from GET ScannerStatus |
+| &nbsp;&nbsp;`.scan(self, request, on_page=None, on_progress=None, cancel_event=None)` | POST a scan job, then fetch NextDocument until the job is done |
+| &nbsp;&nbsp;`.explain(adf_state)` | User-facing message for an eSCL AdfState |
+
 ### `src/backends/backend_sane.py`
 
 SANE Backend Talks to scanners through SANE's `scanimage` tool, so any scanner with a SANE driver works: USB backends (epsonds, genesys, ...), network scanners via sane-airscan (eSCL/WSD), HP via hpaio, and SANE's virtual "test" scanner.
+
+Constants: `DEVICE_LOCK`
 
 | Symbol | Purpose |
 |---|---|
@@ -72,13 +104,15 @@ SANE Backend Talks to scanners through SANE's `scanimage` tool, so any scanner w
 | &nbsp;&nbsp;`.get_capabilities(self, device_id)` | Read a device's options (scanimage -A) as ScannerCapabilities |
 | &nbsp;&nbsp;`.build_command(self, request)` | scanimage arguments for a request (separate for testing) |
 | &nbsp;&nbsp;`.scan(self, request, on_page=None, on_progress=None, cancel_event=None)` | Scan per request; report pages/progress live; honour cancel; return page paths |
+| &nbsp;&nbsp;`._scan_locked(self, request, on_page, on_progress, cancel_event)` | scan() body; runs with DEVICE_LOCK held |
+| &nbsp;&nbsp;`.classify(returncode, stderr)` | Error code from scanimage's exit status (= SANE status), falling back to its text |
 | &nbsp;&nbsp;`._explain(stderr)` | Turn scanimage's error output into a user-facing message |
 
 ### `src/backends/parser_sane.py`
 
 SANE Output Parser Pure text parsing of `scanimage` output (no subprocesses) so it can be unit-tested against captured fixtures.
 
-Constants: `LIST_FORMAT`, `_SERIAL`, `_OPTION`, `_RANGE`
+Constants: `LIST_FORMAT`, `_SERIAL`, `_OPTION`, `_GROUP`, `_FLAGS`, `FEATURE_OPTIONS`, `_RANGE`
 
 | Symbol | Purpose |
 |---|---|
@@ -86,10 +120,30 @@ Constants: `LIST_FORMAT`, `_SERIAL`, `_OPTION`, `_RANGE`
 | `parse_device_list(text)` | Parse `scanimage -f '%d|%v|%m|%t%n'` output into ScannerDevice objects |
 | `model_key(device)` | Normalised model name used to spot one scanner offered by two backends |
 | `parse_options(text)` | Parse `scanimage -d DEV -A` output into {option: {values, default, unit}} |
+| `device_features(options)` | Friendly names of notable device features found among its options |
 | `_resolutions(opt)` | Resolution list from a parsed option (lists as-is, ranges as standard steps) |
 | `_max(opt)` | Upper bound of a range option (0.0 if not a range) |
 | `capabilities_from_options(options)` | Normalise parsed options into ScannerCapabilities |
 | `parse_progress(text)` | Return the last 'Progress: 42.3%' percentage in a chunk of stderr, or None |
+
+### `src/backends/usb_probe.py`
+
+USB Probe Driver-independent USB facts for scanner detection, read straight from sysfs and the udev database (no subprocesses, no root): identity, speed, interface classes, device-node access and SANE's udev match. See docs/research/device-capabilities.md §5.
+
+Constants: `SYS_USB`, `UDEV_DATA`, `SCANNER_VENDORS`
+
+| Symbol | Purpose |
+|---|---|
+| class `UsbDevice()` | One USB device and what its interfaces suggest |
+| &nbsp;&nbsp;`.usb_id(self)` | VID:PID string |
+| &nbsp;&nbsp;`.libusb_name(self)` | How SANE names this device: libusb:BBB:DDD |
+| &nbsp;&nbsp;`.has_class(self, cls, sub=None, proto=None)` | True if any interface matches the class (and optional subclass/protocol) |
+| &nbsp;&nbsp;`.kinds(self)` | Why this device may be a scanner (empty list = probably not one) |
+| `_read(path, default='')` | Contents of a small sysfs/udev file, stripped (default if unreadable) |
+| `_udev_properties(sys_path)` | E: properties from the udev database for a device (empty if unavailable) |
+| `probe(sys_root=SYS_USB)` | All USB devices (not hubs' interfaces) with scanner-relevant facts |
+| `likely_scanners(devices)` | USB devices that are probably scanners (or scanner-capable MFPs) |
+| `speed_label(mbps)` | Human USB speed name |
 
 ### `src/modules/app_context.py`
 
@@ -102,15 +156,52 @@ App Context Shared services handed to every page (settings, scan manager, naviga
 | &nbsp;&nbsp;`.on(self, event, callback)` | Subscribe callback to an event name |
 | &nbsp;&nbsp;`.emit(self, event, *args)` | Call every subscriber of event with args |
 
+### `src/modules/manager_connection.py`
+
+Connection Engine Heuristic, multi-method scanner connection (docs/research/connection-methods.md).  1. Discovery asks every backend (SANE, direct eSCL) plus the USB probe what    it sees, and groups entries that are the same physical scanner. 2. Each physical scanner gets its connection methods ranked:      A1 open-source SANE driver (USB)      e.g. epsonds, pixma, genesys      A3 vendor SANE driver                 e.g. epsonscan2, hpaio, brother*      B2 driverless eSCL over IPP-USB       SANE airscan/escl on 127.0.0.1      D1 linscanner's own eSCL client       backend_escl (USB or network)      B1 driverless network eSCL / WSD      SANE airscan/escl      C1 remote SANE (saned)                SANE net      T  SANE virtual test scanner 3. A scan tries method 1; on a connection-type failure (busy, I/O, timeout,    access, unsupported, missing driver) it tries the next, and so on. It    never falls through when the user must act (feeder empty, jam, cover    open), since another method on the same device would fail or double-feed.
+
+Constants: `METHOD_ORDER`, `METHOD_LABELS`, `VENDOR_SANE_BACKENDS`, `VENDOR_SANE_PREFIXES`
+
+| Symbol | Purpose |
+|---|---|
+| `method_code(device)` | Connection method code (A1/A3/B1/B2/C1/D1/T) for a backend device entry |
+| class `Method()` | One way to reach a physical scanner |
+| &nbsp;&nbsp;`.label(self)` | e.g. 'Open-source SANE driver · epsonds' |
+| class `PhysicalDevice()` | A scanner, with every method that can reach it (best first) |
+| &nbsp;&nbsp;`.id(self)` | Stable id for the UI: the preferred method's device id (or the key) |
+| &nbsp;&nbsp;`.backend(self)` | Driver name of the preferred method |
+| &nbsp;&nbsp;`.kind(self)` | Device type text from the preferred method |
+| &nbsp;&nbsp;`.label(self)` | Display name with the driver in brackets |
+| `_usb_for(device, usb_devices)` | UsbDevice matching a SANE libusb:BBB:DDD device name, if any |
+| class `ConnectionEngine()` | Discovers physical scanners and scans with fallback across methods |
+| &nbsp;&nbsp;`.__init__(self, backends, use_usb_probe=True)` | backends: ScannerBackend instances (e.g. SaneBackend(), EsclBackend()) |
+| &nbsp;&nbsp;`.discover(self)` | List physical scanners (grouped), with ranked methods |
+| &nbsp;&nbsp;`._hint(u)` | Why a USB scanner-like device has no working method, and what to do |
+| &nbsp;&nbsp;`.scan(self, physical, build_request, on_page=None, on_progress=None, cancel_event=None)` | Try each method in order until one scans. |
+
+### `src/modules/manager_device_info.py`
+
+Device Information Builds the "Scan Device Information" content for a physical scanner: identity, connection path, connection methods (fallback order), permissions, capabilities, live status and firmware. No GTK: returns plain data. See docs/research/device-capabilities.md §8.
+
+Constants: `STATUS_TEXT`
+
+| Symbol | Purpose |
+|---|---|
+| `sections(physical, caps=None)` | [(section title, [(label, value), ...])] describing a physical scanner |
+| `check_status(physical)` | (level, text) for the scanner's current state: ok / warn / busy / error |
+| `firmware(physical)` | Firmware / version string if a driver reports one, else a short explanation |
+| `usb_node_hint(physical)` | Extra advice when the USB device node isn't accessible |
+
 ### `src/modules/manager_export.py`
 
 Export Manager Saves scanned pages (with their rotation applied) as PDF, PNG, JPEG or TIFF. Multi-page formats (PDF, TIFF) get one file; single-page formats get one file per page, numbered when there is more than one.
 
 | Symbol | Purpose |
 |---|---|
-| `load_page(page)` | Open a page image with its rotation applied (rotation is clockwise) |
+| `load_page(page)` | Open a page image with its rotation and Quick Edit overlays applied |
 | `format_for_path(path)` | Export format key from a filename's extension (None if unknown) |
-| `export_pages(pages, path, fmt=None)` | Write pages to path; returns the list of files written |
+| `export_pages(pages, path, fmt=None, registry=None)` | Write pages to path; returns the list of files written. |
+| `_export_document(pages, path, fmt, registry=None)` | Write one document (list of pages) in one format |
 
 ### `src/modules/manager_navigation.py`
 
@@ -137,14 +228,20 @@ Scan Manager Turns the user's choices (Color / Black & White, High / Medium / Lo
 | `pick_resolution(resolutions, quality)` | Nearest supported resolution to the quality preset (ties go higher) |
 | `pick_area(caps, paper)` | Paper size clamped to the device's maximum area; (0, 0) = device default |
 | `is_feeder(source)` | True if a source name means a document feeder (scan until empty) |
+| `is_duplex(source)` | True if a source scans both sides of each sheet |
+| `sheet_limits(source, sheet_mode)` | (multi_page, max_pages) for a source and sheet mode ("all" / "one") |
 | `filter_devices(devices, show_all=False)` | Hide SANE's test scanner and duplicate backends for the same model |
-| class `ScanManager()` | Owns the backend, the current device and the scanned pages of a session |
-| &nbsp;&nbsp;`.__init__(self, settings, backend=None)` | Create the manager with a session temp dir; backend defaults to SANE |
+| `equivalent_source(source, caps)` | The same kind of source (flatbed / feeder / duplex) in another method's names |
+| class `ScanManager()` | Owns the connection engine, the current device and the scanned pages of a session |
+| &nbsp;&nbsp;`.__init__(self, settings, backend=None, engine=None)` | Create the manager with a session temp dir. |
 | &nbsp;&nbsp;`._in_thread(self, work, on_done, on_error)` | Run work() in a thread; deliver result or error on the GTK thread |
 | &nbsp;&nbsp;`.refresh_devices(self, on_done, on_error)` | List scanners in the background, filtered for display |
 | &nbsp;&nbsp;`.load_capabilities(self, device_id, on_done, on_error)` | Read (or reuse cached) device capabilities in the background |
-| &nbsp;&nbsp;`.build_request(self, device_id, source, color_mode, quality, paper, create_dir=True)` | create_dir=False builds the request for display only (no temp folder) |
+| &nbsp;&nbsp;`.physical(self, device_id)` | The PhysicalDevice with this id, or None |
+| &nbsp;&nbsp;`.build_request(self, device_id, source, color_mode, quality, paper, create_dir=True, sheet_mode='all')` | create_dir=False builds the request for display only (no temp folder) |
+| &nbsp;&nbsp;`._request_for(self, device_id, caps, source, color_mode, quality, paper, sheet_mode, create_dir=True)` | ScanRequest for one device/method from the user's choices and its capabilities |
 | &nbsp;&nbsp;`.start_scan(self, request, on_page, on_progress, on_done, on_error)` | Start a scan in the background; pages are appended as they arrive |
+| &nbsp;&nbsp;`.process_page(self, page)` | Run the enabled page processors on a scanned page (in the scan thread). |
 | &nbsp;&nbsp;`.cancel(self)` | Ask the running scan to stop (pages so far are kept) |
 | &nbsp;&nbsp;`.rotate_page(self, index, degrees)` | Rotate a page clockwise by degrees (applied at display/export) |
 | &nbsp;&nbsp;`.delete_page(self, index)` | Remove a page from the session |
@@ -178,7 +275,7 @@ Theme Applicator Generates the application CSS from a ThemeDefinition and applie
 | class `ThemeApplicator()` | Applies theme colours to the application |
 | &nbsp;&nbsp;`.__init__(self)` | Create the CSS provider (registered on first apply) |
 | &nbsp;&nbsp;`.apply_theme(self, theme)` | Generate and apply CSS for a theme; False if the CSS fails to load |
-| &nbsp;&nbsp;`.generate_css(t)` | Build the application stylesheet from a ThemeDefinition |
+| &nbsp;&nbsp;`.generate_css(t)` | Build the application stylesheet from a ThemeDefinition. |
 
 ### `src/ui/app_window.py`
 
@@ -197,7 +294,7 @@ Constants: `_ROTATE`
 
 | Symbol | Purpose |
 |---|---|
-| `load_pixbuf(page, max_w, max_h)` | Page image scaled to fit max_w x max_h, rotation applied |
+| `load_pixbuf(page, max_w, max_h)` | Page image scaled to fit max_w x max_h, rotation (and Quick Edit overlays) applied |
 | class `PagePreview(Gtk.Box)` | Selected-page view + thumbnail strip; on_select(index) on thumbnail click |
 | &nbsp;&nbsp;`.__init__(self, on_select=None)` | Large view (scrolled) plus thumbnail strip |
 | &nbsp;&nbsp;`.set_pages(self, pages, selected=None)` | Show a page list and select one (keeps selection if possible) |
@@ -241,7 +338,7 @@ Constants: `NAV_ITEMS`, `BOTTOM_ITEMS`
 | class `Sidebar(Gtk.Box)` | Logo + navigation buttons |
 | &nbsp;&nbsp;`.__init__(self, navigation_manager)` | Logo, navigation buttons and Settings at the bottom |
 | &nbsp;&nbsp;`.build_logo_area(self)` | Logo image plus app name |
-| &nbsp;&nbsp;`.create_nav_button(self, label, page_id)` | Navigation button for a page id |
+| &nbsp;&nbsp;`.create_nav_button(self, label, page_id, css=None)` | Navigation button for a page id (css: extra class for top/bottom borders) |
 | &nbsp;&nbsp;`.on_navigated(self, page_id)` | Highlight the button of the page now shown |
 
 ### `src/pages/page_about.py`
@@ -273,14 +370,22 @@ Base Page Class Base class for all pages (from gtk-python-dashboard-starter), ex
 
 ### `src/pages/page_devices.py`
 
-Devices Page Lists every scanner SANE reports (including duplicates hidden on the Scan page) with its driver and capabilities.
+Scan Device Information Page Every detected scanner with identity, connection path, connection methods in fallback order, permissions, capabilities, live status and firmware. Populates automatically; "Check for devices again" re-runs detection (SANE, eSCL, USB).
+
+Constants: `LEVEL_CSS`
 
 | Symbol | Purpose |
 |---|---|
-| class `DevicesPage(BasePage)` | Detected scanners and their capabilities |
-| &nbsp;&nbsp;`.build_content(self)` | Title, intro and the device list container |
-| &nbsp;&nbsp;`.show_devices(self, _visible)` | Rebuild the device cards from the scan manager's last listing |
-| &nbsp;&nbsp;`.on_shown(self)` | Refresh the cards whenever the page is opened |
+| `run_in_background(work, on_done, on_fail)` | Run work() in a thread; on_done(result) or on_fail(message) on the GTK thread |
+| class `DevicesPage(BasePage)` | Scan Device Information |
+| &nbsp;&nbsp;`.build_content(self)` | Title, check-again button, summary line and the device sections |
+| &nbsp;&nbsp;`.on_refreshing(self)` | Show that detection is running |
+| &nbsp;&nbsp;`._summary(self, text, css)` | Set the summary line text and colour |
+| &nbsp;&nbsp;`.show_devices(self, _visible=None)` | Rebuild one section per physical scanner |
+| &nbsp;&nbsp;`.device_section(self, d)` | Section for one scanner: status row, then an info grid |
+| &nbsp;&nbsp;`._firmware_done(self, d, fw, label)` | Store and show a firmware string read in the background |
+| &nbsp;&nbsp;`.check_status(self, d, label, button)` | Probe the scanner in the background and show a plain-language status |
+| &nbsp;&nbsp;`.on_shown(self)` | Refresh the sections when the page is opened |
 
 ### `src/pages/page_preview.py`
 
@@ -290,11 +395,13 @@ Preview Page Shows scanned pages; rotate / delete pages; Save As PDF, PNG, JPEG 
 |---|---|
 | class `PreviewPage(BasePage)` | Page viewer with editing actions and Save As |
 | &nbsp;&nbsp;`.build_content(self)` | Toolbar (rotate, delete, clear, Save As), preview and status |
+| &nbsp;&nbsp;`.update_feature_buttons(self, *_)` | Show buttons of enabled features only |
 | &nbsp;&nbsp;`._tool(self, bar, text, action)` | Add a toolbar button that calls action() |
 | &nbsp;&nbsp;`.on_shown(self)` | Reload pages when the page is opened |
 | &nbsp;&nbsp;`.reload(self, *_)` | Show the session's pages and enable/disable actions |
 | &nbsp;&nbsp;`.update_info(self)` | Show 'Page n of m · mode · dpi' for the selected page |
 | &nbsp;&nbsp;`.rotate(self, degrees)` | Rotate the selected page and re-render |
+| &nbsp;&nbsp;`.move(self, step)` | Move the selected page one place earlier (-1) or later (+1) |
 | &nbsp;&nbsp;`.delete_page(self)` | Delete the selected page and select its neighbour |
 | &nbsp;&nbsp;`.clear_pages(self)` | Remove all pages after confirmation |
 | &nbsp;&nbsp;`._confirm(self, title, detail)` | Modal OK/Cancel question; True if OK |
@@ -318,12 +425,17 @@ Scan Page Choose scanner, source, colour, quality and paper; scan with live prog
 | &nbsp;&nbsp;`.devices_failed(self, message)` | Show a listing or options error |
 | &nbsp;&nbsp;`.on_device_changed(self, combo)` | Remember the device and load its capabilities |
 | &nbsp;&nbsp;`.caps_loaded(self, caps)` | Fill the source combo from capabilities and mark Ready |
+| &nbsp;&nbsp;`.sheet_mode(self)` | Current sheet mode ("all" / "one"); only meaningful for feeder sources |
+| &nbsp;&nbsp;`.on_source_changed(self)` | Show the Sheets choice for feeder sources only, then refresh the summary |
 | &nbsp;&nbsp;`.update_summary(self)` | Show exactly what will be sent to the scanner |
 | &nbsp;&nbsp;`.build_request(self, dry_run=False)` | Build a ScanRequest from the controls (dry_run: no temp folder) |
 | &nbsp;&nbsp;`.on_scan(self, _btn)` | Start scanning with the current options |
 | &nbsp;&nbsp;`.on_page(self, _page)` | Count a finished page and notify the Preview page |
 | &nbsp;&nbsp;`.on_progress(self, pct)` | Update the progress bar for the page in progress |
-| &nbsp;&nbsp;`.on_done(self, pages, cancelled)` | Report the result and open Preview if pages were scanned |
+| &nbsp;&nbsp;`.on_done(self, pages, cancelled)` | Report the result; open Preview, or wait for the next sheet in one-sheet mode |
+| &nbsp;&nbsp;`.on_shown(self)` | Back on the Scan page after a one-sheet session: start fresh labels |
+| &nbsp;&nbsp;`.finish_document(self)` | One-sheet mode: the document is complete (auto-save etc.), open Preview |
+| &nbsp;&nbsp;`.after_scan(self, final)` | Tell feature modules a scan ended (final = the document is complete) |
 | &nbsp;&nbsp;`.on_error(self, message)` | Show a scan error |
 
 ### `src/pages/page_settings.py`
@@ -336,9 +448,34 @@ Settings Page Theme, default save folder, Black & White style and driver visibil
 | &nbsp;&nbsp;`.build_content(self)` | Theme, scanning and driver setting cards |
 | &nbsp;&nbsp;`.save(self, key, value)` | Persist a setting and broadcast settings-changed |
 | &nbsp;&nbsp;`.on_theme(self, combo)` | Apply and remember the selected theme |
+| &nbsp;&nbsp;`.on_feature_toggled(self, check, feature)` | Enable or disable a feature module; pages update immediately |
 | &nbsp;&nbsp;`.on_show_all(self, btn)` | Toggle showing all drivers and the test scanner |
 | &nbsp;&nbsp;`.draw_swatches(self, theme)` | Show colour dots for the theme's main colours |
 | &nbsp;&nbsp;`._draw_dot(area, cr, rgba)` | Cairo draw handler for one swatch |
+
+### `src/utils/util_fonts.py`
+
+Font helpers for Quick Edit The 20 basic fonts offered for text, resolved to files through fontconfig (fc-match). Only families that are really installed are offered.
+
+Constants: `BASIC_FONTS`
+
+| Symbol | Purpose |
+|---|---|
+| `_match(family)` | (matched family, file) from fc-match, or (None, None) |
+| `font_file(family)` | Font file for a family (fontconfig picks a fallback if it's missing) |
+| `available_fonts()` | The basic fonts that are actually installed (no silent substitutes) |
+
+### `src/utils/util_imaging.py`
+
+Imaging helpers shared by the core and feature modules (Pillow + numpy). Kept in the core so features never depend on each other.
+
+| Symbol | Purpose |
+|---|---|
+| `small_gray(img, width=600)` | Grayscale copy scaled to about `width` pixels wide (fast analysis) |
+| `ink_ratio(img, margin=0.05)` | Share of pixels that differ from the paper, ignoring a margin (edges, shadows). |
+| `is_blank(img, threshold=0.002)` | True if the page has (almost) no ink |
+| `overlay_pixels(page, size)` | Overlay position helper: fractions of the page -> pixels for an image of `size` |
+| `flatten(page, img=None)` | Page image with rotation and Quick Edit overlays applied |
 
 ### `src/utils/util_paths.py`
 
@@ -350,3 +487,198 @@ Constants: `APP_ROOT`
 |---|---|
 | `resource(*parts)` | Absolute path of a file under resources/ |
 | `read_version()` | Version string from the VERSION file |
+
+### `src/features/__init__.py`
+
+Feature modules Optional features live here as feature_<name>.py files. The core never imports them directly: it calls the FeatureRegistry at a few hook points, and every hook call is isolated, so a feature that is disabled, deleted or broken can't affect scanning, preview or export.  Hooks a feature may implement (all optional):   process_page(image, page) -> image | None      after each scanned page (None = drop page)   split_documents(pages) -> [[page, ...], ...]    before export: one list per output file   export_pdf(pages, path) -> bool                 write a PDF itself (True = done)   postprocess_pdf(path)                           after a PDF was written   after_scan(ctx, pages, final)                   after a scan job (final = document complete)   extend_scan_page(page), extend_preview(page)    add widgets to those pages   settings_widget(ctx) -> Gtk.Widget | None       per-feature settings (Settings page)
+
+| Symbol | Purpose |
+|---|---|
+| class `BaseFeature()` | Base class for features; override the hooks you need |
+| &nbsp;&nbsp;`.__init__(self, settings)` | settings: the SettingsManager (feature options live under feature_settings[id]) |
+| &nbsp;&nbsp;`.option(self, key, default)` | This feature's stored option (or default) |
+| &nbsp;&nbsp;`.set_option(self, key, value)` | Store one of this feature's options |
+| class `FeatureRegistry()` | Discovers feature_*.py modules and dispatches hooks to the enabled ones |
+| &nbsp;&nbsp;`.__init__(self, settings, folder=None)` | Load every feature module in folder (default: this package) |
+| &nbsp;&nbsp;`._load(name, path)` | Import a feature module from exactly this file (not whatever shares its name) |
+| &nbsp;&nbsp;`.is_enabled(self, feature)` | Enabled per settings, else the feature's default |
+| &nbsp;&nbsp;`.set_enabled(self, feature_id, enabled)` | Turn a feature on or off (persisted) |
+| &nbsp;&nbsp;`.get(self, feature_id)` | Feature by id (loaded, enabled or not), or None |
+| &nbsp;&nbsp;`.enabled(self, hook=None)` | Enabled features, optionally only those implementing a hook |
+| &nbsp;&nbsp;`._call(self, feature, hook, *args)` | Call one hook, isolating failures; returns (ok, result) |
+| &nbsp;&nbsp;`.process_page(self, image, page)` | Run page processors in order; None means the page should be dropped |
+| &nbsp;&nbsp;`.split_documents(self, pages)` | Output documents (lists of pages); default: one document |
+| &nbsp;&nbsp;`.export_pdf(self, pages, path)` | Let a feature write the PDF (e.g. OCR); True if one did |
+| &nbsp;&nbsp;`.postprocess_pdf(self, path)` | Run PDF post-processors (e.g. PDF/A, compression) |
+| &nbsp;&nbsp;`.after_scan(self, ctx, pages, final)` | Notify features that a scan job ended |
+| &nbsp;&nbsp;`.extend(self, hook, page)` | Let features add widgets to a page (hook: extend_scan_page / extend_preview). |
+
+### `src/features/feature_autocrop.py`
+
+Auto-crop Removes the extra length a sheet feeder scans past the end of the sheet: a uniform band at the bottom whose tone differs from the paper. Page margins are never cut. If the overrun looks identical to the paper, nothing is trimmed (use the Paper size setting instead).
+
+| Symbol | Purpose |
+|---|---|
+| `trailing_band(a)` | Row (in the small image) where the uniform overrun band starts, or None |
+| class `Feature(BaseFeature)` | Trim the feeder overrun at the end of the sheet |
+| &nbsp;&nbsp;`.process_page(self, image, page)` | Crop off a detected overrun band (plus a small margin kept) |
+
+### `src/features/feature_autorotate.py`
+
+Auto-rotate Detects page orientation with Tesseract OSD and turns upside-down or sideways pages upright (e.g. sheets loaded the wrong way round).
+
+| Symbol | Purpose |
+|---|---|
+| `detect_rotation(image)` | Clockwise degrees Tesseract says the page needs (0/90/180/270), or 0 if unsure |
+| class `Feature(BaseFeature)` | Turn pages upright using orientation detection |
+| &nbsp;&nbsp;`.process_page(self, image, page)` | Rotate the page upright if Tesseract is confident |
+
+### `src/features/feature_autosave.py`
+
+Auto-save Saves each finished scan automatically as a PDF in a chosen folder, named from a template: {date} {time} {n} {pages} {mode}. Example: {date}-{time}-scan.pdf
+
+Constants: `DEFAULT_TEMPLATE`
+
+| Symbol | Purpose |
+|---|---|
+| `render_name(template, pages, when=None, n=1)` | File name (without folder) from a template |
+| class `Feature(BaseFeature)` | Save finished scans automatically |
+| &nbsp;&nbsp;`.after_scan(self, ctx, pages, final)` | Save the session's pages when a document is complete |
+| &nbsp;&nbsp;`.settings_widget(self, ctx)` | Folder and template |
+
+### `src/features/feature_batch_split.py`
+
+Batch splitting Put a blank sheet between documents in the feeder: each blank page starts a new document, and Save As writes one file per document (name-001.pdf, ...). Blank pages are detected even when blank-page removal is off.
+
+| Symbol | Purpose |
+|---|---|
+| class `Feature(BaseFeature)` | Split a scanned stack into documents at blank separator sheets |
+| &nbsp;&nbsp;`.process_page(self, image, page)` | Mark blank pages as separators (kept until export) |
+| &nbsp;&nbsp;`.split_documents(self, pages)` | Documents between separator pages (empty documents are skipped) |
+
+### `src/features/feature_blank_removal.py`
+
+Blank-page removal Drops pages with (almost) no ink, e.g. the empty backs of duplex scans. If batch splitting is on, blank pages are kept as document separators instead.
+
+| Symbol | Purpose |
+|---|---|
+| class `Feature(BaseFeature)` | Remove blank pages |
+| &nbsp;&nbsp;`.process_page(self, image, page)` | None (drop) for blank pages; mark as separator when batch splitting is on |
+| &nbsp;&nbsp;`.settings_widget(self, ctx)` | Sensitivity slider |
+
+### `src/features/feature_deskew.py`
+
+Deskew Straightens pages fed at a slight angle (up to ±5°) using a projection profile: text lines are sharpest when they're horizontal.
+
+Constants: `MAX_ANGLE`, `STEP`
+
+| Symbol | Purpose |
+|---|---|
+| `find_skew(image)` | Angle in degrees (counter-clockwise positive) that straightens the text |
+| class `Feature(BaseFeature)` | Straighten slightly rotated pages |
+| &nbsp;&nbsp;`.process_page(self, image, page)` | Rotate the page by the detected skew (skipped for near-empty pages) |
+
+### `src/features/feature_enhance.py`
+
+Image enhancement Brightness, contrast, sharpening, despeckle and background whitening applied to each scanned page (colour and grayscale; pure black-and-white is left alone).
+
+Constants: `DEFAULTS`
+
+| Symbol | Purpose |
+|---|---|
+| class `Feature(BaseFeature)` | Improve legibility of scanned pages |
+| &nbsp;&nbsp;`.process_page(self, image, page)` | Apply the configured adjustments |
+| &nbsp;&nbsp;`.settings_widget(self, ctx)` | Sliders and switches for the adjustments |
+
+### `src/features/feature_import_images.py`
+
+Import images Adds image files (PNG, JPEG, TIFF, multi-page TIFF) as pages. This is also the last-resort acquisition method: if no driver works, scan to a USB stick or network folder on the scanner itself and import the files here.
+
+Constants: `EXTENSIONS`
+
+| Symbol | Purpose |
+|---|---|
+| `import_files(ctx, paths)` | Append image files to the session as pages; returns the number of pages added |
+| class `Feature(BaseFeature)` | Add image files as pages |
+| &nbsp;&nbsp;`.extend_preview(self, page)` | Add an 'Import images…' button to the Preview toolbar |
+| &nbsp;&nbsp;`.choose(self, page)` | File dialog, then import |
+
+### `src/features/feature_ocr.py`
+
+Searchable PDF (OCR) Saves PDFs with an invisible text layer made by Tesseract (English), so the text can be searched, selected and copied.
+
+Constants: `LANGUAGE`
+
+| Symbol | Purpose |
+|---|---|
+| class `Feature(BaseFeature)` | Make saved PDFs searchable |
+| &nbsp;&nbsp;`.export_pdf(self, pages, path)` | Write a searchable PDF with Tesseract; False if Tesseract isn't available |
+
+### `src/features/feature_pdf_options.py`
+
+PDF options Post-processes saved PDFs with Ghostscript: PDF/A-2b for long-term archiving and/or smaller files (downsampled, recompressed images).
+
+Constants: `SIZES`
+
+| Symbol | Purpose |
+|---|---|
+| class `Feature(BaseFeature)` | PDF/A archiving and file-size options |
+| &nbsp;&nbsp;`.postprocess_pdf(self, path)` | Rewrite the PDF with Ghostscript per the chosen options |
+| &nbsp;&nbsp;`.settings_widget(self, ctx)` | PDF/A switch and size choice |
+
+### `src/features/feature_profiles.py`
+
+Scan profiles One-click presets on the Scan page (colour, quality, paper, sheets), with built-in profiles plus your own ("Save current as profile").
+
+Constants: `BUILT_IN`
+
+| Symbol | Purpose |
+|---|---|
+| class `Feature(BaseFeature)` | Presets for the Scan page |
+| &nbsp;&nbsp;`.all_profiles(self)` | Built-in profiles plus the user's own |
+| &nbsp;&nbsp;`.apply(self, scan_page, name)` | Set the Scan page controls from a profile |
+| &nbsp;&nbsp;`.save_current(self, scan_page, name)` | Store the Scan page's current choices as a user profile |
+| &nbsp;&nbsp;`.extend_scan_page(self, page)` | Profile picker + 'Save as profile' at the top of the Options section |
+
+### `src/features/feature_quick_edit.py`
+
+Quick Edit Add text (20 basic fonts, size, colour) and signatures (transparent PNG library) to scanned pages. Items can be selected, moved, resized, deleted and applied to other pages, like mainstream PDF editors. Edits are stored as overlays on the page and flattened only on Save As (non-destructive).  Overlay model (positions/sizes are fractions of the page, so they survive rotation-free resizing and work at any dpi):   {"type": "text", "text": str, "font": family, "size_pt": float, "color": "#rrggbb", "x": f, "y": f}   {"type": "image", "path": signature.png, "x": f, "y": f, "w": f (width as page fraction)}
+
+Constants: `HANDLE`
+
+| Symbol | Purpose |
+|---|---|
+| `signatures_dir()` | Signature library folder (~/.local/share/linscanner/signatures) |
+| `has_transparency(path)` | True if a PNG has any transparent pixels |
+| `import_signature(path, clear_white=False)` | Copy a PNG into the library (optionally making near-white transparent); returns the new path |
+| `library()` | Signature PNGs in the library, newest first |
+| class `Feature(BaseFeature)` | Text and signatures on scanned pages |
+| &nbsp;&nbsp;`.extend_preview(self, page)` | Add a 'Quick Edit' button to the Preview toolbar |
+| &nbsp;&nbsp;`.open_editor(self, preview_page)` | Open the editor for the selected page; store overlays on OK |
+| class `QuickEditor()` | Modal editor window: canvas + tools. run() returns True if changes were applied. |
+| &nbsp;&nbsp;`.__init__(self, ctx, pages, index)` | Build the dialog for pages[index] (overlays are edited on a copy) |
+| &nbsp;&nbsp;`._mask(*names)` | Combine Gdk event mask names |
+| &nbsp;&nbsp;`._tools(self)` | Right-hand panel: text tools, signature library, item actions |
+| &nbsp;&nbsp;`._heading(self, text)` | Section heading label |
+| &nbsp;&nbsp;`.refresh_library(self)` | Show signature thumbnails |
+| &nbsp;&nbsp;`._selected_signature(self)` | Path of the signature selected in the library, or None |
+| &nbsp;&nbsp;`.add_text(self)` | Add the typed text near the top-left of the visible page |
+| &nbsp;&nbsp;`.update_text(self)` | Apply the panel's text/font/size/colour to the selected text item |
+| &nbsp;&nbsp;`.import_png(self)` | Pick a PNG, offer to clear a white background, add it to the library |
+| &nbsp;&nbsp;`.place_signature(self, path=None)` | Place the selected library signature on the page |
+| &nbsp;&nbsp;`.remove_signature(self)` | Delete the selected signature file from the library (placed copies stay) |
+| &nbsp;&nbsp;`.delete_selected(self)` | Remove the selected item |
+| &nbsp;&nbsp;`.apply_to_all(self)` | Copy the selected item to the same position on every other page |
+| &nbsp;&nbsp;`.move_item(self, item, fx, fy)` | Move an item to page fractions (clamped to the page) |
+| &nbsp;&nbsp;`._layout(self)` | (scale, offset_x, offset_y, page_w, page_h) mapping page pixels to the canvas |
+| &nbsp;&nbsp;`._base_image(self)` | The page with rotation applied (no overlays), cached |
+| &nbsp;&nbsp;`._bbox(self, item, cr=None)` | Item rectangle on the canvas: (x, y, w, h) |
+| &nbsp;&nbsp;`._sig_pixbuf(self, path)` | Full-size signature pixbuf (cached) |
+| &nbsp;&nbsp;`.on_draw(self, widget, cr)` | Draw the page, the overlays and the selection frame |
+| &nbsp;&nbsp;`._hit(self, ex, ey)` | (item, 'resize'|'move') under the pointer, topmost first |
+| &nbsp;&nbsp;`.on_press(self, widget, event)` | Select / start moving or resizing; double-click text loads it for editing |
+| &nbsp;&nbsp;`.on_motion(self, widget, event)` | Move or resize the dragged item |
+| &nbsp;&nbsp;`.on_release(self, widget, event)` | End a drag |
+| &nbsp;&nbsp;`.on_key(self, widget, event)` | Delete / BackSpace removes the selected item |
+| &nbsp;&nbsp;`.commit(self)` | Write the edited overlays back to the page(s) |
+| &nbsp;&nbsp;`.run(self)` | Show modally; True if the user applied the changes |

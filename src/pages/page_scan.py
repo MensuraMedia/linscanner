@@ -44,6 +44,7 @@ class ScanPage(BasePage):
 
         # -- options card
         card = self.add_card("Options")
+        self.options_card = card  # features (e.g. profiles) add rows here
         self.source_combo = Gtk.ComboBoxText()
         self.source_combo.connect("changed", lambda *_: self.on_source_changed())
         card.pack_start(self.form_row("Source", self.source_combo), False, False, 0)
@@ -93,7 +94,7 @@ class ScanPage(BasePage):
         self.cancel_btn.set_sensitive(False)
         actions.pack_start(self.cancel_btn, False, False, 0)
         self.done_btn = Gtk.Button(label="Done → Preview")
-        self.done_btn.connect("clicked", lambda *_: self.ctx.nav.navigate_to("preview"))
+        self.done_btn.connect("clicked", lambda *_: self.finish_document())
         self.done_btn.set_no_show_all(True)
         actions.pack_start(self.done_btn, False, False, 0)
         self.pack_start(actions, False, False, 4)
@@ -103,6 +104,8 @@ class ScanPage(BasePage):
         self.status = self.label("Looking for scanners…", "muted", wrap=True)
         self.pack_start(self.status, False, False, 0)
 
+        if self.ctx.features:
+            self.ctx.features.extend("extend_scan_page", self)
         self.ctx.on("settings-changed", self.on_settings_changed)
         self.ctx.on("devices-changed", self.devices_loaded)
         self.ctx.on("request-device-refresh", self.refresh_devices)
@@ -291,22 +294,26 @@ class ScanPage(BasePage):
         """Report the result; open Preview, or wait for the next sheet in one-sheet mode"""
         self.set_busy(False)
         self.progress.set_fraction(1 if pages else 0)
-        n = len(pages)
+        dropped = self.ctx.scan.dropped_pages
+        n = len(pages) - dropped
         one_sheet = self.request and is_feeder(self.request.source) and not self.request.multi_page
         total = len(self.ctx.scan.pages)
+        removed = f" ({dropped} blank page(s) removed)" if dropped else ""
         if cancelled:
             self.set_status(f"Cancelled. {n} page(s) kept.", "muted")
         elif one_sheet and n:
             self.scan_btn.set_label("Scan next sheet")
             self.done_btn.show()
+            self.after_scan(final=False)
             self.set_status(
-                f"Sheet added ({n} page(s)); document now has {total} page(s). "
+                f"Sheet added ({n} page(s){removed}); document now has {total} page(s). "
                 "Load the next sheet and press Scan next sheet, or Done → Preview.",
                 "status-ok",
             )
             return  # stay here for the next sheet
         else:
-            self.set_status(f"Done: {n} page(s) scanned. Opening preview…", "status-ok")
+            self.set_status(f"Done: {n} page(s) scanned{removed}. Opening preview…", "status-ok")
+            self.after_scan(final=True)
         self.scan_btn.set_label("Scan")
         self.done_btn.hide()
         if n:
@@ -318,6 +325,18 @@ class ScanPage(BasePage):
             if not self.ctx.scan.pages:
                 self.scan_btn.set_label("Scan")
                 self.done_btn.hide()
+
+    def finish_document(self):
+        """One-sheet mode: the document is complete (auto-save etc.), open Preview"""
+        self.scan_btn.set_label("Scan")
+        self.done_btn.hide()
+        self.after_scan(final=True)
+        self.ctx.nav.navigate_to("preview")
+
+    def after_scan(self, final):
+        """Tell feature modules a scan ended (final = the document is complete)"""
+        if self.ctx.features:
+            self.ctx.features.after_scan(self.ctx, self.ctx.scan.pages, final)
 
     def on_error(self, message):
         """Show a scan error"""

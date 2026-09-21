@@ -31,6 +31,8 @@ class PreviewPage(BasePage):
         self.btn_flip = self._tool(bar, "Rotate 180°", lambda: self.rotate(180))
         self.btn_delete = self._tool(bar, "Delete page", self.delete_page)
         self.btn_clear = self._tool(bar, "Clear all", self.clear_pages)
+        self.btn_back = self._tool(bar, "Move ←", lambda: self.move(-1))
+        self.btn_fwd = self._tool(bar, "Move →", lambda: self.move(1))
         self.info = self.label("", "muted")
         bar.pack_start(self.info, True, True, 8)
         self.save_btn = Gtk.Button(label="Save As…")
@@ -39,13 +41,30 @@ class PreviewPage(BasePage):
         bar.pack_end(self.save_btn, False, False, 0)
         self.pack_start(bar, False, False, 0)
 
+        # optional feature buttons (Quick Edit, Import images, ...) go in this row
+        self.feature_toolbar = Gtk.Box(spacing=8)
+        self.feature_buttons = {}
+        self.pack_start(self.feature_toolbar, False, False, 0)
+
         self.preview = PagePreview(on_select=lambda i: self.update_info())
         self.pack_start(self.preview, True, True, 0)
         self.status = self.label("", "muted", wrap=True, selectable=True)
         self.pack_start(self.status, False, False, 0)
 
         self.ctx.on("pages-changed", self.reload)
+        if self.ctx.features:
+            self.ctx.features.extend("extend_preview", self)
+            self.ctx.on("features-changed", self.update_feature_buttons)
+        self.update_feature_buttons()
         self.reload()
+
+    def update_feature_buttons(self, *_):
+        """Show buttons of enabled features only"""
+        for fid, btn in self.feature_buttons.items():
+            feature = self.ctx.features.get(fid) if self.ctx.features else None
+            btn.set_no_show_all(True)
+            btn.set_visible(bool(feature and self.ctx.features.is_enabled(feature)))
+        self.feature_toolbar.set_visible(any(b.get_visible() for b in self.feature_buttons.values()))
 
     def _tool(self, bar, text, action):
         """Add a toolbar button that calls action()"""
@@ -70,6 +89,8 @@ class PreviewPage(BasePage):
             self.btn_flip,
             self.btn_delete,
             self.btn_clear,
+            self.btn_back,
+            self.btn_fwd,
             self.save_btn,
         ):
             b.set_sensitive(has)
@@ -90,6 +111,15 @@ class PreviewPage(BasePage):
         if self.preview.selected >= 0:
             self.ctx.scan.rotate_page(self.preview.selected, degrees)
             self.preview.refresh_selected()
+
+    def move(self, step):
+        """Move the selected page one place earlier (-1) or later (+1)"""
+        pages, i = self.ctx.scan.pages, self.preview.selected
+        j = i + step
+        if 0 <= i < len(pages) and 0 <= j < len(pages):
+            pages[i], pages[j] = pages[j], pages[i]
+            self.preview.set_pages(pages, selected=j)
+            self.update_info()
 
     def delete_page(self):
         """Delete the selected page and select its neighbour"""
@@ -159,8 +189,8 @@ class PreviewPage(BasePage):
 
         fmt = format_for_path(path) or chosen or "pdf"
         try:
-            written = export_pages(pages, path, fmt)
-        except (OSError, ValueError) as e:
+            written = export_pages(pages, path, fmt, registry=self.ctx.features)
+        except (OSError, ValueError, RuntimeError) as e:
             self.status.get_style_context().add_class("status-error")
             self.status.set_text(f"Could not save: {e}")
             return

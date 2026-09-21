@@ -87,6 +87,7 @@ class UsbDevice:
 
 
 def _read(path, default=""):
+    """Contents of a small sysfs/udev file, stripped (default if unreadable)"""
     try:
         with open(path, errors="replace") as f:
             return f.read().strip()
