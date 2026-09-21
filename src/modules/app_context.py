@@ -1,0 +1,27 @@
+"""
+App Context
+Shared services handed to every page (settings, scan manager, navigation,
+theme) plus a tiny event hub so pages can react to each other without
+importing each other.
+
+Events: "pages-changed", "devices-changed", "settings-changed", "theme-changed"
+"""
+
+
+class AppContext:
+    """Service container + publish/subscribe event hub"""
+
+    def __init__(self, settings, scan_manager, nav_manager, theme_applicator):
+        self.settings = settings
+        self.scan = scan_manager
+        self.nav = nav_manager
+        self.theme = theme_applicator
+        self.window = None  # set once the main window exists (dialog parent)
+        self._listeners = {}
+
+    def on(self, event, callback):
+        self._listeners.setdefault(event, []).append(callback)
+
+    def emit(self, event, *args):
+        for callback in list(self._listeners.get(event, [])):
+            callback(*args)

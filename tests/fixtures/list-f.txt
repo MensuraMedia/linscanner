@@ -1,0 +1,4 @@
+epsonds:libusb:003:096|Epson|ES-400II|ESC/I-2
+epsonscan2:ES-400II:0123456789ABCDEF01:esci2:usb:ES0231:385|EPSON|ES-400II:0123456789ABCDEF01|flatbed scanner
+test:0|Noname|frontend-tester|virtual device
+airscan:e0:Brother MFC-L2710DW|Brother|MFC-L2710DW|eSCL network scanner

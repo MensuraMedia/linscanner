@@ -1,0 +1,46 @@
+{
+  "project": "linscanner",
+  "description": "Local change log — independent of git. Every change gets an entry.",
+  "changes": [
+    {
+      "datetime": "2026-09-21T15:20:00",
+      "description": "Plan approved: universal SANE scanner app on gtk-python-dashboard-starter"
+    },
+    {
+      "datetime": "2026-09-21T15:25:00",
+      "description": "Scaffold from framework; Black Yellow Gray theme sampled from UIS reference"
+    },
+    {
+      "datetime": "2026-09-21T15:30:00",
+      "description": "Scanner layer: backend interface, SANE backend (scanimage), output parser"
+    },
+    {
+      "datetime": "2026-09-21T15:38:00",
+      "description": "Scan manager: color/quality/paper mapping, duplicate-driver filter, threads"
+    },
+    {
+      "datetime": "2026-09-21T15:42:00",
+      "description": "Pages: Scan, Preview (rotate/delete/Save As), Devices, Settings, About"
+    },
+    {
+      "datetime": "2026-09-21T15:47:00",
+      "description": "Export PDF/TIFF/PNG/JPEG via Pillow; settings JSON with session overrides"
+    },
+    {
+      "datetime": "2026-09-21T15:50:00",
+      "description": "Tests: 27 (parser fixtures, mapping, export, settings, SANE, UI flow)"
+    },
+    {
+      "datetime": "2026-09-21T15:53:00",
+      "description": "Lint toolchain black + pyflakes (ruff not packaged for Ubuntu 24.04)"
+    },
+    {
+      "datetime": "2026-09-21T15:55:00",
+      "description": "install.sh (offline pool first) + desktop entry; deps added to offline bundle"
+    },
+    {
+      "datetime": "2026-09-21T15:57:00",
+      "description": "Docs: README, CLAUDE.md, architecture, decisions, manifest; v0.1.0"
+    }
+  ]
+}
