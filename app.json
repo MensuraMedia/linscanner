@@ -24,7 +24,8 @@
       "fonts-liberation",
       "fonts-noto-core",
       "fonts-urw-base35",
-      "fonts-ubuntu"
+      "fonts-ubuntu",
+      "librsvg2-common"
     ]
   }
 }

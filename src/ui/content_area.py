@@ -19,7 +19,7 @@ from pages.page_settings import SettingsPage  # noqa: E402
 PAGES = [
     ("scan", ScanPage, True),
     ("preview", PreviewPage, False),  # False: page manages its own scrolling
-    ("recent", RecentPage, True),
+    ("recent", RecentPage, False),  # has its own scrolling table
     ("devices", DevicesPage, True),
     ("settings", SettingsPage, True),
     ("about", AboutPage, True),

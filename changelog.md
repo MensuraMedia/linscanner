@@ -53,3 +53,15 @@
 | 2026-09-21T20:05:00 | Scan page: spinner, 'Scanner Found', remembered scanner reached directly at start, plain problem messages |
 | 2026-09-21T20:05:00 | About: privacy, licence, your files, shortcuts, system, credits, signature-font attributions |
 | 2026-09-21T20:05:00 | Fix: background callbacks are one-shot; display-copy writes are atomic; tests use a private data dir |
+| 2026-09-21T20:45:00 | Design doc docs/design/0.3.0-ui-refinements.md (written before the build; outcome recorded) |
+| 2026-09-21T20:45:00 | Heroicons (MIT) for Recent, Quick Edit and zoom; util_icons recolours SVGs to the theme; librsvg2-common dep |
+| 2026-09-21T20:45:00 | Scan Type (Front Page / Front & Back / Flatbed) replaces Source; remembered |
+| 2026-09-21T20:45:00 | Paper sizes: Auto-Detect (default), documents, receipts, cards, photos, checks; driver auto-size option |
+| 2026-09-21T20:45:00 | Auto-Detect crop (util_autodetect): paper found against the scanner background; nominal-size fallback |
+| 2026-09-21T20:45:00 | Quick Edit: Apply Signature + edit icon (chooser popover, Create Signature dialog); icon tools |
+| 2026-09-21T20:45:00 | Quick Edit pointer zones: hand on frame (move), text cursor inside (edit), resize corner |
+| 2026-09-21T20:45:00 | Recent as a table (date, folder, file, icons), newest first; clear all / older than 5-90 days; trash per row |
+| 2026-09-21T20:45:00 | About: Compatibility section (ever evolving); Heroicons credit |
+| 2026-09-21T20:45:00 | Buttons sized to their labels, 28 px like the sidebar rows |
+| 2026-09-21T20:45:00 | Fix: Sheets row empty after choosing a feeder; Recent icon column type |
+| 2026-09-21T20:45:00 | Docs: README, FEATURES, TECHNICAL (6b), screenshots, api-reference; 103 tests; v0.3.0 |

@@ -16,7 +16,7 @@ export LC_ALL=C
 APP_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 REPO_ROOT="$(cd "$APP_DIR/.." && pwd)"
 DESKTOP="${XDG_DATA_HOME:-$HOME/.local/share}/applications/linscanner.desktop"
-PACKAGES=(python3 python3-gi python3-gi-cairo gir1.2-gtk-3.0 python3-pil python3-numpy sane-utils libsane1 sane-airscan tesseract-ocr tesseract-ocr-eng tesseract-ocr-osd ghostscript fontconfig fonts-dejavu-core fonts-liberation fonts-noto-core fonts-urw-base35 fonts-ubuntu)
+PACKAGES=(python3 python3-gi python3-gi-cairo gir1.2-gtk-3.0 python3-pil python3-numpy sane-utils libsane1 sane-airscan tesseract-ocr tesseract-ocr-eng tesseract-ocr-osd ghostscript fontconfig fonts-dejavu-core fonts-liberation fonts-noto-core fonts-urw-base35 fonts-ubuntu librsvg2-common)
 
 if [[ $EUID -eq 0 ]]; then
     echo "Run this as your normal user (without sudo) - the menu entry is per-user."; exit 1

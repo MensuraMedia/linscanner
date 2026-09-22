@@ -25,3 +25,9 @@ type: project
   - Recent page (folder / document icons);
   - Save button;
   - 4 persistent signatures + signature fonts (check licences)
+- [x] 0.3.0 requests (both rounds) built; see docs/design/0.3.0-ui-refinements.md
+- [ ] On the ES-400 II:
+  - Auto-Detect with a real receipt and card (does the feeder background differ from white paper?);
+  - Scan Type Front & Back;
+  - the Quick Edit pointer zones by hand;
+  - Apply Signature and the edit-icon chooser.

@@ -196,6 +196,24 @@ Constants: `STATUS_TEXT`
 | `firmware(physical)` | Firmware / version string if a driver reports one, else a short explanation |
 | `usb_node_hint(physical)` | Extra advice when the USB device node isn't accessible |
 
+### `src/modules/manager_documents.py`
+
+Documents Manager - Recent documents: every file linscanner saves is remembered (newest first)   in ~/.local/share/linscanner/recent.json, for the Recent page. Only the   path, time, page count and format are stored; the list stays on this   computer. - Opening a document: a saved PDF (rendered with Ghostscript) or image file   (PNG, JPEG, TIFF, multi-page TIFF) becomes pages again, so it can be   checked, edited with Quick Edit and saved.
+
+Constants: `RECENT_MAX`, `OPEN_DPI`, `OPENABLE`
+
+| Symbol | Purpose |
+|---|---|
+| `recent_path()` | The recent-documents list file |
+| `recent_entries(existing_only=True)` | Recent documents, newest first: [{path, saved_at, pages, format}] |
+| `add_recent(paths, pages, fmt)` | Remember saved files (the newest go first; a re-saved file moves to the top) |
+| `forget_recent(path)` | Remove one file from the recent list (the file itself is not touched) |
+| `clear_recent(older_than_days=None)` | Empty the recent list, or drop entries saved more than N days ago; returns how many were removed. |
+| `_saved_ts(entry)` | When an entry was saved (epoch seconds; 0 if unknown) |
+| `open_document(path, out_dir)` | Pages for a saved document: [{"path", "rotation", "dpi", "mode"}]. |
+| `_open_pdf(path, target)` | Render every PDF page to PNG with Ghostscript |
+| `_open_image(path, target)` | Copy each frame of an image file to PNG |
+
 ### `src/modules/manager_export.py`
 
 Export Manager Saves scanned pages (with their rotation applied) as PDF, PNG, JPEG or TIFF. Multi-page formats (PDF, TIFF) get one file; single-page formats get one file per page, numbered when there is more than one.
@@ -226,11 +244,16 @@ Navigation Manager Handles page routing and navigation state
 
 Scan Manager Turns the user's choices (Color / Black & White, High / Medium / Low, paper) into a device-specific ScanRequest, and runs backend calls off the GTK thread.
 
+Constants: `AUTO_SIZE_OPTIONS`
+
 | Symbol | Purpose |
 |---|---|
 | `pick_mode(device_modes, color_mode, bw_style)` | Map "color" / "bw" onto one of the device's own mode names |
 | `pick_resolution(resolutions, quality)` | Nearest supported resolution to the quality preset (ties go higher) |
-| `pick_area(caps, paper)` | Paper size clamped to the device's maximum area; (0, 0) = device default |
+| `paper_spec(paper)` | The PAPER_SIZES entry for a key (unknown keys, e.g. from old settings: Auto-Detect) |
+| `pick_area(caps, paper)` | Paper size clamped to the device's maximum area; (0, 0) = device default (the whole area). |
+| `auto_size_args(caps)` | Driver options that switch on the scanner's own paper-size detection (if it has any) |
+| `scan_types(sources)` | The user's Scan Type choices for a device's sources: {"front": src, "both": src, "flatbed": src}. |
 | `is_feeder(source)` | True if a source name means a document feeder (scan until empty) |
 | `is_duplex(source)` | True if a source scans both sides of each sheet |
 | `sheet_limits(source, sheet_mode)` | (multi_page, max_pages) for a source and sheet mode ("all" / "one") |
@@ -241,16 +264,20 @@ Scan Manager Turns the user's choices (Color / Black & White, High / Medium / Lo
 | &nbsp;&nbsp;`.__init__(self, settings, backend=None, engine=None)` | Create the manager with a session temp dir. |
 | &nbsp;&nbsp;`._in_thread(self, work, on_done, on_error)` | Run work() in a thread; deliver result or error on the GTK thread |
 | &nbsp;&nbsp;`.refresh_devices(self, on_done, on_error)` | List scanners in the background, filtered for display |
+| &nbsp;&nbsp;`.remember_device(self, physical)` | Store the scanner in use, so the next start can reach it without a full search |
+| &nbsp;&nbsp;`.restore_device(self, on_done, on_error)` | Reach the remembered scanner directly (a few seconds instead of a full search). |
 | &nbsp;&nbsp;`.load_capabilities(self, device_id, on_done, on_error)` | Read (or reuse cached) device capabilities in the background |
 | &nbsp;&nbsp;`.physical(self, device_id)` | The PhysicalDevice with this id, or None |
 | &nbsp;&nbsp;`.build_request(self, device_id, source, color_mode, quality, paper, create_dir=True, sheet_mode='all')` | create_dir=False builds the request for display only (no temp folder) |
 | &nbsp;&nbsp;`._request_for(self, device_id, caps, source, color_mode, quality, paper, sheet_mode, create_dir=True)` | ScanRequest for one device/method from the user's choices and its capabilities |
 | &nbsp;&nbsp;`.start_scan(self, request, on_page, on_progress, on_done, on_error)` | Start a scan in the background; pages are appended as they arrive |
+| &nbsp;&nbsp;`.detect_page(self, page, nominal_mm=())` | Auto-Detect: crop a page to the paper (in the scan thread); the file is replaced |
 | &nbsp;&nbsp;`.process_page(self, page)` | Run the enabled page processors on a scanned page (in the scan thread). |
 | &nbsp;&nbsp;`.cancel(self)` | Ask the running scan to stop (pages so far are kept) |
 | &nbsp;&nbsp;`.rotate_page(self, index, degrees)` | Rotate a page clockwise by degrees (applied at display/export) |
 | &nbsp;&nbsp;`.delete_page(self, index)` | Remove a page from the session |
-| &nbsp;&nbsp;`.clear_pages(self)` | Remove all pages from the session |
+| &nbsp;&nbsp;`.clear_pages(self)` | Remove all pages from the session (the next Save starts a new document) |
+| &nbsp;&nbsp;`.open_document(self, path)` | Replace the session's pages with a saved document's pages (ValueError if it can't be read) |
 | &nbsp;&nbsp;`.cleanup(self)` | Delete session temp files and backend temp config |
 | &nbsp;&nbsp;`.summary(request)` | One-line human description of a request (mode, dpi, size, source) |
 
@@ -293,21 +320,35 @@ Main Window Sidebar + content area (layout from gtk-python-dashboard-starter).
 
 ### `src/ui/components/component_preview.py`
 
-Preview Component Large fit-to-window view of the selected page plus a thumbnail strip. Images are decoded at display size (a 600 dpi colour page is ~100 MB raw).
+Preview Component Large view of the selected page (fit to window, or zoomed) plus a thumbnail strip that scrolls sideways and shows 1 or 2 rows.  Fast page switching: pages are drawn from small display copies (utils/util_display.DisplayCache, made in the background as pages arrive), thumbnails are cached, and selecting a page only moves the highlight instead of rebuilding the strip. Zoom: the - / Fit / + buttons, Ctrl + mouse wheel, or Ctrl + plus / minus / 0; drag the zoomed page to pan.
 
-Constants: `_ROTATE`
+Constants: `ZOOM_STEPS`, `THUMB_CACHE_MAX`, `LARGE_CACHE_MAX`
 
 | Symbol | Purpose |
 |---|---|
-| `load_pixbuf(page, max_w, max_h)` | Page image scaled to fit max_w x max_h, rotation (and Quick Edit overlays) applied |
-| class `PagePreview(Gtk.Box)` | Selected-page view + thumbnail strip; on_select(index) on thumbnail click |
-| &nbsp;&nbsp;`.__init__(self, on_select=None)` | Large view (scrolled) plus thumbnail strip |
+| `to_pixbuf(img)` | Pillow RGB image -> GdkPixbuf |
+| class `PagePreview(Gtk.Box)` | Selected-page view + thumbnail strip; on_select(index) when the page changes |
+| &nbsp;&nbsp;`.__init__(self, on_select=None, cache_dir=None, rows=1, on_zoom=None)` | Large view (scrolled, zoomable) plus the thumbnail strip (rows: 1 or 2) |
 | &nbsp;&nbsp;`.set_pages(self, pages, selected=None)` | Show a page list and select one (keeps selection if possible) |
-| &nbsp;&nbsp;`.refresh_selected(self)` | Re-render after a rotation of the selected page |
-| &nbsp;&nbsp;`._rebuild_strip(self)` | Recreate thumbnails; highlight the selected one |
-| &nbsp;&nbsp;`._thumb_clicked(self, _btn, index)` | Select a page from its thumbnail |
+| &nbsp;&nbsp;`.refresh_selected(self)` | Re-render after the selected page changed (rotation, Quick Edit) |
+| &nbsp;&nbsp;`.select(self, index)` | Show another page (only the highlight moves; nothing is rebuilt) |
+| &nbsp;&nbsp;`.set_rows(self, rows)` | 1 or 2 rows of thumbnails |
+| &nbsp;&nbsp;`.set_zoom(self, zoom)` | Zoom relative to fit-to-window (1.0 = fit) |
+| &nbsp;&nbsp;`.zoom_in(self)` | Next zoom step |
+| &nbsp;&nbsp;`.zoom_out(self)` | Previous zoom step |
+| &nbsp;&nbsp;`.zoom_fit(self)` | Fit the whole page in the window |
+| &nbsp;&nbsp;`._apply_strip_height(self)` | Strip tall enough for 1 or 2 rows, plus the scroll bar |
+| &nbsp;&nbsp;`._thumb_pixbuf(self, page)` | Cached thumbnail for a page (redrawn only when the page changed) |
+| &nbsp;&nbsp;`._thumb_button(self, i, page)` | Button with a page thumbnail and its number |
+| &nbsp;&nbsp;`._set_thumb(self, i)` | Draw (or redraw) thumbnail i |
+| &nbsp;&nbsp;`._rebuild_strip(self)` | Lay out the thumbnails column by column (1 or 2 rows), from the left |
+| &nbsp;&nbsp;`._scroll_to_thumb(self, index)` | Keep the selected thumbnail visible |
 | &nbsp;&nbsp;`._on_resize(self, _widget, alloc)` | Re-render the large view after resizing (debounced) |
-| &nbsp;&nbsp;`._render_large(self)` | Render the selected page to fit the view (one-shot timeout) |
+| &nbsp;&nbsp;`._render_large(self)` | Render the selected page at fit x zoom (one-shot timeout) |
+| &nbsp;&nbsp;`._on_scroll(self, _widget, event)` | Ctrl + wheel zooms; the plain wheel scrolls as usual |
+| &nbsp;&nbsp;`._pan_start(self, _widget, event)` | Start dragging the zoomed page |
+| &nbsp;&nbsp;`._pan_move(self, _widget, event)` | Pan while dragging |
+| &nbsp;&nbsp;`._pan_end(self, *_)` | Stop panning |
 
 ### `src/ui/components/component_segmented.py`
 
@@ -348,13 +389,17 @@ Constants: `NAV_ITEMS`, `BOTTOM_ITEMS`
 
 ### `src/pages/page_about.py`
 
-About Page Version, scanning stack versions and credits.
+About Page What linscanner is, privacy and licence in brief, where your files are, handy shortcuts, system versions, credits and font attributions (bundled signature fonts with their designers and licence).
 
 | Symbol | Purpose |
 |---|---|
 | `sane_version()` | First line of `scanimage --version`, or a short status |
+| `tilde(path)` | A path with the home folder shown as ~ |
+| `user_paths()` | (what, path) for every place linscanner keeps your data |
 | class `AboutPage(BasePage)` | About linscanner |
-| &nbsp;&nbsp;`.build_content(self)` | Version, description, SANE version and credits |
+| &nbsp;&nbsp;`._text(self, card, text, css='secondary', selectable=False)` | Add a wrapped label to a card |
+| &nbsp;&nbsp;`._grid(self, card, rows)` | Two-column key / value grid |
+| &nbsp;&nbsp;`.build_content(self)` | All About sections |
 
 ### `src/pages/page_base.py`
 
@@ -390,27 +435,59 @@ Constants: `LEVEL_CSS`
 | &nbsp;&nbsp;`.device_section(self, d)` | Section for one scanner: status row, then an info grid |
 | &nbsp;&nbsp;`._firmware_done(self, d, fw, label)` | Store and show a firmware string read in the background |
 | &nbsp;&nbsp;`.check_status(self, d, label, button)` | Probe the scanner in the background and show a plain-language status |
-| &nbsp;&nbsp;`.on_shown(self)` | Refresh the sections when the page is opened |
+| &nbsp;&nbsp;`.on_shown(self)` | Refresh the sections when the page is opened; a remembered scanner gets a full check |
 
 ### `src/pages/page_preview.py`
 
-Preview Page Shows scanned pages; rotate / delete pages; Save As PDF, PNG, JPEG or TIFF.
+Preview Page Shows scanned (or opened) pages: zoom, rotate, reorder and delete pages, then Save or Save As PDF, PNG, JPEG or TIFF.  - Save: writes to the document's file (the last Save / Save As, or the file   opened from Recent). A new document is saved as a PDF in the Save folder   with an automatic name, without a dialog. - Save As…: choose the name, folder and format. - Thumbnails: 1 or 2 rows (the user's choice is remembered).
 
 | Symbol | Purpose |
 |---|---|
-| class `PreviewPage(BasePage)` | Page viewer with editing actions and Save As |
-| &nbsp;&nbsp;`.build_content(self)` | Toolbar (rotate, delete, clear, Save As), preview and status |
+| class `PreviewPage(BasePage)` | Page viewer with editing actions, zoom, Save and Save As |
+| &nbsp;&nbsp;`.build_content(self)` | Toolbars (page actions, features, zoom, thumbnails), Save / Save As, preview and status |
 | &nbsp;&nbsp;`.update_feature_buttons(self, *_)` | Show buttons of enabled features only |
 | &nbsp;&nbsp;`._tool(self, bar, text, action)` | Add a toolbar button that calls action() |
 | &nbsp;&nbsp;`.on_shown(self)` | Reload pages when the page is opened |
+| &nbsp;&nbsp;`.set_status(self, text, error=False)` | Status line under the preview (errors in red) |
+| &nbsp;&nbsp;`.on_zoom(self, zoom)` | Show the zoom level ('Fit' or a percentage of fit) |
+| &nbsp;&nbsp;`.on_rows_changed(self, key)` | 1 or 2 rows of thumbnails; remembered |
+| &nbsp;&nbsp;`.on_key(self, _widget, event)` | Page Up / Page Down change page; Ctrl + plus / minus / 0 zoom |
 | &nbsp;&nbsp;`.reload(self, *_)` | Show the session's pages and enable/disable actions |
-| &nbsp;&nbsp;`.update_info(self)` | Show 'Page n of m · mode · dpi' for the selected page |
+| &nbsp;&nbsp;`.update_info(self)` | Show 'Page n of m · mode · dpi' (and the document's file) for the selected page |
 | &nbsp;&nbsp;`.rotate(self, degrees)` | Rotate the selected page and re-render |
 | &nbsp;&nbsp;`.move(self, step)` | Move the selected page one place earlier (-1) or later (+1) |
 | &nbsp;&nbsp;`.delete_page(self)` | Delete the selected page and select its neighbour |
 | &nbsp;&nbsp;`.clear_pages(self)` | Remove all pages after confirmation |
 | &nbsp;&nbsp;`._confirm(self, title, detail)` | Modal OK/Cancel question; True if OK |
+| &nbsp;&nbsp;`.open_document(self, path, quick_edit=False)` | Open a saved document (from Recent) as the current pages; optionally start Quick Edit |
+| &nbsp;&nbsp;`.on_save(self)` | Save to the document's file; a new document goes to the Save folder as a PDF |
 | &nbsp;&nbsp;`.on_save_as(self, _btn)` | Save As dialog (PDF/PNG/JPEG/TIFF), export, remember the folder |
+| &nbsp;&nbsp;`._write(self, pages, path, fmt)` | Export, remember the document and the folder, report the result |
+
+### `src/pages/page_recent.py`
+
+Recent Page Documents saved with linscanner, as a table sorted by date (newest first):    Date saved | [folder] Folder | File name [document] | Pages | Format | [trash]  - folder icon: opens the system file manager at that folder (the file is   highlighted when the file manager supports it) - document icon (or double-click / Enter on a row): opens the document in   linscanner (Preview + Quick Edit) - trash icon: removes the entry from the list (the file is not touched) - Clear: All, or entries older than 5 / 10 / 20 / 30 / 60 / 90 days  Icons are Heroicons. The list is stored on this computer only (~/.local/share/linscanner/recent.json).
+
+Constants: `CLEAR_CHOICES`, `ICON_PX`
+
+| Symbol | Purpose |
+|---|---|
+| `short_path(path)` | Folder part of a path with the home folder shown as ~ |
+| `show_in_file_manager(path, window=None)` | Open the file manager at the file's folder, highlighting the file if possible |
+| class `RecentPage(BasePage)` | Recently saved documents, as a table |
+| &nbsp;&nbsp;`.build_content(self)` | Title, Clear controls and the scrollable table |
+| &nbsp;&nbsp;`._add_text_column(self, title, col, width, sort=None, expand=False, xalign=0.0, ellipsize=None)` | Fixed-width text column |
+| &nbsp;&nbsp;`._add_icon_column(self, col, action, tooltip)` | Narrow column of clickable Heroicons |
+| &nbsp;&nbsp;`._column_at(self, x, y)` | (row path, column) under a point of the table, or (None, None) |
+| &nbsp;&nbsp;`.on_shown(self)` | Refresh when opened (files may have been moved or deleted) |
+| &nbsp;&nbsp;`.refresh(self, *_)` | Reload the table from the recent list (newest first) |
+| &nbsp;&nbsp;`.on_click(self, _view, event)` | A click on an icon cell runs its action |
+| &nbsp;&nbsp;`.on_motion(self, view, event)` | Hand pointer over the icon cells |
+| &nbsp;&nbsp;`.on_tooltip(self, view, x, y, keyboard, tooltip)` | Tooltips for the icon cells |
+| &nbsp;&nbsp;`.open_folder(self, path)` | Folder icon: the system file manager at the file's folder |
+| &nbsp;&nbsp;`.open_document(self, path)` | Document icon: open the file in Preview and start Quick Edit |
+| &nbsp;&nbsp;`.forget(self, path)` | Trash icon: remove one entry (the file is not touched) |
+| &nbsp;&nbsp;`.clear(self)` | Clear all entries, or those older than the chosen number of days (after confirming) |
 
 ### `src/pages/page_scan.py`
 
@@ -425,11 +502,17 @@ Scan Page Choose scanner, source, colour, quality and paper; scan with live prog
 | &nbsp;&nbsp;`.set_status(self, text, css='muted')` | Show a status message styled muted / ok / error / busy (errors and results are logged) |
 | &nbsp;&nbsp;`.set_busy(self, busy, scanning=False)` | Enable or disable controls while working; Cancel only while scanning |
 | &nbsp;&nbsp;`.current_device(self)` | The ScannerDevice selected in the combo, or None |
-| &nbsp;&nbsp;`.refresh_devices(self)` | Start a background device listing (ignored while scanning) |
+| &nbsp;&nbsp;`.show_device_issue(self, text=None)` | The line under the scanner list: shown only when something needs fixing |
+| &nbsp;&nbsp;`.looking(self, on)` | Spinner on while looking for the scanner |
+| &nbsp;&nbsp;`.startup(self)` | At start: reach the remembered scanner directly; otherwise do a full search |
+| &nbsp;&nbsp;`.refresh_devices(self)` | Start a background device search (ignored while scanning) |
 | &nbsp;&nbsp;`.devices_loaded(self, devices)` | Fill the scanner combo; reselect the last used scanner |
-| &nbsp;&nbsp;`.devices_failed(self, message)` | Show a listing or options error |
+| &nbsp;&nbsp;`.devices_failed(self, message)` | A search or options error: plain words on screen, the details in the log |
 | &nbsp;&nbsp;`.on_device_changed(self, combo)` | Remember the device and load its capabilities |
-| &nbsp;&nbsp;`.caps_loaded(self, caps)` | Fill the source combo from capabilities and mark Ready |
+| &nbsp;&nbsp;`.caps_loaded(self, caps)` | Offer the scanner's Scan Types (from its sources) and mark it found |
+| &nbsp;&nbsp;`.build_scan_types(self, sources)` | Segmented Scan Type control for this scanner (Front & Back only if it can scan duplex) |
+| &nbsp;&nbsp;`.on_scan_type(self, key)` | User picked a Scan Type: remember it and use its source |
+| &nbsp;&nbsp;`.choose_scan_type(self, key)` | Select the device source behind a Scan Type |
 | &nbsp;&nbsp;`.sheet_mode(self)` | Current sheet mode ("all" / "one"); only meaningful for feeder sources |
 | &nbsp;&nbsp;`.on_source_changed(self)` | Show the Sheets choice for feeder sources only, then refresh the summary |
 | &nbsp;&nbsp;`.update_summary(self)` | Show exactly what will be sent to the scanner |
@@ -460,17 +543,91 @@ Settings Page Theme, default save folder, Black & White style, network scanning 
 | &nbsp;&nbsp;`.draw_swatches(self, theme)` | Show colour dots for the theme's main colours |
 | &nbsp;&nbsp;`._draw_dot(area, cr, rgba)` | Cairo draw handler for one swatch |
 
+### `src/utils/util_autodetect.py`
+
+Auto-Detect paper size Finds the paper inside a scan made over the whole scan area, so the page can be cropped to the document (receipt, card, letter, ...).  How: the background colour is taken from the scan's outer border (the feeder or lid around the paper). Pixels that clearly differ from it are paper; the rows and columns holding enough of them give the paper's box, which is kept (plus a small margin) and the rest cropped away.  Limit: when the paper and the background are the same colour (white paper on a white backing) the edges can't be seen; content_box() then returns None and the caller keeps the page (or uses the chosen nominal size).
+
+Constants: `ANALYSIS_SIDE`, `DIFF`, `MARGIN_MM`, `LINE_SHARE`, `PAPER_SHARE`
+
+| Symbol | Purpose |
+|---|---|
+| `content_box(img, dpi=300, threshold=DIFF, margin_mm=MARGIN_MM)` | (left, top, right, bottom) of the paper in img, or None if its edges can't be seen |
+| `nominal_box(img, size_mm, dpi)` | Box of a nominal paper size (w, h in mm), centred across and from the top |
+| `detect_crop(img, dpi, nominal_mm=None)` | (cropped image, how) for Auto-Detect: 'detected', 'nominal' or 'kept' |
+
+### `src/utils/util_display.py`
+
+Display images for the Preview A 600 dpi colour page is ~100 MB once decoded, so showing it straight from the scan is slow. Each page gets a small display copy ("proxy", at most PROXY_MAX_SIDE pixels, JPEG) made once, in the background as pages arrive. The large view and the thumbnails are drawn from it; only a deep zoom goes back to the original scan. Quick Edit layers and rotation are applied at display time, so the proxy never goes stale.
+
+Constants: `PROXY_MAX_SIDE`
+
+| Symbol | Purpose |
+|---|---|
+| class `DisplayCache()` | Proxy files for pages (thread-safe), kept in a cache folder |
+| &nbsp;&nbsp;`.__init__(self, folder)` | folder: where proxies are written (the session's temp folder) |
+| &nbsp;&nbsp;`.proxy(self, path)` | (proxy path, factor) for a page image, creating it if needed. |
+| &nbsp;&nbsp;`._proxy_locked(self, path)` | proxy() body, with the page's lock held |
+| &nbsp;&nbsp;`.warm(self, paths)` | Create missing proxies in a background thread |
+| &nbsp;&nbsp;`.original(self, path)` | The full-size page image (the most recent one is kept) |
+| &nbsp;&nbsp;`.render(self, page, max_w, max_h, full_size=None)` | The page as an RGB image fitting max_w x max_h, rotated and with Quick Edit layers. |
+| &nbsp;&nbsp;`.size(self, page)` | Full-resolution (w, h) of a page after rotation |
+| `page_key(page)` | Identity of what a page looks like (image and its version, rotation, Quick Edit layers) |
+
 ### `src/utils/util_fonts.py`
 
-Font helpers for Quick Edit The 20 basic fonts offered for text, resolved to files through fontconfig (fc-match). Only families that are really installed are offered.
+Font helpers for Quick Edit - The 20 basic fonts offered for text, resolved to files through fontconfig   (fc-match). Only families that are really installed are offered. - Signature fonts: the bundled ones (resources/fonts/signature, SIL Open Font   License, listed in fonts.json with their credits) plus fonts the user adds   (~/.local/share/linscanner/fonts; kept on this computer, never bundled). - render_text(): the one text renderer used by the editor and by Save, so what   you see is what gets saved.
 
-Constants: `BASIC_FONTS`
+Constants: `FONT_EXTENSIONS`, `BASIC_FONTS`
 
 | Symbol | Purpose |
 |---|---|
 | `_match(family)` | (matched family, file) from fc-match, or (None, None) |
 | `font_file(family)` | Font file for a family (fontconfig picks a fallback if it's missing) |
 | `available_fonts()` | The basic fonts that are actually installed (no silent substitutes) |
+| `user_fonts_dir()` | Fonts the user added (~/.local/share/linscanner/fonts) |
+| `_family_of(path)` | Font family name read from the font file (None if it can't be read) |
+| `bundled_signature_fonts()` | Bundled signature fonts with credits: [{family, path, designer, copyright, license, ...}] |
+| `user_signature_fonts()` | Fonts the user added: [{family, path, bundled: False}] |
+| `signature_fonts()` | Bundled + user signature fonts, one entry per family (bundled first) |
+| `import_fonts(paths)` | Copy .ttf/.otf files (or the fonts inside .zip files) to the user font folder. |
+| `remove_user_font(path)` | Delete a font the user added |
+| `signature_font_file(family)` | Font file of a signature font family, or None |
+| `text_fonts()` | Every family offered for text: the basic fonts, then the signature fonts |
+| `resolve_font(family)` | Font file for any family offered by linscanner (signature fonts first) |
+| `load_font(family, px)` | Pillow font object for a family at a pixel size (cached) |
+| `text_metrics(text, family, px)` | (advance width, line height) in pixels: the text's box from its anchor |
+| `render_text(text, family, px, color='#000000')` | Text as a transparent RGBA image; returns (image, dx, dy): the image's |
+
+### `src/utils/util_guides.py`
+
+Alignment guides for Quick Edit While an item is placed or dragged, its edges are compared with the items already on the page. When one is within a few pixels of a useful line, the item snaps to it and a guide is drawn. This is a soft snap: move a little further and it lets go, and holding Alt switches snapping off.  Lines considered (all in page fractions, 0..1): - align:   the left / centre / right edges and top / bottom of other items - center:  the page's vertical centre line (item centred on the page) - mirror:  the mirror image of another item across the page centre (symmetry) - spacing: equal vertical spacing: the next row after two rows, or the gap            a text line would leave below another text item
+
+| Symbol | Purpose |
+|---|---|
+| class `Box()` | An item's rectangle in page fractions |
+| &nbsp;&nbsp;`.right(self)` | Right edge |
+| &nbsp;&nbsp;`.bottom(self)` | Bottom edge |
+| &nbsp;&nbsp;`.center(self)` | Horizontal centre |
+| class `Guide()` | A guide line to draw: axis "v" (x = value) or "h" (y = value) |
+| `x_candidates(box, others)` | [(offset, guide lines)] that would line box up horizontally |
+| `y_candidates(box, others)` | [(offset, guide lines)] that would line box up vertically or space it evenly |
+| `_best(candidates, threshold)` | The smallest offset within threshold, with its guides (0, [] if none) |
+| `snap(box, others, threshold_x, threshold_y)` | (new_left, new_top, guides) for box, snapped to the nearest guide on each axis. |
+
+### `src/utils/util_icons.py`
+
+Icons Heroicons v2.2.0 (Tailwind Labs, MIT): resources/icons/heroicons/<size>/<style>/<name>.svg. The SVGs draw with currentColor, which is replaced by the theme's text colour (or a given colour) before rendering, so icons suit light and dark themes. Rendered pixbufs are cached per (name, size, colour, style).  To add an icon, copy its SVG from ~/projects/assets/Icons/heroicons (see its INDEX.txt for the names) into resources/icons/heroicons/24/outline/.
+
+Constants: `DEFAULT_COLOR`
+
+| Symbol | Purpose |
+|---|---|
+| `set_icon_color(color)` | Colour for icons without an explicit colour (set from the active theme) |
+| `icon_path(name, style='outline')` | SVG path of a bundled icon (24px outline, or 20px solid for style='solid') |
+| `icon_pixbuf(name, size=20, color=None, style='outline')` | The icon as a pixbuf of size x size pixels, drawn in color (theme text colour by default) |
+| `icon_image(name, size=20, color=None, style='outline')` | A Gtk.Image of the icon (a generic icon if the file is missing) |
+| `icon_button(name, tooltip, on_click=None, size=18, toggle=False)` | A compact, square button showing only an icon (the tooltip names the action) |
+| `icon_label_button(name, label, tooltip=None, on_click=None, size=16)` | A button with an icon followed by a short label |
 
 ### `src/utils/util_imaging.py`
 
@@ -482,6 +639,7 @@ Imaging helpers shared by the core and feature modules (Pillow + numpy). Kept in
 | `ink_ratio(img, margin=0.05)` | Share of pixels that differ from the paper, ignoring a margin (edges, shadows). |
 | `is_blank(img, threshold=0.002)` | True if the page has (almost) no ink |
 | `overlay_pixels(page, size)` | Overlay position helper: fractions of the page -> pixels for an image of `size` |
+| `composite_at(base, layer, x, y)` | Alpha-composite an RGBA layer onto base at (x, y); parts outside the page are cut off |
 | `flatten(page, img=None)` | Page image with rotation and Quick Edit overlays applied |
 
 ### `src/utils/util_logging.py`
@@ -514,6 +672,27 @@ Constants: `APP_ROOT`
 |---|---|
 | `resource(*parts)` | Absolute path of a file under resources/ |
 | `read_version()` | Version string from the VERSION file |
+| `data_dir(*parts)` | Folder under ~/.local/share/linscanner (honours XDG_DATA_HOME); created on demand |
+
+### `src/utils/util_signatures.py`
+
+Signature library Up to MAX_SIGNATURES saved signatures (transparent PNGs) in ~/.local/share/linscanner/signatures/, kept between sessions. A signature is either an imported PNG or a name typed in a signature font.
+
+Constants: `MAX_SIGNATURES`, `TYPED_SIGNATURE_PX`
+
+| Symbol | Purpose |
+|---|---|
+| class `LibraryFull(Exception)` | The library already holds MAX_SIGNATURES signatures |
+| `signatures_dir()` | Signature library folder (~/.local/share/linscanner/signatures) |
+| `library()` | Saved signature PNGs, oldest first (so slots keep their place) |
+| `is_full()` | True if no more signatures can be saved |
+| `has_transparency(path)` | True if a PNG has any transparent pixels |
+| `_unique_path(folder, name)` | folder/name.png, or name-2.png, name-3.png, ... if taken |
+| `_trim(img)` | Crop an RGBA image to its visible pixels (plus a small margin) |
+| `prepare_png(path, clear_white=False)` | An imported PNG as RGBA (optionally with near-white made transparent), trimmed |
+| `typed_signature(text, family, color='#1a1a1a', px=TYPED_SIGNATURE_PX)` | A name rendered in a signature font, as a trimmed transparent RGBA image |
+| `save_signature(img, name, folder=None)` | Save an RGBA image to the library; raises LibraryFull when 4 are saved. Returns the path. |
+| `remove_signature(path)` | Delete a saved signature |
 
 ### `src/features/__init__.py`
 
@@ -669,43 +848,92 @@ Constants: `BUILT_IN`
 
 ### `src/features/feature_quick_edit.py`
 
-Quick Edit Add text (20 basic fonts, size, colour) and signatures (transparent PNG library) to scanned pages. Items can be selected, moved, resized, deleted and applied to other pages, like mainstream PDF editors. Edits are stored as overlays on the page and flattened only on Save As (non-destructive).  Overlay model (positions/sizes are fractions of the page, so they survive rotation-free resizing and work at any dpi):   {"type": "text", "text": str, "font": family, "size_pt": float, "color": "#rrggbb", "x": f, "y": f}   {"type": "image", "path": signature.png, "x": f, "y": f, "w": f (width as page fraction)}
+Quick Edit Add text and signatures to scanned pages, like mainstream PDF editors.  - Add Text: the pointer becomes a text cursor; click anywhere on the page and   type. Alignment guides snap softly to earlier text (same edges, centre,   equal spacing, symmetry) without locking; hold Alt to place freely. - Apply Signature places the chosen signature (click where it goes, drag the   corner square to resize). The edit icon next to it opens the signature   chooser: up to 4 saved signatures (kept between sessions), delete, and   Create Signature (type your name in a signature font, or upload a PNG).   Quick Edit applies signatures; creating them happens in that dialog. - Pointer: a hand on an item's frame (drag to move), a text cursor inside   text (click to edit), a diagonal arrow on the resize corner. - Items can be moved (with guides), resized, edited, deleted and applied to   every page. Edits are overlays stored on the page and flattened only when   saving (non-destructive).  Overlay model (positions/sizes are fractions of the page):   {"type": "text", "text": str, "font": family, "size_pt": float, "color": "#rrggbb", "x": f, "y": f}   {"type": "image", "path": signature.png, "x": f, "y": f, "w": f (width as page fraction)}
 
-Constants: `HANDLE`
+Constants: `HANDLE`, `SNAP_PX`, `DEFAULT_SIGNATURE_WIDTH`, `SIGNATURE_INK`
 
 | Symbol | Purpose |
 |---|---|
-| `signatures_dir()` | Signature library folder (~/.local/share/linscanner/signatures) |
-| `has_transparency(path)` | True if a PNG has any transparent pixels |
-| `import_signature(path, clear_white=False)` | Copy a PNG into the library (optionally making near-white transparent); returns the new path |
-| `library()` | Signature PNGs in the library, newest first |
+| `import_signature(path, clear_white=False)` | Add a PNG to the signature library (optionally making near-white transparent); returns the new path |
+| `_hex(rgba)` | Gdk.RGBA -> '#rrggbb' |
+| `on_paper(img, pad=10)` | A transparent signature on a white "paper" tile, so dark ink shows on the dark theme |
+| `_pixbuf(img)` | Pillow image -> GdkPixbuf (RGBA kept) |
 | class `Feature(BaseFeature)` | Text and signatures on scanned pages |
 | &nbsp;&nbsp;`.extend_preview(self, page)` | Add a 'Quick Edit' button to the Preview toolbar |
-| &nbsp;&nbsp;`.open_editor(self, preview_page)` | Open the editor for the selected page; store overlays on OK |
+| &nbsp;&nbsp;`.open_editor(self, preview_page)` | Open the editor for the selected page; store overlays on Apply |
 | class `QuickEditor()` | Modal editor window: canvas + tools. run() returns True if changes were applied. |
 | &nbsp;&nbsp;`.__init__(self, ctx, pages, index)` | Build the dialog for pages[index] (overlays are edited on a copy) |
+| &nbsp;&nbsp;`._stop_blink(self)` | Stop the caret timer when the dialog closes |
 | &nbsp;&nbsp;`._mask(*names)` | Combine Gdk event mask names |
-| &nbsp;&nbsp;`._tools(self)` | Right-hand panel: text tools, signature library, item actions |
+| &nbsp;&nbsp;`._tools(self)` | Right-hand panel: tools, text style, Apply Signature, item actions (icons: Heroicons) |
 | &nbsp;&nbsp;`._heading(self, text)` | Section heading label |
-| &nbsp;&nbsp;`.refresh_library(self)` | Show signature thumbnails |
-| &nbsp;&nbsp;`._selected_signature(self)` | Path of the signature selected in the library, or None |
-| &nbsp;&nbsp;`.add_text(self)` | Add the typed text near the top-left of the visible page |
-| &nbsp;&nbsp;`.update_text(self)` | Apply the panel's text/font/size/colour to the selected text item |
-| &nbsp;&nbsp;`.import_png(self)` | Pick a PNG, offer to clear a white background, add it to the library |
-| &nbsp;&nbsp;`.place_signature(self, path=None)` | Place the selected library signature on the page |
-| &nbsp;&nbsp;`.remove_signature(self)` | Delete the selected signature file from the library (placed copies stay) |
+| &nbsp;&nbsp;`.show_hint(self, text=None)` | Help text for the current tool (or a message) |
+| &nbsp;&nbsp;`.current_signature(self)` | Path of the chosen signature (remembered between sessions), or None |
+| &nbsp;&nbsp;`.set_current_signature(self, path)` | Remember the chosen signature |
+| &nbsp;&nbsp;`.show_current_signature(self)` | Small preview of the chosen signature under Apply Signature |
+| &nbsp;&nbsp;`.apply_signature(self)` | Apply Signature: place the chosen signature with the next click (or choose one first) |
+| &nbsp;&nbsp;`.open_signature_chooser(self)` | Edit icon: choose a saved signature, remove one, or create a new one |
+| &nbsp;&nbsp;`.signature_chosen(self, path)` | A signature was picked or created: make it current and place it with the next click |
+| &nbsp;&nbsp;`.signature_removed(self, path)` | A saved signature was deleted: keep copies already placed working this session |
+| &nbsp;&nbsp;`._on_tool_toggled(self, button)` | Tool buttons: Add Text / Select |
+| &nbsp;&nbsp;`.set_mode(self, mode)` | Switch tool: select | text | place (pointer shape follows) |
+| &nbsp;&nbsp;`._set_cursor(self)` | Text cursor for Add Text, crosshair while placing, default otherwise |
+| &nbsp;&nbsp;`.on_realize(self, widget)` | Connect the input method to the canvas window |
+| &nbsp;&nbsp;`.place_signature_on_click(self, path)` | Arm place mode: the next click on the page places this signature |
+| &nbsp;&nbsp;`.current_style(self)` | (font, size_pt, colour) from the panel |
+| &nbsp;&nbsp;`.style_changed(self)` | Font / size / colour changed: restyle the text being edited or selected |
+| &nbsp;&nbsp;`._load_style(self, item)` | Show a text item's style in the panel (without restyling it) |
+| &nbsp;&nbsp;`.new_text_item(self, x, y, text='')` | Create a text item at page fractions (x, y) with the panel's style |
+| &nbsp;&nbsp;`.add_text(self)` | Add the text from text_entry near the top-left (scripted use) |
+| &nbsp;&nbsp;`.start_editing(self, item)` | Type into a text item on the canvas |
+| &nbsp;&nbsp;`.finish_editing(self)` | Stop typing; an empty text item is removed |
+| &nbsp;&nbsp;`.type_text(self, text)` | Insert typed text into the item being edited |
+| &nbsp;&nbsp;`.on_commit(self, _im, text)` | Characters from the input method |
+| &nbsp;&nbsp;`.place_signature(self, path, x=0.55, y=0.8)` | Place a signature with its top-left at page fractions (x, y) |
 | &nbsp;&nbsp;`.delete_selected(self)` | Remove the selected item |
 | &nbsp;&nbsp;`.apply_to_all(self)` | Copy the selected item to the same position on every other page |
 | &nbsp;&nbsp;`.move_item(self, item, fx, fy)` | Move an item to page fractions (clamped to the page) |
 | &nbsp;&nbsp;`._layout(self)` | (scale, offset_x, offset_y, page_w, page_h) mapping page pixels to the canvas |
 | &nbsp;&nbsp;`._base_image(self)` | The page with rotation applied (no overlays), cached |
-| &nbsp;&nbsp;`._bbox(self, item, cr=None)` | Item rectangle on the canvas: (x, y, w, h) |
-| &nbsp;&nbsp;`._sig_pixbuf(self, path)` | Full-size signature pixbuf (cached) |
-| &nbsp;&nbsp;`.on_draw(self, widget, cr)` | Draw the page, the overlays and the selection frame |
-| &nbsp;&nbsp;`._hit(self, ex, ey)` | (item, 'resize'|'move') under the pointer, topmost first |
-| &nbsp;&nbsp;`.on_press(self, widget, event)` | Select / start moving or resizing; double-click text loads it for editing |
-| &nbsp;&nbsp;`.on_motion(self, widget, event)` | Move or resize the dragged item |
+| &nbsp;&nbsp;`._dpi(self)` | Page resolution (text sizes are in points) |
+| &nbsp;&nbsp;`._signature_image(self, path)` | Signature as a Pillow RGBA image (cached) |
+| &nbsp;&nbsp;`.item_box(self, item)` | Item rectangle in page fractions (text: from its anchor, advance and line height) |
+| &nbsp;&nbsp;`._bbox(self, item)` | Item rectangle on the canvas: (x, y, w, h) |
+| &nbsp;&nbsp;`.to_page(self, ex, ey)` | Canvas pixels -> page fractions |
+| &nbsp;&nbsp;`.snapped(self, box, moving=None, free=False)` | (left, top) for box snapped to the alignment guides; sets self.guides |
+| &nbsp;&nbsp;`._ghost_box(self, fx, fy)` | Box of what the next click would create at (fx, fy) |
+| &nbsp;&nbsp;`._page_pixbuf(self, w, h)` | The page scaled to (w, h), cached per canvas size (drawing stays fast while dragging) |
+| &nbsp;&nbsp;`._text_pixbuf(self, item, scale)` | (pixbuf, dx, dy) for a text item at canvas scale, cached |
+| &nbsp;&nbsp;`._signature_pixbuf(self, path, w, h)` | Signature scaled to (w, h) on the canvas, cached |
+| &nbsp;&nbsp;`.on_draw(self, widget, cr)` | Draw the page, the overlays, guides, the caret and the selection frame |
+| &nbsp;&nbsp;`._toggle_caret(self)` | Blink the caret while typing |
+| &nbsp;&nbsp;`._hit(self, ex, ey)` | (item, zone) under the pointer, topmost first; zone: resize | frame | inside |
+| &nbsp;&nbsp;`.cursor_for(item, zone, mode, dragging=False)` | Pointer name for what a click would do (hand = move, text = edit) |
+| &nbsp;&nbsp;`._pointer(self, name)` | Set the canvas pointer by name |
+| &nbsp;&nbsp;`._free(self, event)` | Alt held: place / move without snapping |
+| &nbsp;&nbsp;`.on_press(self, widget, event)` | Place text or a signature, start editing (inside text), or start moving (frame) / resizing |
+| &nbsp;&nbsp;`.on_motion(self, widget, event)` | Move / resize the dragged item, show where a click would place something, set the pointer |
 | &nbsp;&nbsp;`.on_release(self, widget, event)` | End a drag |
-| &nbsp;&nbsp;`.on_key(self, widget, event)` | Delete / BackSpace removes the selected item |
+| &nbsp;&nbsp;`.on_leave(self, *_)` | Pointer left the canvas: hide the ghost and guides |
+| &nbsp;&nbsp;`.on_key(self, widget, event)` | Typing, Enter (new line below), Esc, Delete and arrow-key nudging |
+| &nbsp;&nbsp;`.new_line(self)` | Enter while typing: finish this line and start the next one below it, same left edge |
 | &nbsp;&nbsp;`.commit(self)` | Write the edited overlays back to the page(s) |
 | &nbsp;&nbsp;`.run(self)` | Show modally; True if the user applied the changes |
+| class `SignatureChooser()` | Popover card from the edit icon: the saved signatures (pick one, or delete it) and Create Signature |
+| &nbsp;&nbsp;`.__init__(self, editor)` | Build the card next to the edit icon |
+| &nbsp;&nbsp;`.rebuild(self)` | Tiles for the saved signatures, empty slots, and Create Signature |
+| &nbsp;&nbsp;`.popup(self)` | Show the card |
+| &nbsp;&nbsp;`.choose(self, path)` | Pick a signature: it becomes current and is placed with the next click |
+| &nbsp;&nbsp;`.delete(self, path)` | Delete a saved signature (after confirming) |
+| &nbsp;&nbsp;`.create(self)` | Create Signature: the creation dialog; a new signature becomes current |
+| class `SignatureCreator()` | Create Signature dialog: type your name in a signature font, or upload a PNG; saves to a slot |
+| &nbsp;&nbsp;`.__init__(self, parent, Gtk, Gdk, GLib)` | Two ways in (Type it / Upload a PNG), Save Signature |
+| &nbsp;&nbsp;`._type_page(self)` | Name, ink colour and the font list with live previews |
+| &nbsp;&nbsp;`._schedule(self)` | Re-render previews shortly after typing stops |
+| &nbsp;&nbsp;`.text(self)` | The name to render |
+| &nbsp;&nbsp;`.rebuild(self)` | One row per signature font showing the name in that font (on white paper) |
+| &nbsp;&nbsp;`.add_fonts(self)` | Import font files (or zips of fonts) into the user font folder |
+| &nbsp;&nbsp;`._upload_page(self)` | Pick a PNG; optionally make its white background transparent; preview |
+| &nbsp;&nbsp;`.png_changed(self, auto=False)` | Preview the chosen PNG as it will be saved |
+| &nbsp;&nbsp;`.build(self)` | (image, name) from the visible tab, or (None, reason) |
+| &nbsp;&nbsp;`.run(self)` | Show modally; the saved signature's path, or None |

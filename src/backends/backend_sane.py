@@ -185,6 +185,7 @@ class SaneBackend(ScannerBackend):
         if request.width_mm and request.height_mm:
             cmd += ["-x", f"{request.width_mm:g}", "-y", f"{request.height_mm:g}"]
         cmd += BACKEND_EXTRA_ARGS.get(request.device_id.split(":", 1)[0], [])
+        cmd += list(request.extra_args)
         pattern = os.path.join(request.out_dir, "page-%03d.png")
         cmd += [f"--batch={pattern}", "--batch-print"]
         if request.max_pages:

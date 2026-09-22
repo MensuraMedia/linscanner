@@ -25,6 +25,9 @@ class ThemeApplicator:
     def apply_theme(self, theme):
         """Generate and apply CSS for a theme; False if the CSS fails to load"""
         self.current_theme = theme
+        from utils.util_icons import set_icon_color
+
+        set_icon_color(theme.text_primary)  # Heroicons follow the theme
         try:
             self.css_provider.load_from_data(self.generate_css(theme).encode())
         except Exception:  # malformed CSS must not stop the app
@@ -101,25 +104,36 @@ scale slider {{ background: {t.text_primary}; border-radius: 2px; min-width: 12p
 /* Buttons: flat, 2px radius */
 button {{
     background: {t.raised_bg}; background-image: none; color: {t.text_primary};
-    border: 1px solid {border_mid}; border-radius: 2px; box-shadow: none; padding: 6px 14px;
+    border: 1px solid {border_mid}; border-radius: 2px; box-shadow: none; padding: 2px 12px; min-height: 28px;
 }}
 button label {{ color: {t.text_primary}; }}
 button:hover {{ background: {t.hover_color}; }}
 button:disabled {{ background: {t.card_bg}; }}
 button:disabled label {{ color: {t.text_muted}; }}
-.primary-pill {{ background: {t.accent_color}; border: 1px solid {t.accent_color}; padding: 8px 24px; }}
+.primary-pill {{ background: {t.accent_color}; border: 1px solid {t.accent_color}; padding: 2px 16px; min-height: 28px; }}
 .primary-pill label {{ color: {t.accent_text}; font-weight: bold; }}
 .primary-pill:hover {{ background: shade({t.accent_color}, 1.1); }}
 .primary-pill:disabled {{ background: {t.raised_bg}; border-color: {border_mid}; }}
 
 /* Segmented toggles: square, joined */
 .segment {{ background: transparent; padding: 0; }}
-.segment button {{ border-radius: 0; margin: 0; padding: 5px 16px; }}
+.segment button {{ border-radius: 0; margin: 0; padding: 2px 12px; min-height: 28px; }}
 .segment button label {{ color: {t.text_secondary}; }}
 .segment button:checked {{ background: {t.accent_color}; border-color: {t.accent_color}; }}
 .segment button:checked label {{ color: {t.accent_text}; font-weight: bold; }}
 list row:selected {{ background-color: {t.accent_color}; }}
 list row:selected label {{ color: {t.accent_text}; }}
+
+/* Icon buttons (Heroicons): square, as tall as the sidebar rows */
+.icon-button {{ padding: 2px 5px; min-width: 28px; min-height: 28px; }}
+.icon-flat {{ background: transparent; border-color: transparent; }}
+.icon-flat:hover {{ background: {t.hover_color}; border-color: {border_mid}; }}
+
+/* Tables (Recent) */
+treeview.view {{ background-color: {t.card_bg}; color: {t.text_primary}; }}
+treeview.view:selected {{ background-color: {t.accent_color}; color: {t.accent_text}; }}
+treeview.view header button {{ background: {t.raised_bg}; border-radius: 0; padding: 2px 8px; min-height: 26px; }}
+treeview.view header button label {{ color: {t.text_secondary}; font-weight: bold; }}
 
 /* Progress */
 progressbar trough {{ background: {t.card_bg}; border: 1px solid {border}; border-radius: 0; min-height: 6px; }}

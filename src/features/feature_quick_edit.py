@@ -5,13 +5,16 @@ Add text and signatures to scanned pages, like mainstream PDF editors.
 - Add Text: the pointer becomes a text cursor; click anywhere on the page and
   type. Alignment guides snap softly to earlier text (same edges, centre,
   equal spacing, symmetry) without locking; hold Alt to place freely.
-- Signatures: up to 4 saved signatures (transparent PNGs) that persist between
-  sessions. Import a PNG, or type your name in a signature font (quick browser
-  of every font) and save it as a Signature. Click a saved signature, then
-  click on the page to place it; drag the corner square to resize.
-- Items can be selected, moved (with guides), resized, edited (double-click
-  text), deleted and applied to every page. Edits are overlays stored on the
-  page and flattened only when saving (non-destructive).
+- Apply Signature places the chosen signature (click where it goes, drag the
+  corner square to resize). The edit icon next to it opens the signature
+  chooser: up to 4 saved signatures (kept between sessions), delete, and
+  Create Signature (type your name in a signature font, or upload a PNG).
+  Quick Edit applies signatures; creating them happens in that dialog.
+- Pointer: a hand on an item's frame (drag to move), a text cursor inside
+  text (click to edit), a diagonal arrow on the resize corner.
+- Items can be moved (with guides), resized, edited, deleted and applied to
+  every page. Edits are overlays stored on the page and flattened only when
+  saving (non-destructive).
 
 Overlay model (positions/sizes are fractions of the page):
   {"type": "text", "text": str, "font": family, "size_pt": float, "color": "#rrggbb", "x": f, "y": f}
@@ -23,6 +26,7 @@ import os
 
 from features import BaseFeature
 from utils.util_fonts import import_fonts, render_text, signature_fonts, text_fonts, text_metrics
+from utils.util_icons import icon_button, icon_image, icon_label_button
 from utils.util_guides import Box, snap
 from utils.util_signatures import (
     MAX_SIGNATURES,
@@ -134,6 +138,7 @@ class QuickEditor:
         self.guides = []
         self.caret_on = True
         self._loading = False
+        self._current_sig = None  # used when there are no settings (tests)
         self._base = None
         self._base_pix = {}  # canvas size -> scaled page pixbuf
         self._text_pix = {}  # (text, font, size, colour, scale) -> (pixbuf, dx, dy)
@@ -198,22 +203,39 @@ class QuickEditor:
 
     # -- tool panel --------------------------------------------------------------
     def _tools(self):
-        """Right-hand panel: tools, text style, guides, signature slots, item actions"""
+        """Right-hand panel: tools, text style, Apply Signature, item actions (icons: Heroicons)"""
         Gtk, Gdk = self.Gtk, self.Gdk
         panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        panel.set_size_request(380, -1)
+        panel.set_size_request(340, -1)
 
         panel.pack_start(self._heading("Tools"), False, False, 0)
         row = Gtk.Box(spacing=0)
         row.get_style_context().add_class("segment")  # the active tool is highlighted
         row.set_halign(Gtk.Align.START)
-        self.select_tool = Gtk.RadioButton.new_with_label(None, "Select / move")
-        self.text_tool = Gtk.RadioButton.new_with_label_from_widget(self.select_tool, "Add Text")
-        for b in (self.select_tool, self.text_tool):
+        self.select_tool = Gtk.RadioButton.new_from_widget(None)
+        self.text_tool = Gtk.RadioButton.new_from_widget(self.select_tool)
+        for b, icon, tip in (
+            (
+                self.select_tool,
+                "cursor-arrow-rays",
+                "Select / move (drag the frame to move, click inside text to edit)",
+            ),
+            (self.text_tool, "pencil", "Add Text: click anywhere on the page and type"),
+        ):
             b.set_mode(False)  # look like toggle buttons
+            b.add(icon_image(icon, 18))
+            b.set_tooltip_text(tip)
+            b.get_style_context().add_class("icon-button")
             row.pack_start(b, False, False, 0)
         self.text_tool.connect("toggled", self._on_tool_toggled)
-        panel.pack_start(row, False, False, 0)
+        self.guides_check = icon_button(
+            "viewfinder-circle", "Alignment guides on/off (hold Alt to place freely)", toggle=True
+        )
+        self.guides_check.set_active(True)
+        tools = Gtk.Box(spacing=12)
+        tools.pack_start(row, False, False, 0)
+        tools.pack_start(self.guides_check, False, False, 0)
+        panel.pack_start(tools, False, False, 0)
 
         panel.pack_start(self._heading("Text"), False, False, 0)
         self.font_combo = Gtk.ComboBoxText()
@@ -222,7 +244,9 @@ class QuickEditor:
         self.font_combo.set_active(0)
         self.size_spin = Gtk.SpinButton.new_with_range(6, 96, 1)
         self.size_spin.set_value(14)
+        self.size_spin.set_tooltip_text("Text size (points)")
         self.color_btn = Gtk.ColorButton()
+        self.color_btn.set_tooltip_text("Text colour")
         black = Gdk.RGBA()
         black.parse("#000000")
         self.color_btn.set_rgba(black)
@@ -240,40 +264,42 @@ class QuickEditor:
         # kept for scripted use and tests: text set here is added by add_text()
         self.text_entry = Gtk.Entry()
 
-        self.guides_check = Gtk.CheckButton(label="Alignment guides (hold Alt to place freely)")
-        self.guides_check.set_active(True)
-        panel.pack_start(self.guides_check, False, False, 0)
-
-        panel.pack_start(self._heading("Signatures"), False, False, 0)
-        self.slots = Gtk.Grid(column_spacing=6, row_spacing=6)
-        self.slots.set_column_homogeneous(True)
-        panel.pack_start(self.slots, False, False, 0)
-        self.slot_info = Gtk.Label()
-        self.slot_info.set_xalign(0)
-        self.slot_info.get_style_context().add_class("muted")
-        panel.pack_start(self.slot_info, False, False, 0)
+        panel.pack_start(self._heading("Signature"), False, False, 0)
         row = Gtk.Box(spacing=6)
-        imp = Gtk.Button(label="Import PNG…")
-        imp.connect("clicked", lambda *_: self.import_png())
-        typed = Gtk.Button(label="Signature fonts…")
-        typed.connect("clicked", lambda *_: self.type_signature())
-        self.remove_btn = Gtk.Button(label="Remove")
-        self.remove_btn.set_tooltip_text("Remove the selected signature from its slot")
-        self.remove_btn.connect("clicked", lambda *_: self.remove_selected_signature())
-        for b in (imp, typed, self.remove_btn):
-            row.pack_start(b, False, False, 0)
+        self.apply_sig_btn = icon_label_button(
+            "finger-print",
+            "Apply Signature",
+            "Place your signature: click on the page where it goes",
+            self.apply_signature,
+        )
+        self.edit_sig_btn = icon_button(
+            "pencil-square", "Choose or create a different signature", self.open_signature_chooser
+        )
+        row.pack_start(self.apply_sig_btn, False, False, 0)
+        row.pack_start(self.edit_sig_btn, False, False, 0)
         panel.pack_start(row, False, False, 0)
-        self.slot_selected = None
-        self.refresh_library()
+        self.current_sig_image = Gtk.Image()
+        self.current_sig_label = Gtk.Label()
+        self.current_sig_label.set_xalign(0)
+        self.current_sig_label.get_style_context().add_class("muted")
+        panel.pack_start(self.current_sig_image, False, False, 0)
+        panel.pack_start(self.current_sig_label, False, False, 0)
+        self.show_current_signature()
 
         panel.pack_start(self._heading("Selected item"), False, False, 0)
         row = Gtk.Box(spacing=6)
-        delete = Gtk.Button(label="Delete")
-        delete.connect("clicked", lambda *_: self.delete_selected())
-        apply_all = Gtk.Button(label="Apply to all pages")
-        apply_all.connect("clicked", lambda *_: self.apply_to_all())
-        row.pack_start(delete, False, False, 0)
-        row.pack_start(apply_all, False, False, 0)
+        row.pack_start(
+            icon_button("trash", "Delete the selected item (Delete key)", self.delete_selected),
+            False,
+            False,
+            0,
+        )
+        row.pack_start(
+            icon_button("square-2-stack", "Apply the selected item to all pages", self.apply_to_all),
+            False,
+            False,
+            0,
+        )
         panel.pack_start(row, False, False, 0)
         self.hint = Gtk.Label()
         self.hint.set_line_wrap(True)
@@ -293,8 +319,8 @@ class QuickEditor:
     def show_hint(self, text=None):
         """Help text for the current tool (or a message)"""
         default = {
-            "select": "Click an item to select it · drag to move · drag the corner square to resize · "
-            "double-click text to edit · Delete removes · arrow keys nudge",
+            "select": "Drag an item's frame (hand pointer) to move it · click inside text (text pointer) to "
+            "edit it · drag the corner square to resize · Delete removes · arrow keys nudge",
             "text": "Click anywhere on the page and type. Enter starts a new line below, Esc finishes. "
             "Guides appear when your text lines up with earlier text.",
             "place": "Click on the page where the signature should go (Esc cancels). "
@@ -302,139 +328,68 @@ class QuickEditor:
         }[self.mode]
         self.hint.set_text(text or default)
 
-    # -- signature slots ------------------------------------------------------------
-    def refresh_library(self):
-        """Show the 4 signature slots (saved signatures, then empty slots)"""
-        Gtk = self.Gtk
-        for child in self.slots.get_children():
-            self.slots.remove(child)
-        saved = library()
-        if self.slot_selected not in saved:
-            self.slot_selected = None
-        for n in range(MAX_SIGNATURES):
-            btn = Gtk.Button()
-            btn.set_size_request(170, 72)
-            btn.get_style_context().add_class("thumb")
-            if n < len(saved):
-                path = saved[n]
-                try:
-                    sig = self._signature_image(path).copy()
-                    sig.thumbnail((140, 46))
-                    btn.add(Gtk.Image.new_from_pixbuf(_pixbuf(on_paper(sig, 6))))
-                except Exception:
-                    btn.add(Gtk.Label(label=os.path.basename(path)))
-                btn.set_tooltip_text("Click, then click on the page to place this signature")
-                btn.connect("clicked", lambda _b, p=path: self.choose_signature(p))
-                if path == self.slot_selected:
-                    btn.get_style_context().add_class("selected")
-            else:
-                lbl = Gtk.Label(label="Empty slot")
-                lbl.get_style_context().add_class("muted")
-                btn.add(lbl)
-                btn.set_tooltip_text("Add a signature: import a PNG or use a signature font")
-                btn.connect("clicked", lambda b: self._empty_slot_menu(b))
-            self.slots.attach(btn, n % 2, n // 2, 1, 1)
-        self.slots.show_all()
-        self.slot_info.set_text(f"{len(saved)} of {MAX_SIGNATURES} saved · kept between sessions")
-        self.remove_btn.set_sensitive(self.slot_selected is not None)
+    # -- signature ------------------------------------------------------------------
+    def current_signature(self):
+        """Path of the chosen signature (remembered between sessions), or None"""
+        settings = getattr(self.ctx, "settings", None)
+        path = settings.get("current_signature") if settings is not None else self._current_sig
+        return path if path in library() else None
 
-    def _empty_slot_menu(self, button):
-        """Menu on an empty slot: import a PNG or use a signature font"""
-        Gtk = self.Gtk
-        menu = Gtk.Menu()
-        for text, action in (("Import PNG…", self.import_png), ("Signature fonts…", self.type_signature)):
-            item = Gtk.MenuItem(label=text)
-            item.connect("activate", lambda *_a, f=action: f())
-            menu.append(item)
-        menu.show_all()
-        menu.popup_at_widget(button, self.Gdk.Gravity.SOUTH_WEST, self.Gdk.Gravity.NORTH_WEST, None)
+    def set_current_signature(self, path):
+        """Remember the chosen signature"""
+        self._current_sig = path
+        settings = getattr(self.ctx, "settings", None)
+        if settings is not None:
+            settings.set("current_signature", path or "")
+        self.show_current_signature()
 
-    def choose_signature(self, path):
-        """Select a saved signature and arm placing it with the next click"""
-        self.slot_selected = path
-        self.refresh_library()
+    def show_current_signature(self):
+        """Small preview of the chosen signature under Apply Signature"""
+        path = self.current_signature()
+        img = self._signature_image(path) if path else None
+        if img is None:
+            self.current_sig_image.clear()
+            self.current_sig_label.set_text(
+                "No signature chosen yet: use the edit icon to choose or create one."
+            )
+            return
+        thumb = img.copy()
+        thumb.thumbnail((220, 60))
+        self.current_sig_image.set_from_pixbuf(_pixbuf(on_paper(thumb, 6)))
+        self.current_sig_label.set_text("")
+
+    def apply_signature(self):
+        """Apply Signature: place the chosen signature with the next click (or choose one first)"""
+        path = self.current_signature()
+        if path:
+            self.place_signature_on_click(path)
+        else:
+            self.open_signature_chooser()
+
+    def open_signature_chooser(self):
+        """Edit icon: choose a saved signature, remove one, or create a new one"""
+        chooser = SignatureChooser(self)
+        chooser.popup()
+
+    def signature_chosen(self, path):
+        """A signature was picked or created: make it current and place it with the next click"""
+        self.set_current_signature(path)
         self.place_signature_on_click(path)
 
-    def remove_selected_signature(self):
-        """Delete the selected saved signature (copies already placed stay on the page)"""
-        path = self.slot_selected
-        if not path:
-            return
-        keep = os.path.join(self.ctx.scan.session_dir, os.path.basename(path))
+    def signature_removed(self, path):
+        """A saved signature was deleted: keep copies already placed working this session"""
         img = self._signature_image(path)
+        keep = os.path.join(self.ctx.scan.session_dir, os.path.basename(path))
         if img is not None:
-            img.save(keep)  # placed copies keep working this session
+            img.save(keep)
             for item in self.items:
                 if item.get("path") == path:
                     item["path"] = keep
         remove_signature(path)
         self._sig_cache.pop(path, None)
-        self.slot_selected = None
-        if self.mode == "place":
+        if self.pending_signature == path:
             self.set_mode("select")
-        self.refresh_library()
-
-    def _library_full_message(self):
-        """Explain that the 4 slots are used"""
-        self.show_hint(
-            f"All {MAX_SIGNATURES} signature slots are used. Select one and press Remove to free a slot."
-        )
-
-    def import_png(self):
-        """Pick a PNG, offer to clear a white background, save it to a slot"""
-        Gtk = self.Gtk
-        if len(library()) >= MAX_SIGNATURES:
-            self._library_full_message()
-            return
-        dlg = Gtk.FileChooserDialog(
-            title="Import signature (PNG)", transient_for=self.dialog, action=Gtk.FileChooserAction.OPEN
-        )
-        dlg.add_buttons("_Cancel", Gtk.ResponseType.CANCEL, "_Import", Gtk.ResponseType.ACCEPT)
-        flt = Gtk.FileFilter()
-        flt.set_name("PNG images")
-        flt.add_pattern("*.png")
-        flt.add_pattern("*.PNG")
-        dlg.add_filter(flt)
-        path = dlg.get_filename() if dlg.run() == Gtk.ResponseType.ACCEPT else None
-        dlg.destroy()
-        if not path:
-            return
-        clear = False
-        if not has_transparency(path):
-            ask = Gtk.MessageDialog(
-                transient_for=self.dialog,
-                modal=True,
-                message_type=Gtk.MessageType.QUESTION,
-                buttons=Gtk.ButtonsType.YES_NO,
-                text="This PNG has no transparent background.",
-            )
-            ask.format_secondary_text("Make its white background transparent so only the ink shows?")
-            clear = ask.run() == Gtk.ResponseType.YES
-            ask.destroy()
-        try:
-            saved = import_signature(path, clear_white=clear)
-        except LibraryFull:
-            self._library_full_message()
-            return
-        self.choose_signature(saved)
-
-    def type_signature(self):
-        """Signature font browser: type a name, pick a font, place it and/or save it"""
-        dlg = SignatureFontDialog(self.dialog, self.Gtk, self.Gdk, self.GLib)
-        result = dlg.run()
-        if not result:
-            return
-        action, img, name = result
-        if action == "save":
-            try:
-                path = save_signature(img, name)
-            except LibraryFull:
-                self._library_full_message()
-                return
-            self.choose_signature(path)
-        else:  # place once, without using a slot
-            path = save_signature(img, name, folder=self.ctx.scan.session_dir)
-            self.place_signature_on_click(path)
+        self.show_current_signature()
 
     # -- modes -------------------------------------------------------------------
     def _on_tool_toggled(self, button):
@@ -782,28 +737,59 @@ class QuickEditor:
         return True
 
     # -- mouse / keyboard -------------------------------------------------------
+    FRAME_PX = 6  # the band around an item where the pointer becomes a hand (move)
+
     def _hit(self, ex, ey):
-        """(item, 'resize'|'move') under the pointer, topmost first"""
+        """(item, zone) under the pointer, topmost first; zone: resize | frame | inside"""
+        f = self.FRAME_PX
         for item in reversed(self.items):
             x, y, w, h = self._bbox(item)
-            if x + w + 3 - HANDLE <= ex <= x + w + 3 and y + h + 3 - HANDLE <= ey <= y + h + 3:
+            if (
+                item is self.selected
+                and x + w + 3 - HANDLE <= ex <= x + w + 3
+                and y + h + 3 - HANDLE <= ey <= y + h + 3
+            ):
                 return item, "resize"
-            if x - 3 <= ex <= x + w + 3 and y - 3 <= ey <= y + h + 3:
-                return item, "move"
+            if x <= ex <= x + w and y <= ey <= y + h:
+                return item, "inside"
+            if x - f <= ex <= x + w + f and y - f <= ey <= y + h + f:
+                return item, "frame"
         return None, None
+
+    @staticmethod
+    def cursor_for(item, zone, mode, dragging=False):
+        """Pointer name for what a click would do (hand = move, text = edit)"""
+        if dragging:
+            return "grabbing"
+        if mode == "place":
+            return "crosshair"
+        if zone == "resize":
+            return "nwse-resize"
+        if mode == "text":
+            return "text"
+        if zone == "frame" or (zone == "inside" and item["type"] == "image"):
+            return "grab"
+        if zone == "inside":
+            return "text"
+        return "default"
+
+    def _pointer(self, name):
+        """Set the canvas pointer by name"""
+        window = self.canvas.get_window()
+        if window:
+            window.set_cursor(self.Gdk.Cursor.new_from_name(window.get_display(), name))
 
     def _free(self, event):
         """Alt held: place / move without snapping"""
         return bool(event.state & self.Gdk.ModifierType.MOD1_MASK)
 
     def on_press(self, widget, event):
-        """Select, start typing, place a signature or start moving / resizing"""
-        Gdk = self.Gdk
+        """Place text or a signature, start editing (inside text), or start moving (frame) / resizing"""
         self.canvas.grab_focus()
         if event.button != 1:
             return False
         fx, fy = self.to_page(event.x, event.y)
-        item, mode = self._hit(event.x, event.y)
+        item, zone = self._hit(event.x, event.y)
 
         if self.mode == "place" and self.pending_signature:
             box = self._ghost_box(fx, fy)
@@ -816,7 +802,7 @@ class QuickEditor:
             self.canvas.queue_draw()
             return True
 
-        if self.mode == "text":
+        if self.mode == "text" and zone != "resize":
             if item is not None and item["type"] == "text":
                 self.start_editing(item)  # click into existing text to continue it
                 return True
@@ -827,29 +813,35 @@ class QuickEditor:
             self.guides = []
             return True
 
-        # select mode
+        # select mode: inside text edits it, the frame (or a signature) moves, the corner resizes
         if self.editing is not None and item is not self.editing:
             self.finish_editing()
         self.selected = item
-        if item and event.type == Gdk.EventType._2BUTTON_PRESS and item["type"] == "text":
-            self.start_editing(item)
-            return True
-        if item and item["type"] == "text":
+        if item is not None and item["type"] == "text":
             self._load_style(item)
-        self.drag = (mode, event.x, event.y, dict(item)) if item else None
+            if zone == "inside":
+                self.start_editing(item)
+                return True
+        self.drag = ("resize" if zone == "resize" else "move", event.x, event.y, dict(item)) if item else None
+        if self.drag:
+            self._pointer("grabbing" if self.drag[0] == "move" else "nwse-resize")
         self.canvas.queue_draw()
         return True
 
     def on_motion(self, widget, event):
-        """Move / resize the dragged item, or show where a click would place something"""
+        """Move / resize the dragged item, show where a click would place something, set the pointer"""
         if self.mode in ("text", "place") and not self.drag:
             fx, fy = self.to_page(event.x, event.y)
             box = self._ghost_box(fx, fy)
             box.left, box.top = self.snapped(box, free=self._free(event))
             self.hover = box
+            item, zone = self._hit(event.x, event.y)
+            self._pointer(self.cursor_for(item, zone, self.mode))
             self.canvas.queue_draw()
             return True
         if not self.drag or not self.selected:
+            item, zone = self._hit(event.x, event.y)
+            self._pointer(self.cursor_for(item, zone, self.mode))
             return False
         mode, sx, sy, start = self.drag
         scale, _ox, _oy, pw, ph = self._layout()
@@ -873,6 +865,8 @@ class QuickEditor:
         """End a drag"""
         self.drag = None
         self.guides = []
+        item, zone = self._hit(event.x, event.y)
+        self._pointer(self.cursor_for(item, zone, self.mode))
         self.canvas.queue_draw()
         return True
 
@@ -952,25 +946,153 @@ class QuickEditor:
         return applied
 
 
-class SignatureFontDialog:
-    """Type a name and see it in every signature font; place it, or save it as a Signature"""
+class SignatureChooser:
+    """Popover card from the edit icon: the saved signatures (pick one, or delete it) and Create Signature"""
+
+    def __init__(self, editor):
+        """Build the card next to the edit icon"""
+        Gtk = editor.Gtk
+        self.editor, self.Gtk = editor, Gtk
+        self.popover = Gtk.Popover()
+        self.popover.set_relative_to(editor.edit_sig_btn)
+        self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        for m in (
+            self.box.set_margin_start,
+            self.box.set_margin_end,
+            self.box.set_margin_top,
+            self.box.set_margin_bottom,
+        ):
+            m(12)
+        self.popover.add(self.box)
+        self.rebuild()
+
+    def rebuild(self):
+        """Tiles for the saved signatures, empty slots, and Create Signature"""
+        Gtk = self.Gtk
+        for child in self.box.get_children():
+            self.box.remove(child)
+        saved = library()
+        title = Gtk.Label(label=f"Your signatures ({len(saved)} of {MAX_SIGNATURES})")
+        title.set_xalign(0)
+        title.get_style_context().add_class("card-title")
+        self.box.pack_start(title, False, False, 0)
+        grid = Gtk.Grid(column_spacing=8, row_spacing=8)
+        self.tiles = []
+        for n in range(MAX_SIGNATURES):
+            cell = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            if n < len(saved):
+                path = saved[n]
+                img = self.editor._signature_image(path)
+                tile = Gtk.Button()
+                tile.get_style_context().add_class("thumb")
+                tile.set_size_request(180, 70)
+                if img is not None:
+                    thumb = img.copy()
+                    thumb.thumbnail((160, 52))
+                    tile.add(Gtk.Image.new_from_pixbuf(_pixbuf(on_paper(thumb, 6))))
+                if path == self.editor.current_signature():
+                    tile.get_style_context().add_class("selected")
+                tile.set_tooltip_text("Use this signature, then click on the page to place it")
+                tile.connect("clicked", lambda _b, p=path: self.choose(p))
+                cell.pack_start(tile, False, False, 0)
+                cell.pack_start(
+                    icon_button("trash", "Delete this signature", lambda p=path: self.delete(p)),
+                    False,
+                    False,
+                    0,
+                )
+                self.tiles.append((path, tile))
+            else:
+                empty = Gtk.Label(label="Empty slot")
+                empty.get_style_context().add_class("muted")
+                empty.set_size_request(180, 70)
+                cell.pack_start(empty, False, False, 0)
+            grid.attach(cell, n % 2, n // 2, 1, 1)
+        self.box.pack_start(grid, False, False, 0)
+        create = icon_label_button(
+            "plus", "Create Signature", "Type your name in a signature font, or upload a PNG", self.create
+        )
+        full = len(saved) >= MAX_SIGNATURES
+        create.set_sensitive(not full)
+        if full:
+            create.set_tooltip_text(f"All {MAX_SIGNATURES} slots are used: delete one to create another")
+        self.box.pack_start(create, False, False, 0)
+        self.box.show_all()
+
+    def popup(self):
+        """Show the card"""
+        self.popover.show_all()
+        self.popover.popup()
+
+    def choose(self, path):
+        """Pick a signature: it becomes current and is placed with the next click"""
+        self.popover.popdown()
+        self.editor.signature_chosen(path)
+
+    def delete(self, path):
+        """Delete a saved signature (after confirming)"""
+        Gtk = self.Gtk
+        ask = Gtk.MessageDialog(
+            transient_for=self.editor.dialog,
+            modal=True,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            text="Delete this signature?",
+        )
+        ask.format_secondary_text("Copies already placed on pages stay until you remove them.")
+        ok = ask.run() == Gtk.ResponseType.OK
+        ask.destroy()
+        if ok:
+            self.editor.signature_removed(path)
+            self.rebuild()
+
+    def create(self):
+        """Create Signature: the creation dialog; a new signature becomes current"""
+        self.popover.popdown()
+        editor = self.editor
+        path = SignatureCreator(editor.dialog, editor.Gtk, editor.Gdk, editor.GLib).run()
+        if path:
+            editor.signature_chosen(path)
+
+
+class SignatureCreator:
+    """Create Signature dialog: type your name in a signature font, or upload a PNG; saves to a slot"""
 
     PREVIEW_PX = 44
-    PLACE, SAVE = 1, 2  # dialog responses
 
     def __init__(self, parent, Gtk, Gdk, GLib):
-        """Name entry, ink colour, font list with live previews, Add fonts…"""
+        """Two ways in (Type it / Upload a PNG), Save Signature"""
         self.Gtk, self.Gdk, self.GLib = Gtk, Gdk, GLib
-        self.dialog = Gtk.Dialog(title="Signature fonts", transient_for=parent, modal=True)
-        self.dialog.set_default_size(640, 660)
-        self.dialog.add_buttons(
-            "_Cancel", Gtk.ResponseType.CANCEL, "_Place on page", self.PLACE, "_Save as Signature", self.SAVE
-        )
+        self.dialog = Gtk.Dialog(title="Create Signature", transient_for=parent, modal=True)
+        self.dialog.set_default_size(640, 680)
+        self.dialog.add_buttons("_Cancel", Gtk.ResponseType.CANCEL, "_Save Signature", Gtk.ResponseType.OK)
         box = self.dialog.get_content_area()
         box.set_spacing(8)
         for m in (box.set_margin_start, box.set_margin_end, box.set_margin_top):
             m(12)
+        self.stack = Gtk.Stack()
+        switcher = Gtk.StackSwitcher()
+        switcher.set_stack(self.stack)
+        switcher.get_style_context().add_class("segment")
+        switcher.set_halign(Gtk.Align.START)
+        box.pack_start(switcher, False, False, 0)
+        box.pack_start(self.stack, True, True, 0)
+        self.stack.add_titled(self._type_page(), "type", "Type it")
+        self.stack.add_titled(self._upload_page(), "upload", "Upload a PNG")
+        self.message = Gtk.Label()
+        self.message.set_xalign(0)
+        self.message.set_line_wrap(True)
+        self.message.get_style_context().add_class("status-error")
+        box.pack_start(self.message, False, False, 0)
+        self._pending = None
+        self.rebuild()
+        self.dialog.show_all()
 
+    # -- type it ------------------------------------------------------------------
+    def _type_page(self):
+        """Name, ink colour and the font list with live previews"""
+        Gtk, Gdk = self.Gtk, self.Gdk
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         row = Gtk.Box(spacing=8)
         self.name = Gtk.Entry()
         self.name.set_placeholder_text("Type your name…")
@@ -983,30 +1105,25 @@ class SignatureFontDialog:
         self.ink.connect("color-set", lambda *_: self._schedule())
         row.pack_start(self.name, True, True, 0)
         row.pack_start(self.ink, False, False, 0)
-        box.pack_start(row, False, False, 0)
-
+        page.pack_start(row, False, False, 0)
         self.list = Gtk.ListBox()
         self.list.set_selection_mode(Gtk.SelectionMode.SINGLE)
-        self.list.connect("row-activated", lambda *_: self.dialog.response(self.PLACE))
+        self.list.connect("row-activated", lambda *_: self.dialog.response(Gtk.ResponseType.OK))
         scroller = Gtk.ScrolledWindow()
         scroller.set_vexpand(True)
         scroller.add(self.list)
-        box.pack_start(scroller, True, True, 0)
-
+        page.pack_start(scroller, True, True, 0)
         row = Gtk.Box(spacing=8)
-        add = Gtk.Button(label="Add fonts…")
-        add.connect("clicked", lambda *_: self.add_fonts())
+        row.pack_start(
+            icon_label_button("arrow-up-tray", "Add fonts…", None, self.add_fonts), False, False, 0
+        )
         note = Gtk.Label(label="Add .ttf, .otf or .zip font files. Fonts you add stay on this computer.")
         note.get_style_context().add_class("muted")
         note.set_xalign(0)
         note.set_line_wrap(True)
-        row.pack_start(add, False, False, 0)
         row.pack_start(note, True, True, 0)
-        box.pack_start(row, False, False, 0)
-        self._pending = None
-        self.fonts = []
-        self.rebuild()
-        self.dialog.show_all()
+        page.pack_start(row, False, False, 0)
+        return page
 
     def _schedule(self):
         """Re-render previews shortly after typing stops"""
@@ -1019,16 +1136,15 @@ class SignatureFontDialog:
         return self.name.get_text().strip() or "Your Name"
 
     def rebuild(self):
-        """One row per signature font showing the name in that font"""
+        """One row per signature font showing the name in that font (on white paper)"""
         Gtk = self.Gtk
         self._pending = None
         selected = self.list.get_selected_row()
         keep = selected.family if selected else None
         for child in self.list.get_children():
             self.list.remove(child)
-        self.fonts = signature_fonts()
         color = _hex(self.ink.get_rgba())
-        for f in self.fonts:
+        for f in signature_fonts():
             img, _dx, _dy = render_text(self.text(), f["family"], self.PREVIEW_PX, color)
             row = Gtk.ListBoxRow()
             row.family = f["family"]
@@ -1073,17 +1189,63 @@ class SignatureFontDialog:
             import_fonts(paths)
             self.rebuild()
 
-    def result(self, response):
-        """(action "place"|"save", RGBA image, name) for a response, or None"""
+    # -- upload ---------------------------------------------------------------------
+    def _upload_page(self):
+        """Pick a PNG; optionally make its white background transparent; preview"""
+        Gtk = self.Gtk
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self.png = Gtk.FileChooserButton(title="Signature image (PNG)", action=Gtk.FileChooserAction.OPEN)
+        flt = Gtk.FileFilter()
+        flt.set_name("PNG images")
+        flt.add_pattern("*.png")
+        flt.add_pattern("*.PNG")
+        self.png.add_filter(flt)
+        self.png.connect("file-set", lambda *_: self.png_changed(auto=True))
+        page.pack_start(self.png, False, False, 0)
+        self.clear_white = Gtk.CheckButton(label="Make a white background transparent (only the ink shows)")
+        self.clear_white.connect("toggled", lambda *_: self.png_changed())
+        page.pack_start(self.clear_white, False, False, 0)
+        self.png_preview = Gtk.Image()
+        page.pack_start(self.png_preview, True, True, 0)
+        return page
+
+    def png_changed(self, auto=False):
+        """Preview the chosen PNG as it will be saved"""
+        path = self.png.get_filename()
+        if not path:
+            return
+        if auto:  # a PNG without transparency usually has a white background to clear
+            self.clear_white.set_active(not has_transparency(path))
+        img = prepare_png(path, self.clear_white.get_active())
+        img.thumbnail((560, 300))
+        self.png_preview.set_from_pixbuf(_pixbuf(on_paper(img)))
+
+    # -- result -----------------------------------------------------------------------
+    def build(self):
+        """(image, name) from the visible tab, or (None, reason)"""
+        if self.stack.get_visible_child_name() == "upload":
+            path = self.png.get_filename()
+            if not path:
+                return None, "Choose a PNG image first."
+            name = os.path.splitext(os.path.basename(path))[0]
+            return prepare_png(path, self.clear_white.get_active()), name
         row = self.list.get_selected_row()
-        if response not in (self.PLACE, self.SAVE) or row is None:
-            return None
-        img = typed_signature(self.text(), row.family, _hex(self.ink.get_rgba()))
-        return ("save" if response == self.SAVE else "place", img, self.text())
+        if row is None:
+            return None, "Choose a font first."
+        return typed_signature(self.text(), row.family, _hex(self.ink.get_rgba())), self.text()
 
     def run(self):
-        """Show modally; returns result()"""
-        response = self.dialog.run()
-        result = self.result(response)
+        """Show modally; the saved signature's path, or None"""
+        path = None
+        while self.dialog.run() == self.Gtk.ResponseType.OK:
+            img, name = self.build()
+            if img is None:
+                self.message.set_text(name)
+                continue
+            try:
+                path = save_signature(img, name)
+                break
+            except LibraryFull as e:
+                self.message.set_text(str(e))
         self.dialog.destroy()
-        return result
+        return path

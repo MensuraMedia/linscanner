@@ -18,6 +18,7 @@ from utils.util_logging import get_logger
 log = get_logger("scan")
 from backends.parser_sane import model_key
 from config.config_scan import (
+    DEFAULT_PAPER,
     COLOR_MODES,
     DUPLEX_SOURCE_HINTS,
     FEEDER_SOURCE_HINTS,
@@ -53,10 +54,18 @@ def pick_resolution(resolutions, quality):
     return min(resolutions, key=lambda r: (abs(r - target), -r))
 
 
+def paper_spec(paper):
+    """The PAPER_SIZES entry for a key (unknown keys, e.g. from old settings: Auto-Detect)"""
+    return PAPER_SIZES.get(paper) or PAPER_SIZES[DEFAULT_PAPER]
+
+
 def pick_area(caps, paper):
-    """Paper size clamped to the device's maximum area; (0, 0) = device default"""
-    size = PAPER_SIZES[paper]["mm"]
-    if not size:
+    """Paper size clamped to the device's maximum area; (0, 0) = device default (the whole area).
+
+    Auto-Detect sizes scan the whole area; the page is cropped to the paper afterwards."""
+    spec = paper_spec(paper)
+    size = spec["mm"]
+    if not size or spec.get("detect"):
         return 0.0, 0.0
     w, h = size
     if caps.max_width_mm:
@@ -64,6 +73,39 @@ def pick_area(caps, paper):
     if caps.max_height_mm:
         h = min(h, caps.max_height_mm)
     return w, h
+
+
+# Hardware paper-size detection options, by SANE option name -> the value that switches it on
+AUTO_SIZE_OPTIONS = {"adf-crp": "yes", "auto-size": "yes", "autocrop": "yes", "adf-auto-scan": "yes"}
+
+
+def auto_size_args(caps):
+    """Driver options that switch on the scanner's own paper-size detection (if it has any)"""
+    return [f"--{name}={value}" for name, value in AUTO_SIZE_OPTIONS.items() if name in (caps.options or {})]
+
+
+def scan_types(sources):
+    """The user's Scan Type choices for a device's sources: {"front": src, "both": src, "flatbed": src}.
+
+    Front Page: one side (the feeder's single-sided source, else the flatbed).
+    Front & Back: the duplex source, if the scanner has one.
+    Flatbed: only offered when the scanner has both a flatbed and a feeder."""
+    feeder = [s for s in sources if is_feeder(s)]
+    simplex = [s for s in feeder if not is_duplex(s)]
+    duplex = [s for s in feeder if is_duplex(s)]
+    flatbed = [s for s in sources if not is_feeder(s)]
+    types = {}
+    if simplex:
+        types["front"] = simplex[0]
+    elif flatbed:
+        types["front"] = flatbed[0]
+    elif duplex:
+        types["front"] = duplex[0]  # duplex-only feeder: still one choice
+    if duplex and types.get("front") != duplex[0]:
+        types["both"] = duplex[0]
+    if flatbed and feeder and types.get("front") != flatbed[0]:
+        types["flatbed"] = flatbed[0]
+    return types
 
 
 def is_feeder(source):
@@ -294,10 +336,15 @@ class ScanManager:
     def _request_for(self, device_id, caps, source, color_mode, quality, paper, sheet_mode, create_dir=True):
         """ScanRequest for one device/method from the user's choices and its capabilities"""
         width, height = pick_area(caps, paper)
+        spec = paper_spec(paper)
         source = equivalent_source(source, caps)
         multi_page, max_pages = sheet_limits(source, sheet_mode)
         out_dir = tempfile.mkdtemp(prefix="scan-", dir=self.session_dir) if create_dir else ""
+        detect = bool(spec.get("detect"))
         return ScanRequest(
+            auto_detect=detect,
+            nominal_mm=tuple(spec["mm"] or ()) if detect else (),
+            extra_args=auto_size_args(caps) if detect else [],
             device_id=device_id,
             out_dir=out_dir,
             source=source,
@@ -320,6 +367,8 @@ class ScanManager:
         def page_added(path):
             r = active["request"]
             page = {"path": path, "rotation": 0, "dpi": r.resolution, "mode": r.mode}
+            if r.auto_detect:
+                self.detect_page(page, r.nominal_mm)
             if self.features is not None and not self.process_page(page):
                 self.dropped_pages += 1
                 return  # e.g. a blank page removed
@@ -359,6 +408,26 @@ class ScanManager:
             on_error(message)
 
         self._in_thread(work, finished, failed)
+
+    def detect_page(self, page, nominal_mm=()):
+        """Auto-Detect: crop a page to the paper (in the scan thread); the file is replaced"""
+        import os
+
+        from PIL import Image
+
+        from utils.util_autodetect import detect_crop
+
+        name = os.path.basename(page["path"])
+        try:
+            with Image.open(page["path"]) as img:
+                img.load()
+                cropped, how = detect_crop(img, page["dpi"] or 300, nominal_mm or None)
+                if cropped is not img:
+                    cropped.save(page["path"], dpi=(page["dpi"], page["dpi"]))
+                page["auto_detected"] = how
+                log.info("page %s: auto-detect %s %sx%s -> %sx%s", name, how, *img.size, *cropped.size)
+        except OSError as e:
+            log.warning("page %s: auto-detect failed (%s); kept as scanned", name, e)
 
     def process_page(self, page):
         """Run the enabled page processors on a scanned page (in the scan thread).
@@ -430,4 +499,6 @@ class ScanManager:
     def summary(request):
         """One-line human description of a request (mode, dpi, size, source)"""
         size = "full area" if not request.width_mm else f"{request.width_mm:g}×{request.height_mm:g} mm"
+        if request.auto_detect:
+            size = "full area, then fitted to the paper (Auto-Detect)"
         return f"{request.mode} · {request.resolution} dpi · {size} · {request.source or 'default source'}"

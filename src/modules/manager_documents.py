@@ -40,6 +40,7 @@ def recent_entries(existing_only=True):
     except (OSError, ValueError):
         return []
     entries = [e for e in entries if isinstance(e, dict) and isinstance(e.get("path"), str)]
+    entries.sort(key=_saved_ts, reverse=True)  # newest first
     return [e for e in entries if os.path.exists(e["path"])] if existing_only else entries
 
 
@@ -63,10 +64,27 @@ def forget_recent(path):
         json.dump(entries, f, indent=2)
 
 
-def clear_recent():
-    """Empty the recent list (files are not touched)"""
+def clear_recent(older_than_days=None):
+    """Empty the recent list, or drop entries saved more than N days ago; returns how many were removed.
+
+    Only the list changes: the files themselves are never touched."""
+    entries = recent_entries(existing_only=False)
+    if older_than_days is None:
+        keep = []
+    else:
+        cutoff = datetime.now().timestamp() - older_than_days * 86400
+        keep = [e for e in entries if _saved_ts(e) >= cutoff]
     with open(recent_path(), "w") as f:
-        json.dump([], f)
+        json.dump(keep, f, indent=2)
+    return len(entries) - len(keep)
+
+
+def _saved_ts(entry):
+    """When an entry was saved (epoch seconds; 0 if unknown)"""
+    try:
+        return datetime.fromisoformat(entry.get("saved_at", "")).timestamp()
+    except ValueError:
+        return 0
 
 
 # -- opening ------------------------------------------------------------------------

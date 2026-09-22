@@ -197,6 +197,54 @@
     {
       "datetime": "2026-09-21T20:05:00",
       "description": "Fix: background callbacks are one-shot; display-copy writes are atomic; tests use a private data dir"
+    },
+    {
+      "datetime": "2026-09-21T20:45:00",
+      "description": "Design doc docs/design/0.3.0-ui-refinements.md (written before the build; outcome recorded)"
+    },
+    {
+      "datetime": "2026-09-21T20:45:00",
+      "description": "Heroicons (MIT) for Recent, Quick Edit and zoom; util_icons recolours SVGs to the theme; librsvg2-common dep"
+    },
+    {
+      "datetime": "2026-09-21T20:45:00",
+      "description": "Scan Type (Front Page / Front & Back / Flatbed) replaces Source; remembered"
+    },
+    {
+      "datetime": "2026-09-21T20:45:00",
+      "description": "Paper sizes: Auto-Detect (default), documents, receipts, cards, photos, checks; driver auto-size option"
+    },
+    {
+      "datetime": "2026-09-21T20:45:00",
+      "description": "Auto-Detect crop (util_autodetect): paper found against the scanner background; nominal-size fallback"
+    },
+    {
+      "datetime": "2026-09-21T20:45:00",
+      "description": "Quick Edit: Apply Signature + edit icon (chooser popover, Create Signature dialog); icon tools"
+    },
+    {
+      "datetime": "2026-09-21T20:45:00",
+      "description": "Quick Edit pointer zones: hand on frame (move), text cursor inside (edit), resize corner"
+    },
+    {
+      "datetime": "2026-09-21T20:45:00",
+      "description": "Recent as a table (date, folder, file, icons), newest first; clear all / older than 5-90 days; trash per row"
+    },
+    {
+      "datetime": "2026-09-21T20:45:00",
+      "description": "About: Compatibility section (ever evolving); Heroicons credit"
+    },
+    {
+      "datetime": "2026-09-21T20:45:00",
+      "description": "Buttons sized to their labels, 28 px like the sidebar rows"
+    },
+    {
+      "datetime": "2026-09-21T20:45:00",
+      "description": "Fix: Sheets row empty after choosing a feeder; Recent icon column type"
+    },
+    {
+      "datetime": "2026-09-21T20:45:00",
+      "description": "Docs: README, FEATURES, TECHNICAL (6b), screenshots, api-reference; 103 tests; v0.3.0"
     }
   ]
 }

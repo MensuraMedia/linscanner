@@ -12,7 +12,7 @@ Linux's standard scanning system (SANE) can drive.
 
 | | |
 |---|---|
-| Version | 0.2.0 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
+| Version | 0.3.0 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
 | Platform | Linux desktop, GTK 3 |
 | Tested on | Linux Mint 22.3 (Ubuntu 24.04 base), kernel 7.0, amd64, with an Epson WorkForce ES-400 II |
 | Part of | [linux-peripherals](../README.md), which has offline installers and device references |
@@ -44,23 +44,25 @@ Linux's standard scanning system (SANE) can drive.
 
 | Area | What you get |
 |---|---|
-| **Scanning** | Any cable-connected (USB) SANE scanner, plus linscanner's own driverless eSCL client. Flatbed, document feeder and duplex |
+| **Scanning** | Any cable-connected (USB) SANE scanner, plus linscanner's own driverless eSCL client. **Scan Type**: *Front Page* or *Front & Back* (and *Flatbed* on scanners with both) |
+| **Remembers your scanner** | Reached directly at the next start (a second or two instead of a full search); a spinner while looking, a green **Scanner Found**, and plain words when something needs fixing ("Unable to detect scanner. Check that it's connected and powered on") |
 | **Sheet-fed modes** | **All sheets** (the whole stack in one go) or **One sheet at a time** (each press adds a sheet to the same document; a duplex sheet gives front + back) |
 | **Connection fallback** | Tries every way to reach the scanner in order over the USB cable (open-source driver → vendor driver → driverless IPP-over-USB → own eSCL client), until one scans. Never retries when you need to act (feeder empty, jam, cover open) |
 | **Scan Device Information** | Every detected scanner with identity, USB connection details, connection methods, permissions, capabilities, live status and firmware, plus **Check for devices again** |
 | **Color / Black & White** | Color, or Black & White. B&W is grayscale by default (keeps faint text); Settings can switch it to pure black-and-white |
 | **Quality** | High 600 dpi, Medium 300 dpi, Low 150 dpi, automatically matched to the nearest resolution your scanner supports |
-| **Paper size** | Letter, Legal, A4, A5 or the full scan area, limited to your scanner's maximum |
+| **Paper size** | **Auto-Detect** (fits each page to the paper, when its edges can be seen); documents (Letter, Legal, Executive, Half Letter, A4, A5, A6, B5); receipts (80 / 58 mm); cards (business, ID / credit, index); photos (4×6, 5×7); checks; full scan area |
 | **Clear feedback** | A summary line shows exactly what will be scanned; per-page progress; page count; plain-language errors (feeder empty, paper jam, scanner busy, not responding) |
 | **Cancel** | Stops the scan and keeps the pages already scanned |
-| **Preview** | Large fit-to-window view and a thumbnail strip; opens automatically after scanning |
+| **Preview** | Fast page switching; **zoom** (buttons, Ctrl + wheel, drag to pan); a scrollable, left-aligned thumbnail strip with **1 or 2 rows**; opens automatically after scanning |
 | **Page tools** | Rotate left, right or 180°; move pages earlier or later; delete a page; clear all |
-| **Quick Edit** | Add text (20 basic fonts, size, colour) and signatures from transparent PNGs; drag, resize, delete and apply to all pages. Non-destructive until Save As |
+| **Quick Edit** | **Add Text**: click anywhere on the page and type, with alignment guides that line text up with earlier text. **Apply Signature** places your signature; the edit icon beside it chooses or creates one (up to 4 saved, typed in one of 9 signature fonts or uploaded as a PNG). Hand pointer to move, text pointer to edit, corner to resize. Non-destructive until you save |
+| **Recent** | A table of saved documents (date, folder, file name), newest first: the folder icon opens the file manager, the document icon opens the file for Quick Edit, the trash icon removes the entry; clear all or entries older than 5–90 days |
 | **Automatic clean-up** | Auto-crop (feeder overrun), deskew and blank-page removal, on by default |
 | **More modules** | Searchable PDF (OCR), auto-rotate, image enhancement, scan profiles, auto-save with file-name templates, batch splitting, PDF/A and smaller PDFs, import images. Each can be switched on or off in Settings |
-| **Save As** | PDF (all pages in one file), TIFF (multi-page), PNG or JPEG (one file per page). Remembers your folder and asks before overwriting |
+| **Save / Save As** | **Save** writes to the document's file (a new document goes to your Save folder as a PDF). **Save As** chooses the name and format: PDF (all pages in one file), TIFF (multi-page), PNG or JPEG (one file per page) |
 | **Smart driver choice** | One scanner offered by several drivers is shown once, with the most reliable driver first and the others kept as fallbacks |
-| **Remembers your choices** | Scanner, color, quality, paper, save folder and theme |
+| **Remembers your choices** | Scanner, Scan Type, color, quality, paper, thumbnail rows, signature, save folder and theme |
 | **Look** | Flat, square gtk-python-dashboard-starter layout; the framework's seven themes, **Default Blue** by default |
 | **Works offline** | Every dependency is in the repo's offline package pool |
 | **Try without hardware** | `--test-scanner` uses SANE's built-in virtual scanner |
@@ -172,43 +174,70 @@ rm -rf ~/.config/linscanner                # removes your settings (optional)
 1. Open **linscanner** from the menu (or run `linscanner/run.sh`).
 2. **Scanner:** it's found automatically. Finding scanners takes about 10
    seconds; press **Refresh** after plugging one in.
-3. **Source:** *Flatbed* for one page on the glass; a *Feeder* / *ADF*
-   source for a stack; *Duplex* for both sides.
-   - **Sheets** (feeder sources): *All sheets* scans the whole stack. *One
+   A spinner turns while it looks. **Scanner Found** (green) means it's
+   ready, and linscanner remembers it for next time.
+3. **Scan Type:** *Front Page* scans one side of each sheet; *Front & Back*
+   scans both sides (shown when your scanner can). Scanners with a glass too
+   also offer *Flatbed*.
+   - **Sheets** (feeder): *All sheets* scans the whole stack. *One
      sheet at a time* scans one sheet per press, so you can feed sheets one
      by one. The button becomes **Scan next sheet**, and **Done → Preview**
      finishes the document.
 4. **Color:** *Color* or *Black & White*.
 5. **Quality:** *High* for small print, photos or archiving; *Medium* for
    everyday documents; *Low* for quick copies and small files.
-6. **Paper size:** match your document. This avoids blank space below the page.
+6. **Paper size:** **Auto-Detect** (the default) fits each page to the paper
+   you scanned: receipts, cards and letters alike. Or choose a size: documents,
+   receipts (80 / 58 mm wide), cards, photos or checks. Auto-Detect needs the
+   paper to look different from the scanner's background; when it doesn't,
+   the page is kept whole (or the chosen card / receipt size is used).
 7. Check the grey **"Will scan: …"** line, then press **Scan**.
 
 Pages appear as they are scanned, and **Preview** opens when the scan finishes.
 
 ![Preview page](docs/images/screenshot-preview.png)
 
-![Quick Edit](docs/images/screenshot-quick-edit.png)
+![Quick Edit with the signature chooser](docs/images/screenshot-quick-edit.png)
+
+![Create Signature](docs/images/screenshot-create-signature.png)
+
+![Recent](docs/images/screenshot-recent.png)
 
 ### Fix and save
-- Click a thumbnail to view that page.
+- Click a thumbnail (or press Page Up / Page Down) to view that page. The
+  strip scrolls sideways; choose **1 row** or **2 rows** of thumbnails.
+- **Zoom** with the magnifier icons, Ctrl + mouse wheel or Ctrl + / −; the
+  fit icon (or Ctrl 0) shows the whole page. Drag a zoomed page to move around.
 - **Rotate left / right / 180°** to correct orientation, for example if your
   feeder delivers pages upside down.
 - **Delete page** removes a bad page, and **Move ← / →** reorders pages.
   **Clear all** starts over.
 - **Quick Edit…** opens the page editor:
-  - **Text:** type it, choose one of 20 fonts, a size and a colour, then **Add text**.
-  - **Signatures:** **Import PNG…** adds a signature image to your library
-    (`~/.local/share/linscanner/signatures/`). Transparent PNGs work best. If
-    yours has a white background, linscanner offers to make it transparent.
-    Select it, then **Place signature**.
-  - **Editing:** drag items to move them, and drag the blue corner square to
-    resize. **Delete** removes an item, double-click text to edit it, and
-    **Apply to all pages** repeats an item (e.g. a signature or date) on
-    every page.
-  - Edits show in the preview and are added to the file when you **Save As**.
+  - **Add Text** (pencil icon): the pointer becomes a text cursor. Click
+    anywhere on the page and type. Enter starts a new line underneath, Esc
+    finishes. Choose the font (20 basic fonts plus the signature fonts), size
+    and colour.
+  - **Alignment guides:** while you place or move text, dotted lines appear
+    when it lines up with earlier text (same edge, centre, equal spacing, or
+    mirror image across the page). It snaps gently and never locks. Hold
+    **Alt** to place freely, or switch the guides off with the viewfinder icon.
+  - **Apply Signature:** click it, then click where your signature goes. Drag
+    its corner square to resize it.
+  - **Edit icon** (next to Apply Signature): choose one of your saved
+    signatures (up to 4, kept between sessions), delete one with its trash
+    icon, or **Create Signature**. Type your name and pick one of 9
+    signature fonts, or upload a PNG (a white background can be made
+    transparent).
+  - **Pointer:** a hand on an item's frame means drag to move; a text cursor
+    inside text means click to edit; a diagonal arrow on the corner square
+    means resize. The trash icon deletes the selected item, and the stack
+    icon applies it to every page.
+  - Edits show in the preview and are added to the file when you save.
 - **Import images…** adds PNG/JPEG/TIFF files as pages (e.g. scans your
   scanner saved to a USB stick).
+- **Save** (above Save As) writes to the document's file: the one you last
+  saved, or the one you opened from Recent. A new document is saved as a PDF
+  in your Save folder with an automatic name.
 - **Save As…** asks for a file name and format:
 
 | Format | Best for | Pages |
@@ -246,7 +275,9 @@ Pages appear as they are scanned, and **Preview** opens when the scan finishes.
 | Path | Content |
 |---|---|
 | `~/.config/linscanner/settings.json` | Your settings (including feature on/off and options) |
-| `~/.local/share/linscanner/signatures/` | Your signature library (Quick Edit) |
+| `~/.local/share/linscanner/signatures/` | Your saved signatures (up to 4) |
+| `~/.local/share/linscanner/fonts/` | Signature fonts you added (kept on this computer) |
+| `~/.local/share/linscanner/recent.json` | The Recent list (paths, dates, page counts) |
 | `~/.local/state/linscanner/logs/` | Daily logs (14 days), redacted |
 | `/tmp/linscanner-*/` | This session's scans (deleted when you close linscanner, so save first) |
 | `~/.local/share/applications/linscanner.desktop` | Menu entry |
@@ -293,6 +324,9 @@ send for help). Start with `run.sh --debug` for extra detail.
 | Scanning is slow at High quality | Use a USB 3 port and cable if the scanner supports it (`../bin/device-finder` shows the link speed) |
 | Scanner appears twice in other apps | A vendor driver (e.g. Epson's `epsonscan2`) adds a second entry; linscanner hides it automatically |
 | Only works with sudo | Permissions: log out and in, or re-run the device installer (for the ES-400 II: `devices/scanner/epson-es-400-ii/install.sh`) |
+| "Unable to detect scanner" | Check the USB cable and that the scanner is switched on (many turn themselves off after a while), then press **Refresh** |
+| Auto-Detect didn't trim the page | The paper looks the same as the scanner's background (for example white paper on a white backing), so its edges can't be found. Choose the matching paper size instead |
+| A remembered scanner isn't found at start | linscanner searches for scanners automatically when the remembered one doesn't answer (for example after plugging it into another port) |
 | My Wi-Fi / network scanner isn't listed | Wi-Fi and network scanning isn't supported at this time, so linscanner doesn't search the network. Connect the scanner with a USB cable |
 
 **Scanner-specific notes** are in the device references, e.g.
@@ -326,7 +360,9 @@ any other second or third party.
 | Scans in progress | `/tmp/linscanner-*/`, a folder only your user can read | Deleted when linscanner closes |
 | Saved documents | The folder you choose in **Save As** or Auto-save | Until you delete them |
 | Settings and profiles | `~/.config/linscanner/settings.json` | Until you delete them |
-| Signatures | `~/.local/share/linscanner/signatures/` | Until you delete them (Quick Edit → delete) |
+| Signatures | `~/.local/share/linscanner/signatures/` | Until you delete them (Quick Edit → edit icon → trash) |
+| Fonts you added | `~/.local/share/linscanner/fonts/` | Until you delete them |
+| Recent list | `~/.local/share/linscanner/recent.json` (paths and dates only) | Until you clear it (Recent → Clear) |
 | Logs | `~/.local/state/linscanner/logs/` | 14 days, then deleted automatically |
 
 - **Logs don't contain your content.** They record technical events only: no
@@ -420,6 +456,17 @@ do its seven dark themes:
 - Settings stored inside the scanner (sleep timer, etc.) can't be changed from Linux.
 - OCR is English only.
 
+**Done in 0.3.0:**
+- faster Preview with zoom and 1- or 2-row thumbnails;
+- Save and Recent;
+- Scan Type, more paper sizes and Auto-Detect;
+- the remembered scanner;
+- Quick Edit Add Text with alignment guides, Apply Signature with 4 saved
+  signatures and signature fonts;
+- Heroicons.
+
+The design notes are in [`docs/design/0.3.0-ui-refinements.md`](docs/design/0.3.0-ui-refinements.md).
+
 **Done in 0.2.0:**
 - the framework styling;
 - sheet-fed modes;
@@ -480,7 +527,13 @@ The design is in [`docs/architecture.md`](docs/architecture.md).
 - UI structure and themes: [gtk-python-dashboard-starter](https://github.com/mikesdatawork/gtk-python-dashboard-starter) by mikesdatawork (free for personal and educational use)
 - Build process: [MensuraMedia/universal-instruction-set](https://github.com/MensuraMedia/universal-instruction-set)
 - Scanning: [SANE](http://www.sane-project.org/), [sane-airscan](https://github.com/alexpevzner/sane-airscan), [ipp-usb](https://github.com/OpenPrinting/ipp-usb)
-- Images and PDF: [Pillow](https://python-pillow.org/)
+- Images and PDF: [Pillow](https://python-pillow.org/), NumPy, Ghostscript
+- Icons: [Heroicons](https://heroicons.com/) by Tailwind Labs (MIT), in `resources/icons/heroicons/`
+- Signature fonts (SIL Open Font License 1.1, from Google Fonts), in `resources/fonts/signature/` with each licence:
+  - Alex Brush, Allura and Great Vibes by Robert Leuschke;
+  - Herr Von Muellerhoff, Monsieur La Doulaise, Mr Dafoe and Mrs Saint Delafield by Sudtipos (Alejandro Paul);
+  - Pinyon Script by Nicole Fally;
+  - Sacramento by Astigmatic.
 
 ---
 

@@ -20,6 +20,8 @@ DEFAULTS = {
     "last_device": "",
     "last_device_info": {},  # the remembered scanner: {"vendor", "model", "methods": [...]}
     "thumbnail_rows": 1,  # Preview thumbnails: 1 or 2 rows
+    "scan_type": "front",  # front | both | flatbed
+    "current_signature": "",  # the signature Apply Signature places
     "show_all_backends": False,  # show duplicate backends and SANE's test scanner
     "features": {},  # feature id -> enabled (missing = the feature's default)
     "feature_settings": {},  # feature id -> {option: value}

@@ -23,6 +23,7 @@ from modules.manager_export import export_pages, format_for_path  # noqa: E402
 from pages.page_base import BasePage  # noqa: E402
 from ui.components.component_preview import PagePreview  # noqa: E402
 from ui.components.component_segmented import SegmentedControl  # noqa: E402
+from utils.util_icons import icon_button  # noqa: E402
 from utils.util_logging import get_logger  # noqa: E402
 
 log = get_logger("ui")
@@ -65,22 +66,31 @@ class PreviewPage(BasePage):
         self.quick_save_btn.connect("clicked", lambda *_: self.on_save())
         self.save_btn = Gtk.Button(label="Save As…")
         self.save_btn.connect("clicked", self.on_save_as)
-        saves.pack_start(self.quick_save_btn, False, False, 0)
-        saves.pack_start(self.save_btn, False, False, 0)
+        for b in (self.quick_save_btn, self.save_btn):
+            b.set_halign(Gtk.Align.END)  # each button as wide as its label
+            saves.pack_start(b, False, False, 0)
         top.pack_end(saves, False, False, 0)
         self.pack_start(top, False, False, 0)
 
         # zoom, page info and thumbnail rows
         view_bar = Gtk.Box(spacing=8)
-        self.btn_zoom_out = self._tool(view_bar, "−", lambda: self.preview.zoom_out())
-        self.btn_zoom_out.set_tooltip_text("Zoom out (Ctrl + mouse wheel)")
+        self.btn_zoom_out = icon_button(
+            "magnifying-glass-minus", "Zoom out (Ctrl + mouse wheel)", lambda: self.preview.zoom_out()
+        )
+        view_bar.pack_start(self.btn_zoom_out, False, False, 0)
         self.zoom_label = Gtk.Label(label="Fit")
         self.zoom_label.set_width_chars(5)
         view_bar.pack_start(self.zoom_label, False, False, 0)
-        self.btn_zoom_in = self._tool(view_bar, "+", lambda: self.preview.zoom_in())
-        self.btn_zoom_in.set_tooltip_text("Zoom in (Ctrl + mouse wheel); drag the page to move around")
-        self.btn_fit = self._tool(view_bar, "Fit", lambda: self.preview.zoom_fit())
-        self.btn_fit.set_tooltip_text("Show the whole page")
+        self.btn_zoom_in = icon_button(
+            "magnifying-glass-plus",
+            "Zoom in (Ctrl + mouse wheel); drag the page to move around",
+            lambda: self.preview.zoom_in(),
+        )
+        view_bar.pack_start(self.btn_zoom_in, False, False, 0)
+        self.btn_fit = icon_button(
+            "arrows-pointing-in", "Fit the whole page (Ctrl 0)", lambda: self.preview.zoom_fit()
+        )
+        view_bar.pack_start(self.btn_fit, False, False, 0)
         self.info = self.label("", "muted")
         view_bar.pack_start(self.info, True, True, 8)
         rows = self.ctx.settings.get("thumbnail_rows")

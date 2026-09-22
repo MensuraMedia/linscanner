@@ -40,6 +40,8 @@ class Feature(BaseFeature):
 
     def process_page(self, image, page):
         """Crop off a detected overrun band (plus a small margin kept)"""
+        if page.get("auto_detected") == "detected":
+            return image  # Auto-Detect already cropped this page to the paper
         g = small_gray(image, 800)
         a = np.asarray(g, dtype=np.float32)
         start = trailing_band(a)

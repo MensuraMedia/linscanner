@@ -12,7 +12,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk  # noqa: E402
 
 from config.config_scan import COLOR_MODES, PAPER_SIZES, QUALITY_PRESETS, SHEET_MODES  # noqa: E402
-from modules.manager_scan import ScanManager, is_duplex, is_feeder  # noqa: E402
+from modules.manager_scan import ScanManager, is_duplex, is_feeder, scan_types  # noqa: E402
 from pages.page_base import BasePage  # noqa: E402
 from ui.components.component_segmented import SegmentedControl  # noqa: E402
 from utils.util_logging import get_logger  # noqa: E402
@@ -54,9 +54,14 @@ class ScanPage(BasePage):
         # -- options card
         card = self.add_card("Options")
         self.options_card = card  # features (e.g. profiles) add rows here
+        # Scan Type (Front Page / Front & Back / Flatbed) chooses the device source;
+        # the device's own source names stay in a hidden combo (the request uses them)
         self.source_combo = Gtk.ComboBoxText()
         self.source_combo.connect("changed", lambda *_: self.on_source_changed())
-        card.pack_start(self.form_row("Source", self.source_combo), False, False, 0)
+        self.types = {}
+        self.scan_type = None
+        self.scan_type_slot = Gtk.Box()
+        card.pack_start(self.form_row("Scan Type", self.scan_type_slot), False, False, 0)
 
         # Sheet-fed mode: only shown for feeder sources
         self.sheets = SegmentedControl(
@@ -83,9 +88,18 @@ class ScanPage(BasePage):
         card.pack_start(self.form_row("Quality", self.quality), False, False, 0)
 
         self.paper_combo = Gtk.ComboBoxText()
+        group = None
         for key, spec in PAPER_SIZES.items():
+            if spec.get("group") != group and group is not None:
+                self.paper_combo.append(f"-{spec['group']}", "")  # separator between groups
+            group = spec.get("group")
             self.paper_combo.append(key, spec["label"])
-        self.paper_combo.set_active_id(s.get("paper"))
+        self.paper_combo.set_row_separator_func(lambda model, it: (model[it][1] or "").startswith("-"))
+        self.paper_combo.set_tooltip_text(
+            "Auto-Detect fits each page to the paper that was scanned (when its edges can be seen)"
+        )
+        if not self.paper_combo.set_active_id(s.get("paper")):
+            self.paper_combo.set_active_id("auto_detect")
         self.paper_combo.connect("changed", lambda c: self.remember("paper", c.get_active_id()))
         card.pack_start(self.form_row("Paper size", self.paper_combo), False, False, 0)
 
@@ -150,7 +164,7 @@ class ScanPage(BasePage):
             self.scan_btn,
             self.refresh_btn,
             self.device_combo,
-            self.source_combo,
+            self.scan_type_slot,
             self.color,
             self.quality,
             self.paper_combo,
@@ -257,11 +271,16 @@ class ScanPage(BasePage):
         self.ctx.scan.load_capabilities(dev.id, self.caps_loaded, self.devices_failed)
 
     def caps_loaded(self, caps):
-        """Fill the source combo from capabilities and mark Ready"""
+        """Offer the scanner's Scan Types (from its sources) and mark it found"""
         self.source_combo.remove_all()
         for src in caps.sources or ["Default"]:
             self.source_combo.append(src, src)
-        if not self.source_combo.set_active_id(caps.default_source):
+        self.build_scan_types(caps.sources or ["Default"])
+        wanted = self.ctx.settings.get("scan_type")
+        key = wanted if wanted in self.types else next(iter(self.types), None)
+        if key:
+            self.choose_scan_type(key)
+        elif not self.source_combo.set_active_id(caps.default_source):
             self.source_combo.set_active(0)
         self.set_busy(False)
         self.looking(False)
@@ -271,6 +290,33 @@ class ScanPage(BasePage):
             self.ctx.scan.remember_device(dev)  # reached directly at the next start
         self.update_summary()
 
+    SCAN_TYPE_LABELS = {"front": "Front Page", "both": "Front & Back", "flatbed": "Flatbed"}
+
+    def build_scan_types(self, sources):
+        """Segmented Scan Type control for this scanner (Front & Back only if it can scan duplex)"""
+        self.types = scan_types(sources)
+        for child in self.scan_type_slot.get_children():
+            self.scan_type_slot.remove(child)
+        items = [(k, self.SCAN_TYPE_LABELS[k]) for k in ("front", "both", "flatbed") if k in self.types]
+        if not items:
+            self.scan_type = None
+            return
+        self.scan_type = SegmentedControl(items, on_changed=self.on_scan_type)
+        self.scan_type.set_tooltip_text("Front Page scans one side of each sheet; Front & Back scans both")
+        self.scan_type_slot.pack_start(self.scan_type, False, False, 0)
+        self.scan_type_slot.show_all()
+
+    def on_scan_type(self, key):
+        """User picked a Scan Type: remember it and use its source"""
+        self.ctx.settings.set("scan_type", key)
+        self.choose_scan_type(key)
+
+    def choose_scan_type(self, key):
+        """Select the device source behind a Scan Type"""
+        if self.scan_type:
+            self.scan_type.set_active(key)
+        self.source_combo.set_active_id(self.types[key])
+
     def sheet_mode(self):
         """Current sheet mode ("all" / "one"); only meaningful for feeder sources"""
         return self.sheets.get_active()
@@ -278,9 +324,13 @@ class ScanPage(BasePage):
     def on_source_changed(self):
         """Show the Sheets choice for feeder sources only, then refresh the summary"""
         source = self.source_combo.get_active_id() or ""
+        key = next((k for k, v in self.types.items() if v == source), None)
+        if key and self.scan_type and self.scan_type.get_active() != key:
+            self.scan_type.set_active(key)  # the source was set directly (profiles, tests)
         self.sheets_row.set_visible(is_feeder(source))
         if is_feeder(source):
-            self.sheets_row.show_all()
+            for child in self.sheets_row.get_children():  # show_all() skips a no-show-all row's children
+                child.show_all()
         self.update_summary()
 
     def update_summary(self):

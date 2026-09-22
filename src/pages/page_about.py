@@ -89,6 +89,49 @@ class AboutPage(BasePage):
             "muted",
         )
 
+        card = self.add_card("Compatibility")
+        self._text(
+            card,
+            "linscanner is ever evolving. Each release adds and verifies more devices and systems, and "
+            "reports of what works (or doesn't) on your hardware help it grow. What it works with today:",
+            "muted",
+        )
+        self._grid(
+            card,
+            [
+                (
+                    "Scanners",
+                    "USB scanners with a SANE driver: 80+ open-source drivers cover most models from Epson, "
+                    "Canon, Fujitsu / Ricoh (ScanSnap, fi-series), Brother, HP, Plustek, Avision, Kodak, "
+                    "Panasonic, Visioneer, Xerox and more, plus vendor drivers such as Epson Scan 2 and HP hplip",
+                ),
+                ("Multifunction printers", "USB all-in-ones with driverless scanning (IPP-over-USB / eSCL)"),
+                ("Verified", "Epson WorkForce ES-400 II (document feeder, duplex)"),
+                (
+                    "Scanner types",
+                    "Sheet-fed document scanners (single or double-sided), flatbeds, all-in-ones",
+                ),
+                (
+                    "Systems",
+                    "Linux Mint 22 (tested). Ubuntu 24.04 and other Debian-based systems with Python 3.10+ "
+                    "and GTK 3; other distributions with the same packages should work",
+                ),
+                (
+                    "Paper",
+                    "Auto-Detect, Letter, Legal, Executive, Half Letter, A4, A5, A6, B5, receipts (80 / 58 mm), "
+                    "business, ID and index cards, photos (4×6, 5×7), checks",
+                ),
+                ("Saves", "PDF (optionally searchable and PDF/A), PNG, JPEG, TIFF (multi-page)"),
+                ("Opens", "PDF, PNG, JPEG, TIFF (multi-page) for review and Quick Edit"),
+                (
+                    "Not yet",
+                    "Wi-Fi / network scanners, text recognition in languages other than English, "
+                    "cameras and document cameras",
+                ),
+                ("Check a scanner", "Device Info shows whether a driver can use your scanner and why"),
+            ],
+        )
+
         card = self.add_card("Privacy")
         self._text(
             card,
@@ -152,6 +195,7 @@ class AboutPage(BasePage):
                 ("Scanning", "SANE project, sane-airscan (Alexander Pevzner), ipp-usb (OpenPrinting)"),
                 ("Images and PDF", "Pillow, NumPy, Ghostscript (Artifex)"),
                 ("Text recognition", "Tesseract OCR"),
+                ("Icons", "Heroicons by Tailwind Labs (MIT licence)"),
                 ("Text fonts", "DejaVu, Liberation, Noto, Ubuntu and URW base35, from your system"),
             ],
         )

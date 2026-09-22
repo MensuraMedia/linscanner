@@ -1,4 +1,4 @@
-# linscanner technical document (v0.2.0)
+# linscanner technical document (v0.3.0)
 
 How linscanner detects, connects to and drives scanners on Linux, what every
 part does, and how the optional feature modules plug in. The user guide is
@@ -345,6 +345,129 @@ load is reported and the rest load normally. All of this is tested.
 
 ---
 
+## 6b. 0.3.0 internals
+
+Design notes, and how each idea can be reused, are in
+[`design/0.3.0-ui-refinements.md`](design/0.3.0-ui-refinements.md).
+
+### Remembered scanner (`ScanManager.remember_device` / `restore_device`)
+- **Saving.** When the options load, the physical scanner (vendor, model,
+  and every method: code, backend name, device id, driver) is stored as
+  `last_device_info`.
+- **At start.** `restore_device` rebuilds the `PhysicalDevice` with the
+  current backends (`restored=True`) and proves it answers with one
+  `get_capabilities` call. That takes about 0.1–2 s, against 10–20 s for a
+  full search.
+- **Fallback.** If it doesn't answer (for example, a replugged USB device
+  has a new `libusb:BBB:DDD`), the Scan page runs a full search.
+- **Device Info** runs a full search when opened on a restored scanner, so
+  it has the USB facts and every driver.
+
+### Scan Type and Auto-Detect
+- `scan_types(sources)` maps driver sources to *front / both / flatbed*.
+  The device source stays in a hidden combo that the request uses.
+- `PAPER_SIZES` entries have a `group`; `detect: True` means "scan the whole
+  area, then fit to the paper":
+  - `ScanRequest.auto_detect`, `nominal_mm` and `extra_args` carry this.
+  - `auto_size_args(caps)` adds the driver's own paper-size option when it
+    has one (`--adf-crp=yes` on epsonds, `auto-size`, …).
+- **Detection.** `ScanManager.detect_page` runs `util_autodetect.detect_crop`
+  on each page, in the scan thread and before the feature modules:
+  - Take the background colour from the scan's outer border (1 % strips) on
+    a ~1000 px copy.
+  - A pixel differs if any channel is more than 35 away. A row or column
+    with more than 2 % differing pixels counts as paper; the box around
+    those, plus a 1.5 mm margin, is kept.
+  - The result is rejected when it covers 98 % or more of the image
+    (no edges), under 1 %, or when under 50 % of the box differs. In that
+    last case only ink stood out, meaning the paper is the same colour as
+    the background.
+  - Rejected results keep the whole page, or crop to the nominal size
+    (centred across, from the top) for receipts, cards and checks.
+- The auto-crop module skips pages that Auto-Detect cropped
+  (`page["auto_detected"] == "detected"`).
+
+### Preview speed (`utils/util_display.DisplayCache`)
+- **Display copies.** Each page gets a copy of at most 2200 px
+  (`Image.reduce`, JPEG q90) in the session's `display/` folder. They are
+  made by a background warmer as pages arrive; writes are atomic, with one
+  lock per page.
+- **Rendering.** The large view and thumbnails come from the copy, with
+  rotation and Quick Edit layers applied at display time (`flatten` with
+  `dpi / factor`, so text sizes stay right). Zoom beyond the copy's size
+  decodes the original, and the latest original is kept.
+- **Caches** are keyed by `page_key` (path, file mtime, rotation, hash of
+  the layers): thumbnails (400) and large renders (6). Selecting a page
+  only moves the `selected` CSS class, so it takes about 25 ms instead of
+  rebuilding every thumbnail.
+- The strip is a `Gtk.Grid`, filled column by column for 2 rows.
+
+### Save, Recent, opening documents (`modules/manager_documents.py`)
+- `export_pages` records every saved file in `recent.json` (newest first,
+  at most 30, deduplicated). `ScanManager.document` holds
+  `{path, format}` for **Save**.
+- `open_document` turns a PDF into pages with Ghostscript (`png16m`,
+  300 dpi, `-dSAFER`); images are taken frame by frame (Pillow).
+- The Recent page is a `Gtk.TreeView` (fixed columns, fixed-height rows):
+  - icon cells use `CellRendererPixbuf`, and their clicks are resolved with
+    `get_path_at_pos`;
+  - `clear_recent(older_than_days)` does the age-based clearing;
+  - the folder icon calls `org.freedesktop.FileManager1.ShowItems` over
+    D-Bus, falling back to `Gtk.show_uri_on_window`.
+
+### Quick Edit (`features/feature_quick_edit.py`)
+- **Tools.** Select / Add Text (radio buttons with Heroicons), a guides
+  toggle, and text style (font, size, colour). Changing the style restyles
+  the text being edited or the selected text.
+- **Typing.** It happens on the canvas through `Gtk.IMMulticontext`, so dead
+  keys, compose and input methods work. The caret blinks every 530 ms.
+  Enter starts `new_line()`: same x, y plus 1.5 × the line height. Esc
+  finishes; an empty item is removed.
+- **Pointer zones.** `_hit` returns `inside | frame (6 px band) | resize`.
+  `cursor_for` maps them: frame, or inside a signature, gives `grab` (and
+  `grabbing` while dragging); inside text gives `text` (a click edits);
+  the corner gives `nwse-resize`; place mode gives `crosshair`.
+- **Alignment guides** (`utils/util_guides.snap`). For each axis, pick the
+  smallest offset within 8 screen pixels among these candidates:
+  - other items' left, centre and right edges, and their top and bottom;
+  - the page centre;
+  - the mirror of another item across the centre;
+  - equal spacing: the next row after two rows, or a half-line gap under
+    a text line.
+  Guides are drawn dashed (blue: align, pink: centre and mirror, green:
+  spacing). Alt skips snapping.
+- **Signatures.** Apply Signature uses `current_signature` from the settings,
+  and the edit icon opens `SignatureChooser` (a popover of the saved slots,
+  each with a trash icon, plus Create Signature). `SignatureCreator` is a
+  dialog with two tabs, *Type it* (the signature-font list with live previews
+  on white tiles) and *Upload a PNG*. Saving goes through
+  `util_signatures.save_signature`, which raises `LibraryFull` at 4.
+- **Text rendering.** `util_fonts.render_text` is the single text renderer,
+  used by the canvas and by `flatten`, so the saved file matches the screen.
+  Script fonts can draw left of or above their anchor; the offsets are
+  returned, and `composite_at` clips at the page edges.
+
+### Fonts and icons
+- **Bundled signature fonts.** `resources/fonts/signature/*/` holds 9 SIL OFL
+  1.1 fonts from Google Fonts, each with its `OFL.txt`. `fonts.json` records
+  family, designer, copyright and licence; the About page reads it.
+- **User fonts.** `import_fonts()` copies .ttf/.otf files, or the fonts
+  inside a .zip, to `~/.local/share/linscanner/fonts`. The family name is
+  read by Pillow. These fonts are never bundled.
+- **Icons.** `utils/util_icons.py` loads Heroicons SVGs from
+  `resources/icons/heroicons/`, replaces `currentColor` with the theme's
+  text colour, renders them with `GdkPixbuf.PixbufLoader` (librsvg,
+  `librsvg2-common`) and caches them.
+  - `icon_button()` makes a square button with just an icon;
+    `icon_label_button()` adds a short label.
+  - Buttons are 28 px tall (the same as the sidebar rows) and as wide as
+    their label; see `.icon-button` and the `button` CSS rules.
+
+### Robustness
+- `ScanManager._in_thread` wraps callbacks so an idle handler never repeats.
+- Tests use a private `XDG_DATA_HOME` (a `conftest` fixture), so signatures,
+  fonts and the Recent list on the real machine are never touched.
+
 ## 7. Data, privacy, performance
 
 | Item | Detail |
@@ -403,7 +526,7 @@ verified in a `--network none` container: the app runs, 12 features load,
 
 | Check | Result |
 |---|---|
-| Unit + integration tests | 62 passed. Covers: parser on real ES-400 II output; engine grouping and fallback; direct eSCL against a fake eSCL server; SANE virtual scanner (flatbed, feeder, one-sheet, cancel, serialisation); every feature module; registry isolation; UI flows (scan → preview, one-sheet, features, Quick Edit, profiles) |
+| Unit + integration tests | 103 passed (0.3.0). 62 at 0.2.0. Covers: parser on real ES-400 II output; engine grouping and fallback; direct eSCL against a fake eSCL server; SANE virtual scanner (flatbed, feeder, one-sheet, cancel, serialisation); every feature module; registry isolation; UI flows (scan → preview, one-sheet, features, Quick Edit, profiles) |
 | Lint | black + pyflakes clean |
 | Real hardware | ES-400 II: discovery merges epsonds + epsonscan2, Device Info complete, firmware ADF 10L5, status Ready; initial GUI scan user-confirmed (0.1.0) |
 | Offline | `bin/test-offline linscanner` OK; feature pipeline run in a network-less container |
