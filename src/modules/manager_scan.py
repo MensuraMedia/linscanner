@@ -185,6 +185,7 @@ class ScanManager:
         self.features = None  # FeatureRegistry: page processors (crop, deskew, blank removal, …)
         self.dropped_pages = 0  # pages removed by processors during the last scan
         self.document = None  # {"path", "format"} once saved or opened: what Save writes to
+        self._saved = None  # page signature at the last full save (see is_saved)
         self._cancel = threading.Event()
         self.busy = False
 
@@ -477,6 +478,21 @@ class ScanManager:
         """Remove all pages from the session (the next Save starts a new document)"""
         self.pages = []
         self.document = None
+        self._saved = None
+
+    def _signature(self):
+        """What the pages look like now (files, versions, rotation, edits, order)"""
+        from utils.util_display import page_key
+
+        return [page_key(p) for p in self.pages]
+
+    def mark_saved(self):
+        """The whole document was just saved"""
+        self._saved = self._signature()
+
+    def is_saved(self):
+        """True if the pages haven't changed since the last full save"""
+        return bool(self.pages) and self._saved == self._signature()
 
     def open_document(self, path):
         """Replace the session's pages with a saved document's pages (ValueError if it can't be read)"""

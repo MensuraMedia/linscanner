@@ -277,6 +277,9 @@ Constants: `AUTO_SIZE_OPTIONS`
 | &nbsp;&nbsp;`.rotate_page(self, index, degrees)` | Rotate a page clockwise by degrees (applied at display/export) |
 | &nbsp;&nbsp;`.delete_page(self, index)` | Remove a page from the session |
 | &nbsp;&nbsp;`.clear_pages(self)` | Remove all pages from the session (the next Save starts a new document) |
+| &nbsp;&nbsp;`._signature(self)` | What the pages look like now (files, versions, rotation, edits, order) |
+| &nbsp;&nbsp;`.mark_saved(self)` | The whole document was just saved |
+| &nbsp;&nbsp;`.is_saved(self)` | True if the pages haven't changed since the last full save |
 | &nbsp;&nbsp;`.open_document(self, path)` | Replace the session's pages with a saved document's pages (ValueError if it can't be read) |
 | &nbsp;&nbsp;`.cleanup(self)` | Delete session temp files and backend temp config |
 | &nbsp;&nbsp;`.summary(request)` | One-line human description of a request (mode, dpi, size, source) |
@@ -393,7 +396,7 @@ Constants: `NAV_ITEMS`, `BOTTOM_ITEMS`
 
 ### `src/pages/page_about.py`
 
-About Page What linscanner is, privacy and licence in brief, where your files are, handy shortcuts, system versions, credits and font attributions (bundled signature fonts with their designers and licence).
+About Page What linscanner is, privacy and licence in brief, where your files are, handy shortcuts, system versions and credits. (Signature-font credits are kept in the backlog, docs/FOLLOW-UP.md #33, as requested.)
 
 | Symbol | Purpose |
 |---|---|
@@ -530,9 +533,9 @@ Constants: `OPTION_BUTTON_WIDTH`
 | &nbsp;&nbsp;`.set_status(self, text, css='muted')` | Show a status message styled muted / ok / error / busy (errors and results are logged) |
 | &nbsp;&nbsp;`.set_busy(self, busy, scanning=False)` | Enable or disable controls while working; Cancel only while scanning |
 | &nbsp;&nbsp;`.current_device(self)` | The ScannerDevice selected in the combo, or None |
-| &nbsp;&nbsp;`.show_device_issue(self, text=None)` | The line under the scanner list: shown only when something needs fixing |
-| &nbsp;&nbsp;`.looking(self, on)` | Spinner on while looking for the scanner (the check mark hides) |
-| &nbsp;&nbsp;`.connected(self, on=True)` | Green check mark after the scanner name when it answered |
+| &nbsp;&nbsp;`.show_device_issue(self, text=None)` | The red line under the scanner list: shown only when the scanner can't be used |
+| &nbsp;&nbsp;`.looking(self, on)` | Spinner in place of the power mark while looking for the scanner |
+| &nbsp;&nbsp;`.power(self, on, message=None, detail='')` | Green power mark when the scanner answered; red with a plain message when it didn't |
 | &nbsp;&nbsp;`.startup(self)` | At start: reach the remembered scanner directly; otherwise do a full search |
 | &nbsp;&nbsp;`.refresh_devices(self)` | Start a background device search (ignored while scanning) |
 | &nbsp;&nbsp;`.devices_loaded(self, devices)` | Fill the scanner combo; reselect the last used scanner |
@@ -542,7 +545,7 @@ Constants: `OPTION_BUTTON_WIDTH`
 | &nbsp;&nbsp;`.build_scan_types(self, sources)` | Segmented Scan Type control for this scanner (Front & Back only if it can scan duplex) |
 | &nbsp;&nbsp;`.on_scan_type(self, key)` | User picked a Scan Type: remember it and use its source |
 | &nbsp;&nbsp;`.choose_scan_type(self, key)` | Select the device source behind a Scan Type |
-| &nbsp;&nbsp;`.sheet_mode(self)` | Current sheet mode ("all" / "one"); only meaningful for feeder sources |
+| &nbsp;&nbsp;`.sheet_mode(self)` | Current sheet mode: "all" (Multi-Page) / "one" (Single Page); feeder sources only |
 | &nbsp;&nbsp;`.on_source_changed(self)` | Show the Sheets choice for feeder sources only, then refresh the summary |
 | &nbsp;&nbsp;`.update_summary(self)` | Show exactly what will be sent to the scanner |
 | &nbsp;&nbsp;`.build_request(self, dry_run=False)` | Build a ScanRequest from the controls (dry_run: no temp folder) |
@@ -550,8 +553,6 @@ Constants: `OPTION_BUTTON_WIDTH`
 | &nbsp;&nbsp;`.on_page(self, _page)` | Count a finished page and notify the Preview page |
 | &nbsp;&nbsp;`.on_progress(self, pct)` | Update the progress bar for the page in progress |
 | &nbsp;&nbsp;`.on_done(self, pages, cancelled)` | Report the result; open Preview, or wait for the next sheet in one-sheet mode |
-| &nbsp;&nbsp;`.on_shown(self)` | Back on the Scan page after a one-sheet session: start fresh labels |
-| &nbsp;&nbsp;`.finish_document(self)` | One-sheet mode: the document is complete (auto-save etc.), open Preview |
 | &nbsp;&nbsp;`.after_scan(self, final)` | Tell feature modules a scan ended (final = the document is complete) |
 | &nbsp;&nbsp;`.on_error(self, message)` | Show a scan error |
 
@@ -563,6 +564,9 @@ Settings Page Theme, default save folder, Black & White style, network scanning 
 |---|---|
 | class `SettingsPage(BasePage)` | User preferences (saved to ~/.config/linscanner/settings.json) |
 | &nbsp;&nbsp;`.build_content(self)` | Theme, scanning and driver setting cards |
+| &nbsp;&nbsp;`._tilde(path)` | A path with the home folder shown as ~ |
+| &nbsp;&nbsp;`.choose_save_folder(self)` | Folder dialog for the default save location |
+| &nbsp;&nbsp;`.set_save_folder(self, path)` | Store the default save location and show it |
 | &nbsp;&nbsp;`.save(self, key, value)` | Persist a setting and broadcast settings-changed |
 | &nbsp;&nbsp;`.on_theme(self, combo)` | Apply and remember the selected theme |
 | &nbsp;&nbsp;`.on_feature_toggled(self, check, feature)` | Enable or disable a feature module; pages update immediately |
@@ -627,6 +631,8 @@ Constants: `FONT_EXTENSIONS`, `BASIC_FONTS`
 | `load_font(family, px)` | Pillow font object for a family at a pixel size (cached) |
 | `text_metrics(text, family, px)` | (advance width, line height) in pixels: the text's box from its anchor |
 | `render_text(text, family, px, color='#000000')` | Text as a transparent RGBA image; returns (image, dx, dy): the image's |
+| `layout_runs(runs, px_per_pt)` | Line layout of styled runs: (width, line height, baseline, [x of each character boundary]) |
+| `render_runs(runs, px_per_pt)` | Styled runs as one transparent RGBA image on a shared baseline; returns (image, dx, dy). |
 
 ### `src/utils/util_guides.py`
 
@@ -723,6 +729,26 @@ Constants: `MAX_SIGNATURES`, `TYPED_SIGNATURE_PX`
 | `typed_signature(text, family, color='#1a1a1a', px=TYPED_SIGNATURE_PX)` | A name rendered in a signature font, as a trimmed transparent RGBA image |
 | `save_signature(img, name, folder=None)` | Save an RGBA image to the library; raises LibraryFull when 4 are saved. Returns the path. |
 | `remove_signature(path)` | Delete a saved signature |
+
+### `src/utils/util_textruns.py`
+
+Styled text runs for Quick Edit A text item holds "runs": [{"text", "font", "size_pt", "color"}, ...], drawn left to right on one baseline, so a few highlighted words can have their own font, size or colour. Older items with a single text / font / size_pt / color are read as one run.  All positions are character offsets into the item's plain text.
+
+Constants: `STYLE_KEYS`, `DEFAULT_STYLE`
+
+| Symbol | Purpose |
+|---|---|
+| `runs_of(item)` | The item's runs (converting an older single-style item) |
+| `plain(runs)` | The runs' text without styles |
+| `style_of(run)` | A run's style |
+| `style_at(runs, pos)` | The style that text typed at pos continues (the character before pos; the first run at 0) |
+| `tidy(runs)` | Merge neighbours with the same style and drop empty runs (one run is always kept) |
+| `split_at(runs, pos)` | Runs split so that a run boundary falls at pos |
+| `insert(runs, pos, text, style=None)` | Runs with text inserted at pos (in style, or the style at pos) |
+| `delete(runs, start, end)` | Runs with the characters start..end removed |
+| `restyle(runs, start, end, **style)` | Runs with characters start..end given the style (font / size_pt / color) |
+| `word_at(text, pos)` | (start, end) of the word around pos |
+| `set_runs(item, runs)` | Store runs on an item, keeping the older single-style fields in step (first run) |
 
 ### `src/features/__init__.py`
 
@@ -911,14 +937,19 @@ Constants: `HANDLE`, `SNAP_PX`, `DEFAULT_SIGNATURE_WIDTH`, `SIGNATURE_INK`
 | &nbsp;&nbsp;`.on_realize(self, widget)` | Connect the input method to the canvas window |
 | &nbsp;&nbsp;`.place_signature_on_click(self, path)` | Arm place mode: the next click on the page places this signature |
 | &nbsp;&nbsp;`.current_style(self)` | (font, size_pt, colour) from the panel |
-| &nbsp;&nbsp;`.style_changed(self)` | Font / size / colour changed: restyle the text being edited or selected |
-| &nbsp;&nbsp;`._load_style(self, item)` | Show a text item's style in the panel (without restyling it) |
+| &nbsp;&nbsp;`.selection(self)` | (start, end) of the highlighted characters in the text being edited, or None |
+| &nbsp;&nbsp;`.style_changed(self)` | Font / size / colour changed in the panel. |
+| &nbsp;&nbsp;`._load_style(self, item, pos=None)` | Show the style at a position of a text item in the panel (without restyling it) |
 | &nbsp;&nbsp;`.new_text_item(self, x, y, text='')` | Create a text item at page fractions (x, y) with the panel's style |
 | &nbsp;&nbsp;`.add_text(self)` | Add the text from text_entry near the top-left (scripted use) |
-| &nbsp;&nbsp;`.start_editing(self, item)` | Type into a text item on the canvas |
+| &nbsp;&nbsp;`.start_editing(self, item, caret=None)` | Type into a text item on the canvas (caret: character position; default the end) |
 | &nbsp;&nbsp;`.finish_editing(self)` | Stop typing; an empty text item is removed |
-| &nbsp;&nbsp;`.type_text(self, text)` | Insert typed text into the item being edited |
+| &nbsp;&nbsp;`.select_range(self, start, end)` | Highlight characters start..end of the text being edited (the caret goes to end) |
+| &nbsp;&nbsp;`._replace_selection(self, text='')` | Delete the highlighted characters (if any) and insert text at the caret |
+| &nbsp;&nbsp;`.type_text(self, text)` | Insert typed text at the caret (replacing highlighted words) |
 | &nbsp;&nbsp;`.on_commit(self, _im, text)` | Characters from the input method |
+| &nbsp;&nbsp;`.backspace(self, forward=False)` | Backspace (or Delete): remove the highlighted words, or one character |
+| &nbsp;&nbsp;`.move_caret(self, pos, extend=False)` | Move the caret (extend: grow the highlight, as with Shift) |
 | &nbsp;&nbsp;`.place_signature(self, path, x=0.55, y=0.8)` | Place a signature with its top-left at page fractions (x, y) |
 | &nbsp;&nbsp;`.delete_selected(self)` | Remove the selected item |
 | &nbsp;&nbsp;`.apply_to_all(self)` | Copy the selected item to the same position on every other page |
@@ -927,26 +958,29 @@ Constants: `HANDLE`, `SNAP_PX`, `DEFAULT_SIGNATURE_WIDTH`, `SIGNATURE_INK`
 | &nbsp;&nbsp;`._base_image(self)` | The page with rotation applied (no overlays), cached |
 | &nbsp;&nbsp;`._dpi(self)` | Page resolution (text sizes are in points) |
 | &nbsp;&nbsp;`._signature_image(self, path)` | Signature as a Pillow RGBA image (cached) |
-| &nbsp;&nbsp;`.item_box(self, item)` | Item rectangle in page fractions (text: from its anchor, advance and line height) |
+| &nbsp;&nbsp;`._text_layout(self, item)` | (width, line height, baseline, character x positions) of a text item, in page pixels |
+| &nbsp;&nbsp;`.item_box(self, item)` | Item rectangle in page fractions (text: its line box; signature: its image) |
 | &nbsp;&nbsp;`._bbox(self, item)` | Item rectangle on the canvas: (x, y, w, h) |
+| &nbsp;&nbsp;`.char_x(self, item, pos)` | Canvas x of the caret position pos in a text item |
+| &nbsp;&nbsp;`.pos_at(self, item, ex)` | The caret position nearest to canvas x ex in a text item |
 | &nbsp;&nbsp;`.to_page(self, ex, ey)` | Canvas pixels -> page fractions |
 | &nbsp;&nbsp;`.snapped(self, box, moving=None, free=False)` | (left, top) for box snapped to the alignment guides; sets self.guides |
 | &nbsp;&nbsp;`._ghost_box(self, fx, fy)` | Box of what the next click would create at (fx, fy) |
 | &nbsp;&nbsp;`._page_pixbuf(self, w, h)` | The page scaled to (w, h), cached per canvas size (drawing stays fast while dragging) |
-| &nbsp;&nbsp;`._text_pixbuf(self, item, scale)` | (pixbuf, dx, dy) for a text item at canvas scale, cached |
+| &nbsp;&nbsp;`._text_pixbuf(self, item, scale)` | (pixbuf, dx, dy) for a text item's styled runs at canvas scale, cached |
 | &nbsp;&nbsp;`._signature_pixbuf(self, path, w, h)` | Signature scaled to (w, h) on the canvas, cached |
-| &nbsp;&nbsp;`.on_draw(self, widget, cr)` | Draw the page, the overlays, guides, the caret and the selection frame |
+| &nbsp;&nbsp;`.on_draw(self, widget, cr)` | Draw the page, the overlays, the text highlight and caret, guides and the selection frame |
 | &nbsp;&nbsp;`._toggle_caret(self)` | Blink the caret while typing |
-| &nbsp;&nbsp;`._hit(self, ex, ey)` | (item, zone) under the pointer, topmost first; zone: resize | frame | inside |
-| &nbsp;&nbsp;`.cursor_for(item, zone, mode, dragging=False)` | Pointer name for what a click would do (hand = move, text = edit) |
+| &nbsp;&nbsp;`._hit(self, ex, ey)` | (item, zone) under the pointer, topmost first; zone: resize (signatures only) | frame | inside |
+| &nbsp;&nbsp;`.cursor_for(item, zone, mode, dragging=False)` | Pointer name for what a click would do (hand = move, text = edit, arrows = resize) |
 | &nbsp;&nbsp;`._pointer(self, name)` | Set the canvas pointer by name |
 | &nbsp;&nbsp;`._free(self, event)` | Alt held: place / move without snapping |
-| &nbsp;&nbsp;`.on_press(self, widget, event)` | Place text or a signature, start editing (inside text), or start moving (frame) / resizing |
-| &nbsp;&nbsp;`.on_motion(self, widget, event)` | Move / resize the dragged item, show where a click would place something, set the pointer |
-| &nbsp;&nbsp;`.on_release(self, widget, event)` | End a drag |
+| &nbsp;&nbsp;`.on_press(self, widget, event)` | Place text or a signature; click inside text to put the caret there (drag to highlight); |
+| &nbsp;&nbsp;`.on_motion(self, widget, event)` | Highlight while dragging in text; move / resize the dragged item; ghost and pointer |
+| &nbsp;&nbsp;`.on_release(self, widget, event)` | End a drag or a highlight |
 | &nbsp;&nbsp;`.on_leave(self, *_)` | Pointer left the canvas: hide the ghost and guides |
-| &nbsp;&nbsp;`.on_key(self, widget, event)` | Typing, Enter (new line below), Esc, Delete and arrow-key nudging |
-| &nbsp;&nbsp;`.new_line(self)` | Enter while typing: finish this line and start the next one below it, same left edge |
+| &nbsp;&nbsp;`.on_key(self, widget, event)` | Typing and text keys while editing; otherwise Esc, Delete and arrow-key nudging |
+| &nbsp;&nbsp;`.new_line(self)` | Enter while typing: finish this line and start the next one below it, same left edge and style |
 | &nbsp;&nbsp;`.commit(self)` | Write the edited overlays back to the page(s) |
 | &nbsp;&nbsp;`.run(self)` | Show modally; True if the user applied the changes |
 | class `SignatureChooser()` | Popover card from the edit icon: the saved signatures (pick one, or delete it) and Create Signature |

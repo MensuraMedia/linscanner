@@ -81,3 +81,10 @@
 | 2026-09-21T22:30:00 | Window resizable and snappable: non-homogeneous page stack, scrolled pages, min ~200x400 |
 | 2026-09-21T22:30:00 | Fix: feature buttons shown without their icons (show_all skips no-show-all widgets) |
 | 2026-09-21T22:30:00 | v0.3.2; 106 tests |
+| 2026-09-21T23:10:00 | Scan page: power icon (green ready / red 'Device may be off. Check power settings.'); detection off the status line |
+| 2026-09-21T23:10:00 | Scan Options title; Scan Type row without label; Sheets: Multi-Page / Single Page |
+| 2026-09-21T23:10:00 | Single Page: one page then Preview; after Save the next Scan starts a new document (unsaved pages kept) |
+| 2026-09-21T23:10:00 | Quick Edit: styled text runs; highlight words and change font / size / colour; resize handle for signatures only |
+| 2026-09-21T23:10:00 | Signature fonts reduced to Great Vibes and Sacramento (OFL); About no longer lists fonts; backlog #33 has the credits |
+| 2026-09-21T23:10:00 | Settings: Default save location with Choose...; saving elsewhere no longer overwrites it |
+| 2026-09-21T23:10:00 | v0.3.3; 113 tests |

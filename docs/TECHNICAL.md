@@ -1,4 +1,4 @@
-# linscanner technical document (v0.3.2)
+# linscanner technical document (v0.3.3)
 
 How linscanner detects, connects to and drives scanners on Linux, what every
 part does, and how the optional feature modules plug in. The user guide is
@@ -515,6 +515,39 @@ Design notes, and how each idea can be reused, are in
   - The window's minimum is about 200 × 400 (Recent: 580 × 400), so Cinnamon
     can snap it to halves and quarters (1280 × 540 on a 2560 × 1080 screen).
   - A large window still gives the large view all the spare height.
+
+### 0.3.3 scan status, Single Page, styled text
+- **Power mark.** The `mark` stack after the scanner list holds a spinner
+  and Phosphor `power` icons in `success` and `error` colours.
+  - `ScanPage.power(on, message, detail)` switches it; the red message sits
+    under the list.
+  - Detection messages no longer use the bottom status line; the tests check
+    `power_state`.
+- **Single Page.** `sheet_limits(source, "one")` gives 1 page (or 2 for Front
+  & Back), and `on_done` always opens Preview.
+  - `ScanManager.mark_saved()` stores the page signature (`page_key` list)
+    after a full Save / Save As, and `is_saved()` compares against it.
+  - `on_scan` starts a new document (`clear_pages`) when the current one is
+    saved. The saved state works the same in Multi-Page.
+- **Styled runs** (`utils/util_textruns.py`). A text item is
+  `{"runs": [{"text", "font", "size_pt", "color"}], "x", "y"}`. For older
+  code and saved sessions, `text` / `font` / `size_pt` / `color` mirror the
+  plain text and the first run.
+  - Operations: `insert`, `delete`, `restyle`, `split_at`, `tidy` (merges
+    equal neighbours), `style_at` and `word_at`.
+  - `util_fonts.layout_runs` gives the width, line height, baseline and the x
+    of every character boundary. `render_runs` draws all runs on a shared
+    baseline (`anchor="ls"`), for both the canvas and `flatten`.
+  - The editor keeps `caret` / `anchor` (the highlight) and `selecting`
+    (drag). `pos_at` / `char_x` map between pointer x and characters.
+    `style_changed` restyles the highlight, or the whole item when nothing
+    is highlighted.
+  - Text has no `resize` zone. Only signatures (`type == "image"`) get the
+    corner handle.
+- **Save location.** `PreviewPage._write` no longer overwrites
+  `save_folder`. Settings shows it with **Choose…** (a SELECT_FOLDER dialog).
+- **Fonts.** Two are bundled: Great Vibes and Sacramento (OFL). The About
+  page no longer lists fonts; the credits are in `docs/FOLLOW-UP.md` #33.
 
 ### Robustness
 - `ScanManager._in_thread` wraps callbacks so an idle handler never repeats.

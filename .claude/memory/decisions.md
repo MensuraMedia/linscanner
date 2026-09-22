@@ -6,6 +6,17 @@ type: project
 
 # Decisions
 
+### 2026-09-21: Two signature fonts; font credits in the backlog only
+- Reason: user request: reduce to two fonts of our choosing; remove font information from About; keep credits only in the backlog.
+- Impact:
+  - Great Vibes (formal) and Sacramento (casual) are kept, both SIL OFL (unambiguous; their OFL.txt ships with each).
+  - Backlog #33 holds the credits.
+  - The 0.3.1 freeware fonts were removed.
+
+### 2026-09-21: A saved document is complete
+- Reason: the user's Single Page flow: scan one page, save it, press Scan again.
+- Impact: after a full Save / Save As, the next Scan starts a new document (both sheet modes); unsaved pages are never discarded.
+
 ### 2026-09-21: Phosphor Icons; freeware fonts only when no restriction is stated
 - Reason: the user preferred Phosphor, which is MIT (bundling is fine). User's font rule: bundle only fonts that are free with no ambiguity; exclude those that forbid or restrict use (a "bundle" in font terms means font collections, not apps).
 - Impact:

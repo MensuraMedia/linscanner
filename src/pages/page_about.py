@@ -1,8 +1,8 @@
 """
 About Page
 What linscanner is, privacy and licence in brief, where your files are,
-handy shortcuts, system versions, credits and font attributions (bundled
-signature fonts with their designers and licence).
+handy shortcuts, system versions and credits. (Signature-font credits are
+kept in the backlog, docs/FOLLOW-UP.md #33, as requested.)
 """
 
 import os
@@ -16,8 +16,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk  # noqa: E402
 
 from pages.page_base import BasePage  # noqa: E402
-from utils.util_fonts import bundled_signature_fonts, user_signature_fonts  # noqa: E402
-from utils.util_paths import APP_ROOT, read_version, resource  # noqa: E402
+from utils.util_paths import APP_ROOT, read_version  # noqa: E402
 
 
 def sane_version():
@@ -199,33 +198,3 @@ class AboutPage(BasePage):
                 ("Text fonts", "DejaVu, Liberation, Noto, Ubuntu and URW base35, from your system"),
             ],
         )
-
-        card = self.add_card("Signature fonts")
-        self._text(
-            card,
-            "Included with linscanner. Nine are under the SIL Open Font License 1.1, which allows them "
-            "to be bundled and shared; four are Freeware fonts whose designers state no restriction on "
-            "their use. Thank you to all their designers.",
-            "muted",
-        )
-        fonts = bundled_signature_fonts()
-        self._grid(
-            card,
-            [(f["family"], f"{f['designer']} · {f['copyright']} · {f['license']}") for f in fonts]
-            or [("—", "No bundled signature fonts found")],
-        )
-        self._text(
-            card,
-            f"Licence texts: {tilde(resource('fonts', 'signature'))}/<font>/ (OFL.txt or LICENSE-NOTE.txt)",
-            "muted",
-            selectable=True,
-        )
-        mine = user_signature_fonts()
-        if mine:
-            self._text(
-                card,
-                "Fonts you added (kept on this computer, not part of linscanner): "
-                + ", ".join(f["family"] for f in mine)
-                + ". Please respect their own licences.",
-                "muted",
-            )

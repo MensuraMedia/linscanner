@@ -10,7 +10,8 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
-from gi.repository import Gdk, Gtk  # noqa: E402
+gi.require_version("Pango", "1.0")
+from gi.repository import Gdk, Gtk, Pango  # noqa: E402
 
 from config.config_scan import BW_STYLES, NETWORK_SCANNING  # noqa: E402
 from config.config_themes import DEFAULT_THEME_ID, get_all_themes, get_theme  # noqa: E402
@@ -49,12 +50,26 @@ class SettingsPage(BasePage):
         self.bw_combo.connect("changed", lambda c: self.save("bw_style", c.get_active_id()))
         card.pack_start(self.form_row("Black & White", self.bw_combo), False, False, 0)
 
-        self.folder_btn = Gtk.FileChooserButton(
-            title="Default save folder", action=Gtk.FileChooserAction.SELECT_FOLDER
+        # default save location: where Save puts new documents and where Save As starts
+        row = Gtk.Box(spacing=10)
+        self.folder_label = self.label(self._tilde(s.get("save_folder")), "info-value", selectable=True)
+        self.folder_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+        row.pack_start(self.folder_label, True, True, 0)
+        choose = Gtk.Button(label="Choose…")
+        choose.set_tooltip_text("Choose the folder new documents are saved in")
+        choose.connect("clicked", lambda *_: self.choose_save_folder())
+        row.pack_start(choose, False, False, 0)
+        card.pack_start(self.form_row("Default save location", row), False, False, 0)
+        card.pack_start(
+            self.label(
+                "Save puts new documents here, and Save As starts here. Saving somewhere else doesn't change it.",
+                "muted",
+                wrap=True,
+            ),
+            False,
+            False,
+            0,
         )
-        self.folder_btn.set_filename(s.get("save_folder"))
-        self.folder_btn.connect("file-set", lambda b: self.save("save_folder", b.get_filename()))
-        card.pack_start(self.form_row("Save folder", self.folder_btn), False, False, 0)
 
         # network scanning: kept visible, but switched off and not selectable
         row = Gtk.Box(spacing=10)
@@ -150,6 +165,33 @@ class SettingsPage(BasePage):
             wrap=True,
         )
         card.pack_start(self.diag_status, False, False, 0)
+
+    @staticmethod
+    def _tilde(path):
+        """A path with the home folder shown as ~"""
+        home = os.path.expanduser("~")
+        return "~" + path[len(home) :] if path and path.startswith(home) else (path or "")
+
+    def choose_save_folder(self):
+        """Folder dialog for the default save location"""
+        dlg = Gtk.FileChooserDialog(
+            title="Default save location",
+            transient_for=self.ctx.window,
+            action=Gtk.FileChooserAction.SELECT_FOLDER,
+        )
+        dlg.add_buttons("_Cancel", Gtk.ResponseType.CANCEL, "_Select", Gtk.ResponseType.ACCEPT)
+        current = self.ctx.settings.get("save_folder")
+        if current and os.path.isdir(current):
+            dlg.set_current_folder(current)
+        path = dlg.get_filename() if dlg.run() == Gtk.ResponseType.ACCEPT else None
+        dlg.destroy()
+        if path:
+            self.set_save_folder(path)
+
+    def set_save_folder(self, path):
+        """Store the default save location and show it"""
+        self.save("save_folder", path)
+        self.folder_label.set_text(self._tilde(path))
 
     def save(self, key, value):
         """Persist a setting and broadcast settings-changed"""

@@ -89,10 +89,10 @@ DUPLEX_SOURCE_HINTS = ["duplex"]
 
 # Sheet-fed modes for feeder sources
 SHEET_MODES = {
-    "all": {"label": "All sheets", "help": "Scans every sheet in the feeder in one go"},
+    "all": {"label": "Multi-Page", "help": "Scans every sheet in the feeder in one go"},
     "one": {
-        "label": "One sheet at a time",
-        "help": "Scans one sheet per press; add more sheets to the same document",
+        "label": "Single Page",
+        "help": "Scans one page (one sheet), then stops so it can be saved; press Scan for the next",
     },
 }
 DEFAULT_SHEET_MODE = "all"

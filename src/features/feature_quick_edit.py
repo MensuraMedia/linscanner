@@ -22,12 +22,22 @@ Overlay model (positions/sizes are fractions of the page):
 """
 
 import copy
+import json
 import os
 
 from features import BaseFeature
-from utils.util_fonts import import_fonts, render_text, signature_fonts, text_fonts, text_metrics
+from utils.util_fonts import (
+    import_fonts,
+    layout_runs,
+    render_runs,
+    render_text,
+    signature_fonts,
+    text_fonts,
+    text_metrics,
+)
 from utils.util_icons import icon_button, icon_image, icon_label_button
 from utils.util_guides import Box, snap
+from utils.util_textruns import delete, insert, plain, restyle, runs_of, set_runs, style_at, word_at
 from utils.util_signatures import (
     MAX_SIGNATURES,
     LibraryFull,
@@ -151,6 +161,9 @@ class QuickEditor:
         self.others = {}  # page index -> overlays added via "Apply to all pages"
         self.selected = None
         self.editing = None  # text item being typed into
+        self.caret = 0  # caret position (characters) in the text being edited
+        self.anchor = None  # other end of the highlight (None: nothing highlighted)
+        self.selecting = False  # dragging to highlight
         self.mode = "select"  # select | text | place
         self.pending_signature = None  # path placed by the next click (place mode)
         self.drag = None  # ("move"|"resize", start canvas x, y, item snapshot)
@@ -339,8 +352,9 @@ class QuickEditor:
     def show_hint(self, text=None):
         """Help text for the current tool (or a message)"""
         default = {
-            "select": "Drag an item's frame (hand pointer) to move it · click inside text (text pointer) to "
-            "edit it · drag the corner square to resize · Delete removes · arrow keys nudge",
+            "select": "Click inside text to edit it; drag across words (or Shift + arrows) to highlight them, "
+            "then change the font, size or colour · drag an item's frame (hand pointer) to move it · drag a "
+            "signature's corner to resize it · Delete removes · arrow keys nudge",
             "text": "Click anywhere on the page and type. Enter starts a new line below, Esc finishes. "
             "Guides appear when your text lines up with earlier text.",
             "place": "Click on the page where the signature should go (Esc cancels). "
@@ -463,22 +477,42 @@ class QuickEditor:
             _hex(self.color_btn.get_rgba()),
         )
 
+    def selection(self):
+        """(start, end) of the highlighted characters in the text being edited, or None"""
+        if self.editing is None or self.anchor is None or self.anchor == self.caret:
+            return None
+        return min(self.anchor, self.caret), max(self.anchor, self.caret)
+
     def style_changed(self):
-        """Font / size / colour changed: restyle the text being edited or selected"""
+        """Font / size / colour changed in the panel.
+
+        Highlighted words take the new style; with nothing highlighted the whole
+        text item does (and what is typed next continues it)."""
         if self._loading:
             return
         item = self.editing or self.selected
-        if item and item["type"] == "text":
-            item["font"], item["size_pt"], item["color"] = self.current_style()
-            self.canvas.queue_draw()
+        if not item or item["type"] != "text":
+            return
+        font, size, color = self.current_style()
+        runs = runs_of(item)
+        sel = self.selection()
+        start, end = sel if sel else (0, len(plain(runs)))
+        if start == end:  # an empty item: set the style for the text to come
+            runs = [dict(r, font=font, size_pt=size, color=color) for r in runs]
+        else:
+            runs = restyle(runs, start, end, font=font, size_pt=size, color=color)
+        set_runs(item, runs)
+        self.canvas.queue_draw()
 
-    def _load_style(self, item):
-        """Show a text item's style in the panel (without restyling it)"""
+    def _load_style(self, item, pos=None):
+        """Show the style at a position of a text item in the panel (without restyling it)"""
+        runs = runs_of(item)
+        style = style_at(runs, pos) if pos is not None else runs[0]
         self._loading = True
-        self.font_combo.set_active_id(item["font"])
-        self.size_spin.set_value(item["size_pt"])
+        self.font_combo.set_active_id(style["font"])
+        self.size_spin.set_value(style["size_pt"])
         c = self.Gdk.RGBA()
-        c.parse(item["color"])
+        c.parse(style["color"])
         self.color_btn.set_rgba(c)
         self._loading = False
 
@@ -486,7 +520,9 @@ class QuickEditor:
     def new_text_item(self, x, y, text=""):
         """Create a text item at page fractions (x, y) with the panel's style"""
         font, size, color = self.current_style()
-        item = {"type": "text", "text": text, "font": font, "size_pt": size, "color": color, "x": x, "y": y}
+        item = set_runs(
+            {"type": "text", "x": x, "y": y}, [{"text": text, "font": font, "size_pt": size, "color": color}]
+        )
         self.items.append(item)
         self.selected = item
         return item
@@ -498,12 +534,16 @@ class QuickEditor:
             self.new_text_item(0.1, 0.1 + 0.04 * len(self.items) % 0.8, text)
             self.canvas.queue_draw()
 
-    def start_editing(self, item):
-        """Type into a text item on the canvas"""
-        self.finish_editing()
+    def start_editing(self, item, caret=None):
+        """Type into a text item on the canvas (caret: character position; default the end)"""
+        if self.editing is not item:
+            self.finish_editing()
+        set_runs(item, runs_of(item))  # older items become runs
         self.editing = item
         self.selected = item
-        self._load_style(item)
+        self.caret = len(item["text"]) if caret is None else max(0, min(caret, len(item["text"])))
+        self.anchor = None
+        self._load_style(item, self.caret)
         self.caret_on = True
         self.canvas.grab_focus()
         self.canvas.queue_draw()
@@ -512,6 +552,8 @@ class QuickEditor:
         """Stop typing; an empty text item is removed"""
         item = self.editing
         self.editing = None
+        self.anchor = None
+        self.selecting = False
         if item is not None and not item["text"].strip():
             if item in self.items:
                 self.items.remove(item)
@@ -519,16 +561,68 @@ class QuickEditor:
                 self.selected = None
         self.canvas.queue_draw()
 
-    def type_text(self, text):
-        """Insert typed text into the item being edited"""
+    def select_range(self, start, end):
+        """Highlight characters start..end of the text being edited (the caret goes to end)"""
         if self.editing is not None:
-            self.editing["text"] += text
+            n = len(self.editing["text"])
+            self.anchor, self.caret = max(0, min(start, n)), max(0, min(end, n))
+            self._load_style(self.editing, self.caret)
+            self.canvas.queue_draw()
+
+    def _replace_selection(self, text=""):
+        """Delete the highlighted characters (if any) and insert text at the caret"""
+        item = self.editing
+        runs = runs_of(item)
+        sel = self.selection()
+        if sel:
+            style = style_at(runs, sel[0] + 1)
+            runs = delete(runs, *sel)
+            self.caret = sel[0]
+        else:
+            style = style_at(runs, self.caret)
+        if text:
+            runs = insert(runs, self.caret, text, style)
+            self.caret += len(text)
+        self.anchor = None
+        set_runs(item, runs)
+
+    def type_text(self, text):
+        """Insert typed text at the caret (replacing highlighted words)"""
+        if self.editing is not None:
+            self._replace_selection(text)
             self.caret_on = True
             self.canvas.queue_draw()
 
     def on_commit(self, _im, text):
         """Characters from the input method"""
         self.type_text(text)
+
+    def backspace(self, forward=False):
+        """Backspace (or Delete): remove the highlighted words, or one character"""
+        item = self.editing
+        if item is None:
+            return
+        if self.selection():
+            self._replace_selection("")
+        elif forward and self.caret < len(item["text"]):
+            set_runs(item, delete(runs_of(item), self.caret, self.caret + 1))
+        elif not forward and self.caret > 0:
+            set_runs(item, delete(runs_of(item), self.caret - 1, self.caret))
+            self.caret -= 1
+        self.canvas.queue_draw()
+
+    def move_caret(self, pos, extend=False):
+        """Move the caret (extend: grow the highlight, as with Shift)"""
+        if self.editing is None:
+            return
+        if extend and self.anchor is None:
+            self.anchor = self.caret
+        elif not extend:
+            self.anchor = None
+        self.caret = max(0, min(pos, len(self.editing["text"])))
+        self._load_style(self.editing, self.caret)
+        self.caret_on = True
+        self.canvas.queue_draw()
 
     def place_signature(self, path, x=0.55, y=0.8):
         """Place a signature with its top-left at page fractions (x, y)"""
@@ -592,13 +686,20 @@ class QuickEditor:
                 self._sig_cache[path] = None
         return self._sig_cache[path]
 
+    def _text_layout(self, item):
+        """(width, line height, baseline, character x positions) of a text item, in page pixels"""
+        runs = runs_of(item)
+        width, line, baseline, xs = layout_runs(runs, self._dpi() / 72)
+        if not item.get("text"):
+            width = layout_runs([dict(runs[0], text=" ")], self._dpi() / 72)[0]
+        return width, line, baseline, xs
+
     def item_box(self, item):
-        """Item rectangle in page fractions (text: from its anchor, advance and line height)"""
+        """Item rectangle in page fractions (text: its line box; signature: its image)"""
         _s, _ox, _oy, pw, ph = self._layout()
         if item["type"] == "text":
-            px = item["size_pt"] * self._dpi() / 72
-            adv, line = text_metrics(item["text"] or " ", item["font"], px)
-            return Box(item["x"], item["y"], adv / pw, line / ph, "text")
+            width, line, _b, _xs = self._text_layout(item)
+            return Box(item["x"], item["y"], width / pw, line / ph, "text")
         sig = self._signature_image(item["path"])
         w = item["w"]
         h = (w * pw * sig.height / sig.width) / ph if sig else w / 3
@@ -609,6 +710,19 @@ class QuickEditor:
         scale, ox, oy, pw, ph = self._layout()
         b = self.item_box(item)
         return ox + b.left * pw * scale, oy + b.top * ph * scale, b.width * pw * scale, b.height * ph * scale
+
+    def char_x(self, item, pos):
+        """Canvas x of the caret position pos in a text item"""
+        scale, ox, _oy, pw, _ph = self._layout()
+        _w, _l, _b, xs = self._text_layout(item)
+        return ox + item["x"] * pw * scale + xs[max(0, min(pos, len(xs) - 1))] * scale
+
+    def pos_at(self, item, ex):
+        """The caret position nearest to canvas x ex in a text item"""
+        scale, ox, _oy, pw, _ph = self._layout()
+        _w, _l, _b, xs = self._text_layout(item)
+        local = (ex - ox) / scale - item["x"] * pw
+        return min(range(len(xs)), key=lambda k: abs(xs[k] - local))
 
     def to_page(self, ex, ey):
         """Canvas pixels -> page fractions"""
@@ -653,11 +767,11 @@ class QuickEditor:
         return self._base_pix[key]
 
     def _text_pixbuf(self, item, scale):
-        """(pixbuf, dx, dy) for a text item at canvas scale, cached"""
-        key = (item["text"], item["font"], item["size_pt"], item["color"], round(scale, 5))
+        """(pixbuf, dx, dy) for a text item's styled runs at canvas scale, cached"""
+        runs = runs_of(item)
+        key = (json.dumps(runs, sort_keys=True), round(scale, 5))
         if key not in self._text_pix:
-            px = item["size_pt"] * self._dpi() / 72 * scale
-            img, dx, dy = render_text(item["text"], item["font"], px, item["color"])
+            img, dx, dy = render_runs(runs, self._dpi() / 72 * scale)
             if len(self._text_pix) > 200:
                 self._text_pix.clear()
             self._text_pix[key] = (_pixbuf(img), dx, dy)
@@ -685,7 +799,7 @@ class QuickEditor:
     }
 
     def on_draw(self, widget, cr):
-        """Draw the page, the overlays, guides, the caret and the selection frame"""
+        """Draw the page, the overlays, the text highlight and caret, guides and the selection frame"""
         Gdk = self.Gdk
         scale, ox, oy, pw, ph = self._layout()
         cr.set_source_rgb(0.12, 0.12, 0.12)
@@ -695,28 +809,33 @@ class QuickEditor:
         for item in self.items:
             x, y, w, h = self._bbox(item)
             if item["type"] == "text":
+                if item is self.editing and self.selection():
+                    a, b = self.selection()
+                    x0, x1 = self.char_x(item, a), self.char_x(item, b)
+                    cr.set_source_rgba(0.0, 0.47, 0.84, 0.30)  # highlighted words
+                    cr.rectangle(x0, y, x1 - x0, h)
+                    cr.fill()
                 if item["text"]:
                     pix, dx, dy = self._text_pixbuf(item, scale)
                     Gdk.cairo_set_source_pixbuf(cr, pix, x + dx, y + dy)
                     cr.paint()
-                if item is self.editing:
-                    w = w if item["text"] else 0
-                    if self.caret_on:
-                        cr.set_source_rgb(0.0, 0.47, 0.84)
-                        cr.rectangle(x + w + 1, y, 2, h)
-                        cr.fill()
+                if item is self.editing and self.caret_on:
+                    cr.set_source_rgb(0.0, 0.47, 0.84)
+                    cr.rectangle(self.char_x(item, self.caret), y, 2, h)
+                    cr.fill()
             else:
                 pix = self._signature_pixbuf(item["path"], int(w), int(h))
                 if pix:
                     Gdk.cairo_set_source_pixbuf(cr, pix, x, y)
                     cr.paint()
-            if item is self.selected and item is not self.editing:
-                cr.set_source_rgb(0.0, 0.47, 0.84)  # framework accent
+            if item is self.selected:
+                cr.set_source_rgba(0.0, 0.47, 0.84, 0.6 if item is self.editing else 1.0)  # framework accent
                 cr.set_line_width(1.5)
                 cr.rectangle(x - 3, y - 3, w + 6, h + 6)
                 cr.stroke()
-                cr.rectangle(x + w + 3 - HANDLE, y + h + 3 - HANDLE, HANDLE, HANDLE)
-                cr.fill()
+                if item["type"] == "image":  # only signatures resize
+                    cr.rectangle(x + w + 3 - HANDLE, y + h + 3 - HANDLE, HANDLE, HANDLE)
+                    cr.fill()
 
         # ghost of what a click would create
         if self.hover and self.mode in ("text", "place"):
@@ -760,12 +879,13 @@ class QuickEditor:
     FRAME_PX = 6  # the band around an item where the pointer becomes a hand (move)
 
     def _hit(self, ex, ey):
-        """(item, zone) under the pointer, topmost first; zone: resize | frame | inside"""
+        """(item, zone) under the pointer, topmost first; zone: resize (signatures only) | frame | inside"""
         f = self.FRAME_PX
         for item in reversed(self.items):
             x, y, w, h = self._bbox(item)
             if (
-                item is self.selected
+                item["type"] == "image"
+                and item is self.selected
                 and x + w + 3 - HANDLE <= ex <= x + w + 3
                 and y + h + 3 - HANDLE <= ey <= y + h + 3
             ):
@@ -778,18 +898,16 @@ class QuickEditor:
 
     @staticmethod
     def cursor_for(item, zone, mode, dragging=False):
-        """Pointer name for what a click would do (hand = move, text = edit)"""
+        """Pointer name for what a click would do (hand = move, text = edit, arrows = resize)"""
         if dragging:
             return "grabbing"
         if mode == "place":
             return "crosshair"
         if zone == "resize":
             return "nwse-resize"
-        if mode == "text":
-            return "text"
         if zone == "frame" or (zone == "inside" and item["type"] == "image"):
             return "grab"
-        if zone == "inside":
+        if zone == "inside" or mode == "text":
             return "text"
         return "default"
 
@@ -804,7 +922,9 @@ class QuickEditor:
         return bool(event.state & self.Gdk.ModifierType.MOD1_MASK)
 
     def on_press(self, widget, event):
-        """Place text or a signature, start editing (inside text), or start moving (frame) / resizing"""
+        """Place text or a signature; click inside text to put the caret there (drag to highlight);
+        drag an item's frame (or a signature) to move it; drag a signature's corner to resize"""
+        Gdk = self.Gdk
         self.canvas.grab_focus()
         if event.button != 1:
             return False
@@ -822,10 +942,21 @@ class QuickEditor:
             self.canvas.queue_draw()
             return True
 
-        if self.mode == "text" and zone != "resize":
-            if item is not None and item["type"] == "text":
-                self.start_editing(item)  # click into existing text to continue it
+        if item is not None and item["type"] == "text" and zone == "inside":
+            pos = self.pos_at(item, event.x)
+            if event.type == Gdk.EventType._2BUTTON_PRESS and item is self.editing:
+                self.select_range(*word_at(item["text"], pos))  # double-click: the word
+                self.selecting = False
                 return True
+            if item is self.editing and event.state & Gdk.ModifierType.SHIFT_MASK:
+                self.move_caret(pos, extend=True)
+            else:
+                self.start_editing(item, caret=pos)
+                self.anchor = pos
+            self.selecting = True  # drag to highlight
+            return True
+
+        if self.mode == "text" and zone != "frame":
             self.finish_editing()
             box = self._ghost_box(fx, fy)
             left, top = self.snapped(box, free=self._free(event))
@@ -833,15 +964,12 @@ class QuickEditor:
             self.guides = []
             return True
 
-        # select mode: inside text edits it, the frame (or a signature) moves, the corner resizes
+        # the frame (or a signature) moves, a signature's corner resizes, empty page deselects
         if self.editing is not None and item is not self.editing:
             self.finish_editing()
         self.selected = item
         if item is not None and item["type"] == "text":
             self._load_style(item)
-            if zone == "inside":
-                self.start_editing(item)
-                return True
         self.drag = ("resize" if zone == "resize" else "move", event.x, event.y, dict(item)) if item else None
         if self.drag:
             self._pointer("grabbing" if self.drag[0] == "move" else "nwse-resize")
@@ -849,7 +977,10 @@ class QuickEditor:
         return True
 
     def on_motion(self, widget, event):
-        """Move / resize the dragged item, show where a click would place something, set the pointer"""
+        """Highlight while dragging in text; move / resize the dragged item; ghost and pointer"""
+        if self.selecting and self.editing is not None:
+            self.move_caret(self.pos_at(self.editing, event.x), extend=True)
+            return True
         if self.mode in ("text", "place") and not self.drag:
             fx, fy = self.to_page(event.x, event.y)
             box = self._ghost_box(fx, fy)
@@ -871,19 +1002,17 @@ class QuickEditor:
             box = self.item_box(dict(start, x=start["x"] + dx, y=start["y"] + dy))
             left, top = self.snapped(box, moving=item, free=self._free(event))
             self.move_item(item, left, top)
-        elif item["type"] == "image":
+        elif item["type"] == "image":  # only signatures resize; text size is set in the panel
             item["w"] = min(max(start["w"] + dx, 0.03), 1.0)
-        else:  # text: scale the font size with the drag
-            w0 = self.item_box(dict(start)).width * pw * scale
-            factor = max(0.2, (w0 + (event.x - sx)) / max(w0, 1))
-            item["size_pt"] = round(min(max(start["size_pt"] * factor, 4), 200), 1)
-            self._load_style(item)
         self.canvas.queue_draw()
         return True
 
     def on_release(self, widget, event):
-        """End a drag"""
+        """End a drag or a highlight"""
         self.drag = None
+        self.selecting = False
+        if self.editing is not None and self.anchor == self.caret:
+            self.anchor = None  # a click without dragging: just the caret
         self.guides = []
         item, zone = self._hit(event.x, event.y)
         self._pointer(self.cursor_for(item, zone, self.mode))
@@ -898,10 +1027,13 @@ class QuickEditor:
             self.canvas.queue_draw()
 
     def on_key(self, widget, event):
-        """Typing, Enter (new line below), Esc, Delete and arrow-key nudging"""
+        """Typing and text keys while editing; otherwise Esc, Delete and arrow-key nudging"""
         Gdk = self.Gdk
         key = event.keyval
-        if self.editing is not None:
+        shift = bool(event.state & Gdk.ModifierType.SHIFT_MASK)
+        ctrl = bool(event.state & Gdk.ModifierType.CONTROL_MASK)
+        item = self.editing
+        if item is not None:
             if key == Gdk.KEY_Escape:
                 self.finish_editing()
                 return True
@@ -909,8 +1041,26 @@ class QuickEditor:
                 self.new_line()
                 return True
             if key == Gdk.KEY_BackSpace:
-                self.editing["text"] = self.editing["text"][:-1]
-                self.canvas.queue_draw()
+                self.backspace()
+                return True
+            if key in (Gdk.KEY_Delete, Gdk.KEY_KP_Delete):
+                self.backspace(forward=True)
+                return True
+            if ctrl and key in (Gdk.KEY_a, Gdk.KEY_A):
+                self.select_range(0, len(item["text"]))
+                return True
+            moves = {
+                Gdk.KEY_Left: self.caret - 1,
+                Gdk.KEY_Right: self.caret + 1,
+                Gdk.KEY_Home: 0,
+                Gdk.KEY_End: len(item["text"]),
+            }
+            if key in moves:
+                sel = self.selection()
+                if sel and not shift and key in (Gdk.KEY_Left, Gdk.KEY_Right):
+                    self.move_caret(sel[0] if key == Gdk.KEY_Left else sel[1])  # collapse the highlight
+                else:
+                    self.move_caret(moves[key], extend=shift)
                 return True
             return bool(self.im.filter_keypress(event))
         if key == Gdk.KEY_Escape and self.mode != "select":
@@ -931,13 +1081,16 @@ class QuickEditor:
         return False
 
     def new_line(self):
-        """Enter while typing: finish this line and start the next one below it, same left edge"""
+        """Enter while typing: finish this line and start the next one below it, same left edge and style"""
         item = self.editing
         box = self.item_box(item)
+        style = style_at(runs_of(item), self.caret)
         self.finish_editing()
         if item in self.items:
             y = min(item["y"] + box.height * 1.5, 0.98)  # the same spacing the guides suggest
-            self.start_editing(self.new_text_item(item["x"], y))
+            new = self.new_text_item(item["x"], y)
+            set_runs(new, [dict(style, text="")])
+            self.start_editing(new)
 
     # -- result -----------------------------------------------------------------------
     def commit(self):

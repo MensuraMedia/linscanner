@@ -44,28 +44,31 @@ class ScanPage(BasePage):
         self.device_combo = Gtk.ComboBoxText()
         self.device_combo.connect("changed", self.on_device_changed)
         row.pack_start(self.device_combo, True, True, 0)
-        # status mark after the scanner name: a spinner while looking, a green check once connected
+        # power mark after the scanner name: spinner while looking, green when connected, red when not
+        theme = getattr(self.ctx.theme, "current_theme", None)
         self.mark = Gtk.Stack()
         self.mark.set_size_request(24, 24)
         self.spinner = Gtk.Spinner()
         self.mark.add_named(self.spinner, "looking")
-        success = getattr(getattr(self.ctx.theme, "current_theme", None), "success", None) or "#3fd059"
-        self.connected_icon = icon_image("check", 22, success)
-        self.connected_icon.set_tooltip_text("Scanner connected")
-        self.mark.add_named(self.connected_icon, "connected")
+        self.power_on_icon = icon_image("power", 22, getattr(theme, "success", None) or "#3fd059")
+        self.power_on_icon.set_tooltip_text("Scanner connected and ready")
+        self.mark.add_named(self.power_on_icon, "on")
+        self.power_off_icon = icon_image("power", 22, getattr(theme, "error", None) or "#e8555d")
+        self.mark.add_named(self.power_off_icon, "off")
         self.mark.add_named(Gtk.Box(), "none")
         row.pack_start(self.mark, False, False, 0)
+        self.power_state = "none"
         info_btn = Gtk.Button(label="Devices")
         info_btn.set_tooltip_text("Every scanner found, with its connection and capabilities")
         info_btn.connect("clicked", lambda *_: self.ctx.nav.navigate_to("devices"))
         row.pack_start(info_btn, False, False, 0)
         card.pack_start(row, False, False, 0)
-        self.device_status = self.label("", "muted", wrap=True)
-        self.device_status.set_no_show_all(True)  # only shown when there's something to fix
+        self.device_status = self.label("", "status-error", wrap=True)
+        self.device_status.set_no_show_all(True)  # only shown when the scanner can't be used
         card.pack_start(self.device_status, False, False, 0)
 
         # -- options card
-        card = self.add_card("Options")
+        card = self.add_card("Scan Options")
         self.options_card = card  # features (e.g. profiles) add rows here
         # Scan Type (Front Page / Front & Back / Flatbed) chooses the device source;
         # the device's own source names stay in a hidden combo (the request uses them)
@@ -74,7 +77,9 @@ class ScanPage(BasePage):
         self.types = {}
         self.scan_type = None
         self.scan_type_slot = Gtk.Box()
-        card.pack_start(self.form_row("Scan Type", self.scan_type_slot), False, False, 0)
+        card.pack_start(
+            self.form_row("", self.scan_type_slot), False, False, 0
+        )  # no label: the choices say it
 
         # Sheet-fed mode: only shown for feeder sources
         self.sheets = SegmentedControl(
@@ -147,15 +152,11 @@ class ScanPage(BasePage):
         self.cancel_btn.connect("clicked", lambda *_: self.ctx.scan.cancel())
         self.cancel_btn.set_sensitive(False)
         actions.pack_start(self.cancel_btn, False, False, 0)
-        self.done_btn = Gtk.Button(label="Done → Preview")
-        self.done_btn.connect("clicked", lambda *_: self.finish_document())
-        self.done_btn.set_no_show_all(True)
-        actions.pack_start(self.done_btn, False, False, 0)
         self.pack_start(actions, False, False, 4)
 
         self.progress = Gtk.ProgressBar()
         self.pack_start(self.progress, False, False, 0)
-        self.status = self.label("Looking for your scanner…", "status-busy", wrap=True)
+        self.status = self.label("", "muted", wrap=True)  # scanning progress and scan errors
         self.pack_start(self.status, False, False, 0)
 
         if self.ctx.features:
@@ -221,7 +222,6 @@ class ScanPage(BasePage):
             self.quality,
             self.paper_combo,
             self.sheets,
-            self.done_btn,
             self.blank,
         ):
             w.set_sensitive(not busy)
@@ -233,19 +233,36 @@ class ScanPage(BasePage):
         return next((d for d in self.devices if d.id == dev_id), None)
 
     # -- devices -----------------------------------------------------------
+    POWER_OFF_MESSAGE = "Device may be off. Check power settings."
+
     def show_device_issue(self, text=None):
-        """The line under the scanner list: shown only when something needs fixing"""
+        """The red line under the scanner list: shown only when the scanner can't be used"""
         self.device_status.set_text(text or "")
         self.device_status.set_visible(bool(text))
 
     def looking(self, on):
-        """Spinner on while looking for the scanner (the check mark hides)"""
+        """Spinner in place of the power mark while looking for the scanner"""
         (self.spinner.start if on else self.spinner.stop)()
-        self.mark.set_visible_child_name("looking" if on else "none")
+        if on:
+            self.power_state = "looking"
+            self.show_device_issue(None)
+        self.mark.set_visible_child_name(
+            "looking" if on else self.power_state if self.power_state != "looking" else "none"
+        )
 
-    def connected(self, on=True):
-        """Green check mark after the scanner name when it answered"""
-        self.mark.set_visible_child_name("connected" if on else "none")
+    def power(self, on, message=None, detail=""):
+        """Green power mark when the scanner answered; red with a plain message when it didn't"""
+        self.spinner.stop()
+        self.power_state = "on" if on else "off"
+        self.mark.set_visible_child_name(self.power_state)
+        if on:
+            self.show_device_issue(None)
+            log.info("scan page: scanner connected")
+        else:
+            message = message or self.POWER_OFF_MESSAGE
+            self.power_off_icon.set_tooltip_text(message + (f"\n{detail}" if detail else ""))
+            self.show_device_issue(message)
+            log.warning("scan page: %s %s", message, detail)
 
     def startup(self):
         """At start: reach the remembered scanner directly; otherwise do a full search"""
@@ -254,7 +271,6 @@ class ScanPage(BasePage):
             return self.refresh_devices()
         self.set_busy(True)
         self.looking(True)
-        self.set_status(f"Connecting to your {info.get('model', 'scanner')}…", "status-busy")
 
         def failed(message):
             log.info("remembered scanner didn't answer (%s); searching for scanners", message)
@@ -269,7 +285,6 @@ class ScanPage(BasePage):
             return False
         self.set_busy(True)
         self.looking(True)
-        self.set_status("Looking for your scanner…", "status-busy")
         self.ctx.emit("devices-refreshing")
         self.ctx.scan.refresh_devices(
             lambda devs: self.ctx.emit("devices-changed", devs), self.devices_failed
@@ -286,12 +301,8 @@ class ScanPage(BasePage):
             )
         if not devices:
             self.set_busy(False)
-            self.looking(False)
             self.scan_btn.set_sensitive(False)
-            self.set_status(
-                "Unable to detect scanner. Check that it's connected and powered on, then press Refresh.",
-                "status-error",
-            )
+            self.power(False, detail="No scanner found. Check the USB cable, then press Find.")
             return
         last = self.ctx.settings.get("last_device")
         if not self.device_combo.set_active_id(last):
@@ -301,11 +312,7 @@ class ScanPage(BasePage):
         """A search or options error: plain words on screen, the details in the log"""
         log.warning("scanner not reachable: %s", message)
         self.set_busy(False)
-        self.looking(False)
-        self.set_status(
-            "Unable to reach the scanner. Check that it's connected and powered on, then press Refresh.",
-            "status-error",
-        )
+        self.power(False, detail="The scanner didn't answer. Check the USB cable, then press Find.")
 
     def on_device_changed(self, combo):
         """Remember the device and load its capabilities"""
@@ -315,15 +322,13 @@ class ScanPage(BasePage):
         self.ctx.settings.set("last_device", dev.id)
         if not dev.methods:  # detected on USB, but nothing can drive it
             self.set_busy(False)
-            self.looking(False)
             self.scan_btn.set_sensitive(False)
-            self.show_device_issue("This scanner is connected, but no driver can use it yet (see Devices).")
-            self.set_status(dev.hint, "status-error")
+            self.power(
+                False, "This scanner is connected, but no driver can use it yet (see Devices).", dev.hint
+            )
             return
-        self.show_device_issue(None)
         self.set_busy(True)
         self.looking(True)
-        self.set_status(f"Connecting to your {dev.model}…", "status-busy")
         self.ctx.scan.load_capabilities(dev.id, self.caps_loaded, self.devices_failed)
 
     def caps_loaded(self, caps):
@@ -339,9 +344,7 @@ class ScanPage(BasePage):
         elif not self.source_combo.set_active_id(caps.default_source):
             self.source_combo.set_active(0)
         self.set_busy(False)
-        self.looking(False)
-        self.set_status("Scanner Found", "status-ok")
-        self.connected(True)
+        self.power(True)
         dev = self.current_device()
         if dev and dev.methods:
             self.ctx.scan.remember_device(dev)  # reached directly at the next start
@@ -377,7 +380,7 @@ class ScanPage(BasePage):
         self.source_combo.set_active_id(self.types[key])
 
     def sheet_mode(self):
-        """Current sheet mode ("all" / "one"); only meaningful for feeder sources"""
+        """Current sheet mode: "all" (Multi-Page) / "one" (Single Page); feeder sources only"""
         return self.sheets.get_active()
 
     def on_source_changed(self):
@@ -400,10 +403,10 @@ class ScanPage(BasePage):
             return
         req = self.build_request(dry_run=True)
         if req.multi_page:
-            how = "Feeder: scans every loaded sheet."
+            how = "Multi-Page: scans every loaded sheet."
         elif is_feeder(req.source):
-            side = "both sides" if is_duplex(req.source) else "one side"
-            how = f"One sheet per press ({side}); pages are added to the same document."
+            side = "front and back" if is_duplex(req.source) else "one side"
+            how = f"Single Page: one sheet ({side}), then stops so you can save it."
         else:
             how = "Single page."
         self.summary.set_text(f"Will scan: {ScanManager.summary(req)}. {how}")
@@ -427,6 +430,12 @@ class ScanPage(BasePage):
         """Start scanning with the current options"""
         if not self.current_device():
             return
+        if self.ctx.scan.pages and self.ctx.scan.is_saved():
+            self.ctx.scan.clear_pages()  # the last document was saved: this scan starts a new one
+            self.ctx.emit("pages-changed")
+            started_new = True
+        else:
+            started_new = False
         self.request = self.build_request()
         self.set_busy(True, scanning=True)
         self.progress.set_fraction(0)
@@ -437,7 +446,8 @@ class ScanPage(BasePage):
             what = "one sheet"
         else:
             what = "page"
-        self.set_status(f"Scanning {what}…", "status-busy")
+        new = " New document (the last one is saved)." if started_new else ""
+        self.set_status(f"Scanning {what}…{new}", "status-busy")
         self.ctx.scan.start_scan(self.request, self.on_page, self.on_progress, self.on_done, self.on_error)
 
     def on_page(self, _page):
@@ -456,42 +466,16 @@ class ScanPage(BasePage):
         self.progress.set_fraction(1 if pages else 0)
         dropped = self.ctx.scan.dropped_pages
         n = len(pages) - dropped
-        one_sheet = self.request and is_feeder(self.request.source) and not self.request.multi_page
-        total = len(self.ctx.scan.pages)
         removed = f" ({dropped} blank page(s) removed)" if dropped else ""
         if cancelled:
             self.set_status(f"Cancelled. {n} page(s) kept.", "muted")
-        elif one_sheet and n:
-            self.scan_btn.set_label("Scan next sheet")
-            self.done_btn.show()
-            self.after_scan(final=False)
-            self.set_status(
-                f"Sheet added ({n} page(s){removed}); document now has {total} page(s). "
-                "Load the next sheet and press Scan next sheet, or Done → Preview.",
-                "status-ok",
-            )
-            return  # stay here for the next sheet
         else:
-            self.set_status(f"Done: {n} page(s) scanned{removed}. Opening preview…", "status-ok")
+            total = len(self.ctx.scan.pages)
+            added = f"; the document has {total} page(s)" if total > n else ""
+            self.set_status(f"Done: {n} page(s) scanned{removed}{added}. Save it in Preview.", "status-ok")
             self.after_scan(final=True)
-        self.scan_btn.set_label("Scan")
-        self.done_btn.hide()
         if n:
-            self.ctx.nav.navigate_to("preview")
-
-    def on_shown(self):
-        """Back on the Scan page after a one-sheet session: start fresh labels"""
-        if not self.ctx.scan.busy and self.ctx.nav.get_current_page() == "scan":
-            if not self.ctx.scan.pages:
-                self.scan_btn.set_label("Scan")
-                self.done_btn.hide()
-
-    def finish_document(self):
-        """One-sheet mode: the document is complete (auto-save etc.), open Preview"""
-        self.scan_btn.set_label("Scan")
-        self.done_btn.hide()
-        self.after_scan(final=True)
-        self.ctx.nav.navigate_to("preview")
+            self.ctx.nav.navigate_to("preview")  # check and save; press Scan again for the next page
 
     def after_scan(self, final):
         """Tell feature modules a scan ended (final = the document is complete)"""

@@ -49,7 +49,7 @@ def test_scan_preview_save(tmp_path):
     page = ctx.nav.get_page_widget("scan")
 
     # scanner found and options loaded
-    assert wait_for(lambda: page.status.get_text() == "Scanner Found")
+    assert wait_for(lambda: page.power_state == "on")
     assert page.device_combo.get_active_id() == "test:0"
 
     # feeder + Black & White + Low
@@ -108,20 +108,39 @@ def build_app(with_features=False):
     return ctx, window, scan
 
 
-def test_one_sheet_at_a_time_builds_one_document():
+def test_single_page_scans_one_page_then_waits_for_save(tmp_path):
+    """Single Page: one page per Scan, then Preview; after Save the next Scan starts a new document"""
     ctx, window, scan = build_app()
+    ctx.settings.override("save_folder", str(tmp_path))
     page = ctx.nav.get_page_widget("scan")
-    assert wait_for(lambda: page.status.get_text() == "Scanner Found")
+    assert wait_for(lambda: page.power_state == "on")
+    assert page.power_on_icon.get_visible() and not page.device_status.get_visible()  # green, no message
     page.source_combo.set_active_id("Automatic Document Feeder")
     assert page.sheets_row.get_visible()  # Sheets choice appears for feeder sources
+    assert [b.get_label() for b in page.sheets.buttons.values()] == ["Multi-Page", "Single Page"]
     page.sheets.set_active("one")
-    for sheet in (1, 2):
-        page.on_scan(None)
-        assert wait_for(lambda: not scan.busy and page.scan_btn.get_label() == "Scan next sheet")
-        assert len(scan.pages) == sheet  # one sheet per press, same document
-    assert ctx.nav.get_current_page() == "scan"  # waits for the next sheet
-    page.done_btn.clicked()
-    assert ctx.nav.get_current_page() == "preview"
+    page.on_scan(None)
+    assert wait_for(lambda: not scan.busy and ctx.nav.get_current_page() == "preview")
+    assert len(scan.pages) == 1  # exactly one page, then it stops
+    preview = ctx.nav.get_page_widget("preview")
+    page.on_scan(None)  # not saved yet: the next page joins the same document
+    assert wait_for(lambda: not scan.busy and len(scan.pages) == 2)
+    preview.on_save()
+    assert scan.is_saved()
+    page.on_scan(None)  # saved: the next Scan starts a new document
+    assert wait_for(lambda: not scan.busy and ctx.nav.get_current_page() == "preview")
+    assert len(scan.pages) == 1 and scan.document is None
+    window.destroy()
+    scan.cleanup()
+
+
+def test_power_mark_when_no_scanner():
+    ctx, window, scan = build_app()
+    page = ctx.nav.get_page_widget("scan")
+    assert wait_for(lambda: page.power_state == "on")
+    page.devices_loaded([])  # e.g. the scanner was switched off
+    assert page.power_state == "off" and page.device_status.get_text() == page.POWER_OFF_MESSAGE
+    assert page.mark.get_visible_child_name() == "off" and page.status.get_text() == ""
     window.destroy()
     scan.cleanup()
 
@@ -135,7 +154,7 @@ def test_features_in_the_window(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     ctx, window, scan = build_app(with_features=True)
     page = ctx.nav.get_page_widget("scan")
-    assert wait_for(lambda: page.status.get_text() == "Scanner Found")
+    assert wait_for(lambda: page.power_state == "on")
     page.source_combo.set_active_id("Automatic Document Feeder")
     page.sheets.set_active("all")
     page.on_scan(None)

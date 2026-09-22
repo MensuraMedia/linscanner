@@ -176,7 +176,7 @@ def test_apply_signature_flow(tmp_path, monkeypatch):
     monkeypatch.setattr(ed, "open_signature_chooser", lambda: opened.append(True))
     ed.apply_signature()  # nothing chosen yet: the chooser opens
     assert opened and ed.mode == "select"
-    path = save_signature(typed_signature("Jane Doe", "Allura"), "jane")
+    path = save_signature(typed_signature("Jane Doe", "Sacramento"), "jane")
     ed.signature_chosen(path)  # picked in the chooser: current + armed
     assert ed.ctx.settings["current_signature"] == path and ed.mode == "place"
     ed.set_mode("select")

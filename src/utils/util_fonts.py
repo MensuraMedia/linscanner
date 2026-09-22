@@ -219,3 +219,55 @@ def render_text(text, family, px, color="#000000"):
     img = Image.new("RGBA", (max(1, right - left), max(1, bottom - top)), (0, 0, 0, 0))
     ImageDraw.Draw(img).text((-left, -top), text or "", font=font, fill=color)
     return img, left, top
+
+
+def layout_runs(runs, px_per_pt):
+    """Line layout of styled runs: (width, line height, baseline, [x of each character boundary])"""
+    x, ascent_max, descent_max, xs = 0.0, 0, 0, [0.0]
+    for r in runs:
+        font = load_font(r["font"], r["size_pt"] * px_per_pt)
+        try:
+            ascent, descent = font.getmetrics()
+        except AttributeError:
+            ascent, descent = 9, 2
+        ascent_max, descent_max = max(ascent_max, ascent), max(descent_max, descent)
+        for k in range(1, len(r["text"]) + 1):
+            xs.append(x + font.getlength(r["text"][:k]))
+        x += font.getlength(r["text"]) if r["text"] else 0
+    if not ascent_max:  # empty item: the first run's font sets the line height
+        font = (
+            load_font(runs[0]["font"], runs[0]["size_pt"] * px_per_pt)
+            if runs
+            else load_font("DejaVu Sans", 14)
+        )
+        ascent_max, descent_max = font.getmetrics()
+    return x, ascent_max + descent_max, ascent_max, xs
+
+
+def render_runs(runs, px_per_pt):
+    """Styled runs as one transparent RGBA image on a shared baseline; returns (image, dx, dy).
+
+    (dx, dy) is the image's top-left relative to the line box's top-left (the
+    item's x, y). Script fonts can reach outside the line box, so they can be negative."""
+    from PIL import Image, ImageDraw
+
+    _w, _h, baseline, _xs = layout_runs(runs, px_per_pt)
+    probe = ImageDraw.Draw(Image.new("L", (1, 1)))
+    pieces, x = [], 0.0
+    left = top = 0
+    right = bottom = 1
+    for r in runs:
+        if not r["text"]:
+            continue
+        font = load_font(r["font"], r["size_pt"] * px_per_pt)
+        box = probe.textbbox((x, baseline), r["text"], font=font, anchor="ls")
+        left, top = min(left, box[0]), min(top, box[1])
+        right, bottom = max(right, box[2]), max(bottom, box[3])
+        pieces.append((x, r, font))
+        x += font.getlength(r["text"])
+    left, top = int(left) - 1, int(top) - 1
+    img = Image.new("RGBA", (max(1, int(right) + 1 - left), max(1, int(bottom) + 1 - top)), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    for x0, r, font in pieces:
+        draw.text((x0 - left, baseline - top), r["text"], font=font, fill=r["color"], anchor="ls")
+    return img, left, top

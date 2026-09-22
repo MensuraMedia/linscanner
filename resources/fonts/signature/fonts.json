@@ -1,24 +1,6 @@
 {
-  "description": "Signature fonts bundled with linscanner: SIL Open Font License 1.1 fonts from Google Fonts (bundling and redistribution explicitly permitted) and Freeware fonts whose designers state no restriction on use (see each LICENSE-NOTE.txt). Licences checked 2026-09-21; see docs/design/0.3.1-ui-polish.md section 9.",
+  "description": "Signature fonts bundled with linscanner: Great Vibes and Sacramento, both SIL Open Font License 1.1 (bundling and redistribution explicitly permitted; each folder has its OFL.txt). Credits and author follow-up: docs/FOLLOW-UP.md #33.",
   "fonts": [
-    {
-      "family": "Alex Brush",
-      "file": "alexbrush/AlexBrush-Regular.ttf",
-      "designer": "Robert Leuschke",
-      "copyright": "Copyright 2011 The Alex Brush Project Authors (https://github.com/googlefonts/alex-brush)",
-      "license": "SIL Open Font License 1.1",
-      "license_file": "alexbrush/OFL.txt",
-      "source": "https://github.com/google/fonts/tree/main/ofl/alexbrush"
-    },
-    {
-      "family": "Allura",
-      "file": "allura/Allura-Regular.ttf",
-      "designer": "Robert Leuschke",
-      "copyright": "Copyright 2010 The Allura Project Authors (https://github.com/googlefonts/allura)",
-      "license": "SIL Open Font License 1.1",
-      "license_file": "allura/OFL.txt",
-      "source": "https://github.com/google/fonts/tree/main/ofl/allura"
-    },
     {
       "family": "Great Vibes",
       "file": "greatvibes/GreatVibes-Regular.ttf",
@@ -29,51 +11,6 @@
       "source": "https://github.com/google/fonts/tree/main/ofl/greatvibes"
     },
     {
-      "family": "Herr Von Muellerhoff",
-      "file": "herrvonmuellerhoff/HerrVonMuellerhoff-Regular.ttf",
-      "designer": "Sudtipos",
-      "copyright": "Copyright (c) 2011 Alejandro Paul (sudtipos@sudtipos.com),",
-      "license": "SIL Open Font License 1.1",
-      "license_file": "herrvonmuellerhoff/OFL.txt",
-      "source": "https://github.com/google/fonts/tree/main/ofl/herrvonmuellerhoff"
-    },
-    {
-      "family": "Monsieur La Doulaise",
-      "file": "monsieurladoulaise/MonsieurLaDoulaise-Regular.ttf",
-      "designer": "Sudtipos",
-      "copyright": "Copyright (c) 2011 Alejandro Paul (sudtipos@sudtipos.com),",
-      "license": "SIL Open Font License 1.1",
-      "license_file": "monsieurladoulaise/OFL.txt",
-      "source": "https://github.com/google/fonts/tree/main/ofl/monsieurladoulaise"
-    },
-    {
-      "family": "Mr Dafoe",
-      "file": "mrdafoe/MrDafoe-Regular.ttf",
-      "designer": "Sudtipos",
-      "copyright": "Copyright (c) 2011 Alejandro Paul (sudtipos@sudtipos.com),",
-      "license": "SIL Open Font License 1.1",
-      "license_file": "mrdafoe/OFL.txt",
-      "source": "https://github.com/google/fonts/tree/main/ofl/mrdafoe"
-    },
-    {
-      "family": "Mrs Saint Delafield",
-      "file": "mrssaintdelafield/MrsSaintDelafield-Regular.ttf",
-      "designer": "Sudtipos",
-      "copyright": "Copyright (c) 2011 Alejandro Paul (sudtipos@sudtipos.com),",
-      "license": "SIL Open Font License 1.1",
-      "license_file": "mrssaintdelafield/OFL.txt",
-      "source": "https://github.com/google/fonts/tree/main/ofl/mrssaintdelafield"
-    },
-    {
-      "family": "Pinyon Script",
-      "file": "pinyonscript/PinyonScript-Regular.ttf",
-      "designer": "Nicole Fally",
-      "copyright": "Copyright 2024 The Pinyon Project Authors (https://github.com/SorkinType/Pinyon)",
-      "license": "SIL Open Font License 1.1",
-      "license_file": "pinyonscript/OFL.txt",
-      "source": "https://github.com/google/fonts/tree/main/ofl/pinyonscript"
-    },
-    {
       "family": "Sacramento",
       "file": "sacramento/Sacramento-Regular.ttf",
       "designer": "Astigmatic",
@@ -81,42 +18,6 @@
       "license": "SIL Open Font License 1.1",
       "license_file": "sacramento/OFL.txt",
       "source": "https://github.com/google/fonts/tree/main/ofl/sacramento"
-    },
-    {
-      "family": "Arkipelago",
-      "file": "arkipelago/Arkipelago-MxRJ.otf",
-      "designer": "Nasir Udin",
-      "copyright": "Copyright (c) 2018 by Nasir Udin. All rights reserved.",
-      "license": "Freeware (FontSpace)",
-      "license_file": "arkipelago/LICENSE-NOTE.txt",
-      "source": "https://www.fontspace.com/arkipelago-font-f30487"
-    },
-    {
-      "family": "Julia Lauren",
-      "file": "julialauren/JuliaLauren-1vJj.ttf",
-      "designer": "Fenny Wiryani (starinkbrush)",
-      "copyright": "Copyright (c) 2019 by starinkbrush - Fenny Wiryani. All rights reserved.",
-      "license": "Freeware (FontSpace)",
-      "license_file": "julialauren/LICENSE-NOTE.txt",
-      "source": "https://www.fontspace.com/julia-lauren-font-f32463"
-    },
-    {
-      "family": "Paul Signature",
-      "file": "paulsignature/PaulSignature-WEJY.ttf",
-      "designer": "Cundrawan (cove703)",
-      "copyright": "Copyright (c) 2019 by Cundrawan (cove703). All rights reserved.",
-      "license": "Freeware (FontSpace)",
-      "license_file": "paulsignature/LICENSE-NOTE.txt",
-      "source": "https://www.fontspace.com/paul-signature-font-f34275"
-    },
-    {
-      "family": "Sandra Belhock",
-      "file": "sandrabelhock/SandraBelhock-7LAE.ttf",
-      "designer": "Cundrawan (cove703)",
-      "copyright": "Copyright (c) 2019 by Cundrawan (cove703). All rights reserved.",
-      "license": "Freeware (FontSpace)",
-      "license_file": "sandrabelhock/LICENSE-NOTE.txt",
-      "source": "https://www.fontspace.com/sandra-belhock-font-f32230"
     }
   ]
 }

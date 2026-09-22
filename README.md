@@ -12,7 +12,7 @@ Linux's standard scanning system (SANE) can drive.
 
 | | |
 |---|---|
-| Version | 0.3.2 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
+| Version | 0.3.3 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
 | Platform | Linux desktop, GTK 3 |
 | Tested on | Linux Mint 22.3 (Ubuntu 24.04 base), kernel 7.0, amd64, with an Epson WorkForce ES-400 II |
 | Part of | [linux-peripherals](../README.md), which has offline installers and device references |
@@ -45,8 +45,8 @@ Linux's standard scanning system (SANE) can drive.
 | Area | What you get |
 |---|---|
 | **Scanning** | Any cable-connected (USB) SANE scanner, plus linscanner's own driverless eSCL client. **Scan Type**: *Front Page* or *Front & Back* (and *Flatbed* on scanners with both) |
-| **Remembers your scanner** | Reached directly at the next start (a second or two instead of a full search); a spinner while looking, a green **Scanner Found**, and plain words when something needs fixing ("Unable to detect scanner. Check that it's connected and powered on") |
-| **Sheet-fed modes** | **All sheets** (the whole stack in one go) or **One sheet at a time** (each press adds a sheet to the same document; a duplex sheet gives front + back) |
+| **Remembers your scanner** | Reached directly at the next start (a second or two instead of a full search); a spinner while looking, then a green power icon when it's ready, or a red one with "Device may be off. Check power settings."; and plain words when something needs fixing ("Unable to detect scanner. Check that it's connected and powered on") |
+| **Sheet-fed modes** | **Multi-Page** (the whole stack in one go) or **Single Page** (one page per Scan, then Preview to save it; a saved document is complete, so the next Scan starts a new one) |
 | **Connection fallback** | Tries every way to reach the scanner in order over the USB cable (open-source driver → vendor driver → driverless IPP-over-USB → own eSCL client), until one scans. Never retries when you need to act (feeder empty, jam, cover open) |
 | **Scan Devices Found** (sidebar: **Devices**) | Every detected scanner with identity, USB connection details, connection methods, permissions, capabilities, live status and firmware, plus **Check for devices again** |
 | **Color / Black & White** | Color, or Black & White. B&W is grayscale by default (keeps faint text); Settings can switch it to pure black-and-white |
@@ -176,15 +176,18 @@ rm -rf ~/.config/linscanner                # removes your settings (optional)
 1. Open **linscanner** from the menu (or run `linscanner/run.sh`).
 2. **Scanner:** it's found automatically. Finding scanners takes about 10
    seconds; press **Find** (before the scanner list, under **Detect Scanner**) after plugging one in.
-   A spinner turns while it looks. A green check mark after the scanner's
-   name and **Scanner Found** mean it's ready; linscanner remembers it for next time.
-3. **Scan Type:** *Front Page* scans one side of each sheet; *Front & Back*
-   scans both sides (shown when your scanner can). Scanners with a glass too
-   also offer *Flatbed*.
-   - **Sheets** (feeder): *All sheets* scans the whole stack. *One
-     sheet at a time* scans one sheet per press, so you can feed sheets one
-     by one. The button becomes **Scan next sheet**, and **Done → Preview**
-     finishes the document.
+   A spinner turns while it looks. A **green power icon** after the
+   scanner's name means it's ready, and linscanner remembers it for next time.
+   A **red power icon** with "Device may be off. Check power settings." means
+   it can't be found: switch it on or check the cable, then press **Find**.
+3. **Scan Options:** the first row is the scan type. *Front Page* scans one
+   side of each sheet; *Front & Back* scans both sides (shown when your
+   scanner can). Scanners with a glass too also offer *Flatbed*.
+   - **Sheets** (feeder): *Multi-Page* scans the whole stack. *Single Page*
+     scans one page (one sheet), then stops and opens Preview so you can save
+     it; press **Scan** again for the next page. Once a document has been
+     saved, the next Scan starts a new document. If it hasn't been saved, the
+     new page is added to it, so nothing is lost.
 4. **Color:** *Color* or *Black & White*.
 5. **Quality:** *High* for small print, photos or archiving; *Medium* for
    everyday documents; *Low* for quick copies and small files.
@@ -222,22 +225,27 @@ to see its name. The tools are grouped from left to right:
 - **Add Text** and **Signature** open the page editor:
   - **Add Text** (T icon): the pointer becomes a text cursor. Click
     anywhere on the page and type. Enter starts a new line underneath, Esc
-    finishes. Choose the font (20 basic fonts plus the signature fonts), size
-    and colour.
+    finishes.
+  - **Change the font, size or colour** the way you would in a word
+    processor. Click inside the text, highlight the words (drag across them,
+    Shift + arrows, double-click a word, or Ctrl+A for all), then choose the
+    font (20 basic fonts plus the signature fonts), size or colour. Only the
+    highlighted words change; with nothing highlighted, the whole text
+    changes. Text has no resize handle: its size is set in the panel.
   - **Alignment guides:** while you place or move text, dotted lines appear
     when it lines up with earlier text (same edge, centre, equal spacing, or
     mirror image across the page). It snaps gently and never locks. Hold
     **Alt** to place freely, or switch the guides off with the viewfinder icon.
   - **Apply Signature:** click it, then click where your signature goes. Drag
-    its corner square to resize it.
+    its corner square to resize it (only signatures have one).
   - **Edit icon** (next to Apply Signature): choose one of your saved
     signatures (up to 4, kept between sessions), delete one with its trash
-    icon, or **Create Signature**. Type your name and pick one of 13
-    signature fonts, or upload a PNG (a white background can be made
+    icon, or **Create Signature**. Type your name and pick one of the two
+    signature fonts (Great Vibes or Sacramento, or fonts you add yourself), or upload a PNG (a white background can be made
     transparent).
   - **Pointer:** a hand on an item's frame means drag to move; a text cursor
-    inside text means click to edit; a diagonal arrow on the corner square
-    means resize. The trash icon deletes the selected item, and the stack
+    inside text means click to edit or highlight; a diagonal arrow on a
+    signature's corner square means resize. The trash icon deletes the selected item, and the stack
     icon applies it to every page.
   - Edits show in the preview and are added to the file when you save.
 - **Import images…** adds PNG/JPEG/TIFF files as pages (e.g. scans your
@@ -272,7 +280,7 @@ to see its name. The tools are grouped from left to right:
 |---|---|
 | Color scheme | The framework's seven themes (Default Blue by default) |
 | Black & White | Grayscale (default) or Pure black & white |
-| Save folder | Where Save As starts |
+| Default save location | Where **Save** puts new documents and **Save As** starts (**Choose…**); saving somewhere else doesn't change it |
 | Features | Switch each module on or off, with its options (blank-page sensitivity, enhancement sliders, PDF/A and size, auto-save folder and name template) |
 | Network scanning (Wi-Fi / Ethernet) | Shown greyed out and marked **Not Supported**. Only USB-connected scanners are supported at this time, and linscanner doesn't search the network |
 | Drivers | Show every driver per scanner, and SANE's virtual test scanner (off by default) |
@@ -463,6 +471,14 @@ do its seven dark themes:
 - Settings stored inside the scanner (sleep timer, etc.) can't be changed from Linux.
 - OCR is English only.
 
+**Done in 0.3.3:**
+- a power icon for the scanner (green: ready; red: "Device may be off. Check power settings.");
+- **Scan Options**, **Multi-Page / Single Page** (one page, then save);
+- Quick Edit text styled like a word processor (highlight words, then change the font, size or colour; resizing is for signatures only);
+- two signature fonts;
+- **Default save location** in Settings;
+- font credits moved from About to the backlog.
+
 **Done in 0.3.2:**
 - the PDF-editor style Preview toolbar (Add Page, Add Image, Add Text, Signature, duplicate, extract, reverse, undo / redo, page navigation, fit width);
 - the window resizes and snaps to half or a quarter of the screen.
@@ -553,15 +569,7 @@ The design is in [`docs/architecture.md`](docs/architecture.md).
 - Scanning: [SANE](http://www.sane-project.org/), [sane-airscan](https://github.com/alexpevzner/sane-airscan), [ipp-usb](https://github.com/OpenPrinting/ipp-usb)
 - Images and PDF: [Pillow](https://python-pillow.org/), NumPy, Ghostscript
 - Icons: [Phosphor Icons](https://phosphoricons.com/) by Helena Zhang and Tobias Fried (MIT), in `resources/icons/phosphor/`
-- SIL OFL signature fonts (Open Font License 1.1, from Google Fonts), in `resources/fonts/signature/` with each licence:
-  - Alex Brush, Allura and Great Vibes by Robert Leuschke;
-  - Herr Von Muellerhoff, Monsieur La Doulaise, Mr Dafoe and Mrs Saint Delafield by Sudtipos (Alejandro Paul);
-  - Pinyon Script by Nicole Fally;
-  - Sacramento by Astigmatic.
-- Freeware signature fonts, in `resources/fonts/signature/` with a `LICENSE-NOTE.txt` each (licences checked; see `docs/design/0.3.1-ui-polish.md` §9):
-  - Arkipelago by Nasir Udin;
-  - Julia Lauren by Fenny Wiryani (starinkbrush);
-  - Paul Signature and Sandra Belhock by Cundrawan (cove703).
+- Signature fonts: two SIL OFL 1.1 fonts in `resources/fonts/signature/`, each with its `OFL.txt` (credits and the author follow-up are kept in `../docs/FOLLOW-UP.md` #33).
 
 ---
 

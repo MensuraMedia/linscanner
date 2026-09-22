@@ -1,4 +1,4 @@
-# linscanner features and functions (v0.3.2)
+# linscanner features and functions (v0.3.3)
 
 Every user-facing feature, page by page, plus command-line options, files and
 limits.
@@ -31,16 +31,16 @@ Verified hardware: Epson ES-400 II (USB `04b8:0181`), reached via epsonds
 | Control | Function |
 |---|---|
 | **Detect Scanner**: **Find**, scanner list, spinner / green ✓, **Devices** | **Find** (before the list) searches again. Physical scanners ("Epson ES-400II (epsonds (+1 more))"). The spinner turns while looking. The scanner in use is **remembered** and reached directly at the next start; if it doesn't answer, a full search runs |
-| Status line | **Scanner Found** (green). Problems in plain words, e.g. "Unable to detect scanner. Check that it's connected and powered on, then press Refresh."; the technical detail goes to the log |
+| Power icon (after the scanner list) | Green `power` when the scanner answered; red, with "Device may be off. Check power settings." under the list, when it can't be found or reached (the details go in its tooltip and the log). The status line at the bottom is only for scanning. Previously: "Unable to detect scanner. Check that it's connected and powered on, then press Refresh."; the technical detail goes to the log |
 | **Profile** (feature) | One-click presets and "Save as profile…" |
 | **Scan Type** | **Front Page** (one side), **Front & Back** (duplex, when the scanner can), **Flatbed** (only on scanners with both a glass and a feeder). Mapped to the driver's sources by `scan_types()`; remembered |
-| **Sheets** (feeder) | **All sheets** (until the feeder is empty) or **One sheet at a time** (1 page, or 2 for Front & Back, per press; same document) |
+| **Sheets** (feeder) | **Multi-Page** (until the feeder is empty) or **Single Page** (one page, then Preview to save it; after a save the next Scan starts a new document; unsaved pages are kept and added to). Before 0.3.3: **One sheet at a time** (1 page, or 2 for Front & Back, per press; same document) |
 | **Color** / **Black & White** | Color, or B&W: grayscale by default, pure lineart via Settings |
 | **High / Medium / Low** | 600 / 300 / 150 dpi, snapped to the nearest supported resolution |
 | **Blank Pages** | **Keep** / **Remove**: switches the Blank-page removal module (kept in sync with Settings → Features) |
 | **Document Size** (half width) | **Auto-Detect** (default: scans the whole area, then fits each page to the paper; the scanner's own auto-size option, e.g. epsonds `--adf-crp`, is switched on too). Documents: Letter, Legal, Executive, Half Letter, A4, A5, A6, B5. Receipts: 80 / 58 mm wide. Cards: business, ID / credit, index. Photos: 4×6, 5×7. Other: check, full scan area. Receipts, cards and checks are fitted to the paper, falling back to their nominal size |
 | Summary line | Exactly what will be sent, and how sheets are handled |
-| **Scan** / **Scan next sheet**, **Cancel**, **Done → Preview** | Start, stop (keeping pages), finish a one-sheet document |
+| **Scan**, **Cancel** | Start, or stop (keeping the pages scanned) |
 | Progress + status | Per-page progress, page count, blank pages removed, plain-language errors |
 
 ## 3. Preview and Recent pages
@@ -95,7 +95,7 @@ Populates automatically; **Check for devices again** re-runs discovery.
 |---|---|
 | Color scheme | The framework's 7 themes (Default Blue default); a removed theme falls back to Default Blue |
 | Black & White | Grayscale or Pure black & white |
-| Save folder | Where Save As starts |
+| Default save location (**Choose…**) | Where Save puts new documents and Save As starts; saving elsewhere doesn't change it |
 | Network scanning (Wi-Fi / Ethernet) | Shown greyed out, marked **Not Supported** |
 | **Features** | On/off for each module, with its options; load or run errors are listed |
 | Drivers | Show every driver per scanner, and the virtual test scanner |
@@ -107,7 +107,7 @@ Populates automatically; **Check for devices again** re-runs discovery.
 | Auto-crop | on | Removes the feeder overrun at the end of a sheet (never cuts page margins) |
 | Auto-straighten (deskew) | on | Straightens pages tilted up to ±5° |
 | Blank-page removal | on | Removes empty pages; sensitivity slider; colour content is never "blank" |
-| Quick Edit | on | **Add Text** tool (click anywhere and type; Enter adds a line below) in 20 basic fonts plus 13 signature fonts; soft **alignment guides** (edges, centre, equal spacing, mirror; Alt = free); **Apply Signature** + edit icon (signature chooser: up to 4 saved, delete, **Create Signature** by typed name in a signature font or PNG upload); pointer zones (hand on the frame = move, text cursor inside = edit, corner = resize); delete and apply to all pages (icons) |
+| Quick Edit | on | **Add Text** tool (click anywhere and type; Enter adds a line below) in 20 basic fonts plus the signature fonts; **styled runs**: highlight words (drag, Shift + arrows, double-click, Ctrl+A) and change their font, size or colour (with nothing highlighted, the whole text changes); text has no resize handle, only signatures do; soft **alignment guides** (edges, centre, equal spacing, mirror; Alt = free); **Apply Signature** + edit icon (signature chooser: up to 4 saved, delete, **Create Signature** by typed name in a signature font or PNG upload); pointer zones (hand on the frame = move, text cursor inside = edit, corner = resize); delete and apply to all pages (icons) |
 | Import images | on | Adds image files as pages (the last-resort method: scan-to-USB on the device) |
 | Auto-rotate | off | Turns upside-down or sideways pages upright (Tesseract orientation detection) |
 | Batch splitting | off | Blank separator sheets split the stack into files `name-001.pdf`, … |
@@ -138,7 +138,7 @@ Populates automatically; **Check for devices again** re-runs discovery.
 | `~/.local/share/linscanner/signatures/` | Saved signatures (max 4) |
 | `~/.local/share/linscanner/fonts/` | Signature fonts the user added (never bundled) |
 | `~/.local/share/linscanner/recent.json` | Recent list |
-| `resources/fonts/signature/` | 13 bundled signature fonts (9 SIL OFL, 4 freeware) + `fonts.json` credits |
+| `resources/fonts/signature/` | 2 bundled SIL OFL signature fonts (Great Vibes, Sacramento) + `fonts.json` |
 | `resources/icons/phosphor/` | The Phosphor Icons used (MIT) |
 | `~/.local/share/applications/linscanner.desktop` | Menu entry |
 
@@ -159,7 +159,7 @@ Populates automatically; **Check for devices again** re-runs discovery.
 |---|---|---|
 | Build | `python3 -m compileall -q src` | passes |
 | Lint | `python3 -m black --check src tests && python3 -m pyflakes src tests` | clean |
-| Test | `python3 -m pytest -q` | 106 passed |
+| Test | `python3 -m pytest -q` | 113 passed |
 | Offline | `../bin/test-offline linscanner` | 304 packages install; feature pipeline verified offline |
 | Docs | `python3 tools/gen_api_docs.py` | every symbol documented |
 
@@ -176,4 +176,4 @@ Populates automatically; **Check for devices again** re-runs discovery.
 
 ## 12. About page
 
-Version and description; **Compatibility** (scanners, multifunction printers, verified devices, systems, paper, formats, what's not supported yet, and a note that compatibility keeps evolving); **Privacy**; **Licence**; **Your files**; **Handy shortcuts**; **System** (linscanner, SANE, Python, GTK); **Credits** (including Phosphor Icons); **Signature fonts** (each bundled font with its designer, copyright and licence, plus the fonts you added).
+Version and description; **Compatibility** (scanners, multifunction printers, verified devices, systems, paper, formats, what's not supported yet, and a note that compatibility keeps evolving); **Privacy**; **Licence**; **Your files**; **Handy shortcuts**; **System** (linscanner, SANE, Python, GTK); **Credits** (including Phosphor Icons); (signature-font credits are kept in the backlog, `../docs/FOLLOW-UP.md` #33).

@@ -575,6 +575,8 @@ class PreviewPage(BasePage):
         dlg.set_do_overwrite_confirmation(True)
         doc = self.ctx.scan.document
         folder = os.path.dirname(doc["path"]) if doc else self.ctx.settings.get("save_folder")
+        if not os.path.isdir(folder):
+            folder = self.ctx.settings.get("save_folder")  # the default save location (Settings)
         if os.path.isdir(folder):
             dlg.set_current_folder(folder)
         if remember and doc:
@@ -614,7 +616,7 @@ class PreviewPage(BasePage):
             return None
         if remember:
             self.ctx.scan.document = {"path": written[0], "format": fmt}
-        self.ctx.settings.set("save_folder", os.path.dirname(written[0]))
+            self.ctx.scan.mark_saved()  # the next scan starts a new document
         more = f" (+{len(written) - 1} more)" if len(written) > 1 else ""
         self.set_status(f"Saved {len(pages)} page(s) to {written[0]}{more}")
         self.update_info()

@@ -8,7 +8,8 @@ import os
 import numpy as np
 from PIL import Image
 
-from utils.util_fonts import render_text
+from utils.util_fonts import render_runs
+from utils.util_textruns import runs_of
 
 
 def small_gray(img, width=600):
@@ -76,10 +77,7 @@ def flatten(page, img=None):
     for item in overlays:
         x, y = int(item["x"] * w), int(item["y"] * h)
         if item["type"] == "text":
-            px = max(6, int(item.get("size_pt", 14) * dpi / 72))
-            text, dx, dy = render_text(
-                item.get("text", ""), item.get("font", "DejaVu Sans"), px, item.get("color", "#000000")
-            )
+            text, dx, dy = render_runs(runs_of(item), dpi / 72)  # styled runs on one baseline
             composite_at(base, text, x + dx, y + dy)
         elif item["type"] == "image" and os.path.exists(item.get("path", "")):
             sig = Image.open(item["path"]).convert("RGBA")  # keep the PNG's transparency

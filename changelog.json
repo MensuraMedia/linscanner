@@ -309,6 +309,34 @@
     {
       "datetime": "2026-09-21T22:30:00",
       "description": "v0.3.2; 106 tests"
+    },
+    {
+      "datetime": "2026-09-21T23:10:00",
+      "description": "Scan page: power icon (green ready / red 'Device may be off. Check power settings.'); detection off the status line"
+    },
+    {
+      "datetime": "2026-09-21T23:10:00",
+      "description": "Scan Options title; Scan Type row without label; Sheets: Multi-Page / Single Page"
+    },
+    {
+      "datetime": "2026-09-21T23:10:00",
+      "description": "Single Page: one page then Preview; after Save the next Scan starts a new document (unsaved pages kept)"
+    },
+    {
+      "datetime": "2026-09-21T23:10:00",
+      "description": "Quick Edit: styled text runs; highlight words and change font / size / colour; resize handle for signatures only"
+    },
+    {
+      "datetime": "2026-09-21T23:10:00",
+      "description": "Signature fonts reduced to Great Vibes and Sacramento (OFL); About no longer lists fonts; backlog #33 has the credits"
+    },
+    {
+      "datetime": "2026-09-21T23:10:00",
+      "description": "Settings: Default save location with Choose...; saving elsewhere no longer overwrites it"
+    },
+    {
+      "datetime": "2026-09-21T23:10:00",
+      "description": "v0.3.3; 113 tests"
     }
   ]
 }
