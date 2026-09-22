@@ -2,7 +2,8 @@
 # linscanner installer for Debian-based systems (Debian, Ubuntu, Linux Mint).
 #
 #   - installs missing dependencies (GTK 3 Python bindings, Pillow, SANE, sane-airscan)
-#     from the repo's offline pool first, network otherwise (asks for sudo only then)
+#     from the linux-peripherals offline pool first (when LinScanner is checked out
+#     inside linux-peripherals), the network otherwise (asks for sudo only then)
 #   - adds "linscanner" to the desktop menu (~/.local/share/applications)
 #   - verifies the app starts and SANE can list scanners
 # Safe to re-run: it only changes what is missing or wrong.
@@ -50,7 +51,7 @@ for p in "${PACKAGES[@]}"; do
 done
 if [[ ${#MISSING[@]} -eq 0 ]]; then
     ok "Dependencies present: ${PACKAGES[*]}"
-elif sudo "$REPO_ROOT/bin/offline-install" "${MISSING[@]}" >/dev/null 2>&1; then
+elif [[ -x "$REPO_ROOT/bin/offline-install" ]] && sudo "$REPO_ROOT/bin/offline-install" "${MISSING[@]}" >/dev/null 2>&1; then
     fixed "Installed from offline pool: ${MISSING[*]}"
 elif sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${MISSING[@]}" >/dev/null; then
     fixed "Installed from network: ${MISSING[*]}"

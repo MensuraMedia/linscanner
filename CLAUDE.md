@@ -6,6 +6,10 @@ only (no pip) and install offline from `../offline/`. This file extends the
 parent `../CLAUDE.md` / `../AGENTS.md`; where they conflict, this file wins for
 `linscanner/`.
 
+## Repository
+- Own repo: https://github.com/MensuraMedia/linscanner (public). Also a git submodule of MensuraMedia/linux-peripherals at `linscanner/` (offline pool, device docs, follow-ups).
+- Never commit scanner serials, MACs, hostnames or personal paths (public repo).
+
 ## Architecture
 - Python 3.10+, GTK 3 via PyGObject, Pillow for export, SANE via `scanimage`
 - Structure from gtk-python-dashboard-starter: `src/{config,ui,pages,modules,utils}` + `src/backends`

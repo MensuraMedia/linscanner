@@ -15,7 +15,7 @@ Linux's standard scanning system (SANE) can drive.
 | Version | 0.3.5 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
 | Platform | Linux desktop, GTK 3 |
 | Tested on | Linux Mint 22.3 (Ubuntu 24.04 base), kernel 7.0, amd64, with an Epson WorkForce ES-400 II |
-| Part of | [linux-peripherals](../README.md), which has offline installers and device references |
+| Repository | [MensuraMedia/linscanner](https://github.com/MensuraMedia/linscanner); also part of [linux-peripherals](https://github.com/MensuraMedia/linux-peripherals) (offline installers, device references) |
 | Connection | USB cable only (Wi-Fi / network scanning not supported at this time) |
 | License | [LinScanner Community License (Noncommercial)](LICENSE): free to use, copy, modify and share; commercial use by permission |
 
@@ -140,21 +140,37 @@ No pip packages and no internet at runtime.
 
 ## 3. Installation
 
+LinScanner has its own repository,
+[MensuraMedia/linscanner](https://github.com/MensuraMedia/linscanner). It is
+also included in
+[linux-peripherals](https://github.com/MensuraMedia/linux-peripherals) (as a
+git submodule), which adds an offline package pool and device references.
+
 ### Recommended (as your normal user, not sudo)
 ```bash
+git clone https://github.com/MensuraMedia/linscanner.git
+bash linscanner/install.sh
+```
+It installs any missing distro packages (with `apt`), asks for your password
+only if packages are missing, adds **LinScanner** to your applications menu
+and checks that the app starts and that SANE sees scanners. It's safe to run
+again.
+
+**Inside linux-peripherals** (works offline on Mint 22 / Ubuntu 24.04):
+```bash
+git clone --recurse-submodules https://github.com/MensuraMedia/linux-peripherals.git
 cd linux-peripherals
 bash linscanner/install.sh
 ```
-It installs any missing packages, **from the repo's offline pool first**, so
-no internet is needed on Mint 22 / Ubuntu 24.04. It asks for your password
-only if packages are missing. It then adds **LinScanner** to your
+There, missing packages come **from the offline pool first**, so no internet
+is needed. It asks for your password only if packages are missing. It then adds **LinScanner** to your
 applications menu and checks that the app starts and that SANE sees scanners.
 It's safe to run again.
 
 ### Offline machine
 Clone the repo with Git LFS on any connected machine (`git lfs pull`), copy
 it over (for example on a USB stick), then run the installer as above.
-Details: [`../offline/README.md`](../offline/README.md).
+Details: [`../offline/README.md`](https://github.com/MensuraMedia/linux-peripherals/blob/main/offline/README.md).
 
 ### Manual
 ```bash
@@ -350,7 +366,7 @@ send for help). Start with `run.sh --debug` for extra detail.
 | My Wi-Fi / network scanner isn't listed | Wi-Fi and network scanning isn't supported at this time, so LinScanner doesn't search the network. Connect the scanner with a USB cable |
 
 **Scanner-specific notes** are in the device references, e.g.
-[`../devices/scanner/epson-es-400-ii/README.md`](../devices/scanner/epson-es-400-ii/README.md).
+[`../devices/scanner/epson-es-400-ii/README.md`](https://github.com/MensuraMedia/linux-peripherals/blob/main/devices/scanner/epson-es-400-ii/README.md).
 
 ---
 
@@ -523,7 +539,7 @@ The design notes are in [`docs/design/0.3.0-ui-refinements.md`](docs/design/0.3.
 - all ten roadmap modules;
 - Quick Edit.
 
-The technical details are in [`docs/TECHNICAL.md`](docs/TECHNICAL.md), and open items in [`../docs/FOLLOW-UP.md`](../docs/FOLLOW-UP.md).
+The technical details are in [`docs/TECHNICAL.md`](docs/TECHNICAL.md), and open items in [`../docs/FOLLOW-UP.md`](https://github.com/MensuraMedia/linux-peripherals/blob/main/docs/FOLLOW-UP.md).
 
 ---
 

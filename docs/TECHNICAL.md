@@ -2,7 +2,7 @@
 
 How LinScanner detects, connects to and drives scanners on Linux, what every
 part does, and how the optional feature modules plug in. The user guide is
-[`../README.md`](../README.md), the feature list [`FEATURES.md`](FEATURES.md),
+[`../README.md`](https://github.com/MensuraMedia/linux-peripherals/blob/main/README.md), the feature list [`FEATURES.md`](FEATURES.md),
 and the code reference [`api-reference.md`](api-reference.md) (generated).
 The research behind the connection design is in [`research/`](research/).
 

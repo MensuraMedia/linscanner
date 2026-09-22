@@ -12,7 +12,7 @@ from conftest import requires_sane
 from utils import util_logging
 from utils.util_logging import get_logger, setup_logging, write_diagnostics
 
-SERIAL = "0123456789ABCDEF01"
+SERIAL = "0123456789ABCDEF01"  # placeholder in the scanner-serial format
 
 
 @pytest.fixture

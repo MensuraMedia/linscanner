@@ -8,4 +8,4 @@
   - Settings "Not Supported" row.
 - User test: the app works well; scanning, settings and preview are OK; preview page switching is slow.
 - Received the 0.3.0 request list (see docs/HANDOFF.md). The user asked to update the docs, back up, commit and push first, then proceed.
-- Signature fonts: 9 zips in /home/user/projects/assets/signatures/. Licences still need checking before embedding.
+- Signature fonts: 9 zips in ~/projects/assets/signatures/. Licences still need checking before embedding.
