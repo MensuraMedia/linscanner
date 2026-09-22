@@ -1,4 +1,4 @@
-# linscanner technical document (v0.3.1)
+# linscanner technical document (v0.3.2)
 
 How linscanner detects, connects to and drives scanners on Linux, what every
 part does, and how the optional feature modules plug in. The user guide is
@@ -484,6 +484,37 @@ Design notes, and how each idea can be reused, are in
 - **Text size.** Button labels are 10 pt, the same as the sidebar labels.
 - **Fonts.** 13 signature fonts are bundled, 9 SIL OFL and 4 freeware. The
   licence review is in `design/0.3.1-ui-polish.md` §9.
+
+### 0.3.2 Preview toolbar and window sizing
+- **Toolbar.** `PreviewPage` builds a `Gtk.FlowBox` of groups: history,
+  pages, arrange, content. Groups wrap in narrow windows.
+  - `tool(group, icon, caption, action)` adds a core tool.
+  - Feature modules call `add_tool(group, button, feature_id, after=None)`:
+    Quick Edit adds Add Text and Signature to *content*; Add Image goes into
+    *pages* right after Add Page.
+  - `update_feature_buttons` shows only enabled features' buttons and hides
+    an empty group. Visibility uses `set_no_show_all(not on)` plus
+    `show_all()`, because `show_all()` skips no-show-all widgets and their
+    children.
+- **Undo.** `checkpoint(snapshot=None)` pushes a deep copy of `scan.pages`
+  and `scan.document` (30 steps kept).
+  - Features take a snapshot before their dialog and push it only when the
+    edit is applied.
+  - `pages-changed` from elsewhere (a scan, opening a document) clears the
+    history. The page's own `changed()` keeps it.
+- **Add Page.** `manager_documents.open_document` turns PDFs and images into
+  pages, which are inserted after the current page.
+- **Save page as…** calls `on_save_as(pages=[page], remember=False)`, so the
+  document's file for **Save** is unchanged.
+- **Fit width.** `PagePreview.zoom_fit_width()` sets the zoom to
+  (view width / page width) / fit scale.
+- **Window sizing.** The content `Gtk.Stack` is not homogeneous (it takes
+  the size of the visible page), and every page, Preview included, sits in a
+  `ScrolledWindow` with automatic scroll bars in both directions.
+  `PREVIEW_MIN_HEIGHT` is 160 px.
+  - The window's minimum is about 200 × 400 (Recent: 580 × 400), so Cinnamon
+    can snap it to halves and quarters (1280 × 540 on a 2560 × 1080 screen).
+  - A large window still gives the large view all the spare height.
 
 ### Robustness
 - `ScanManager._in_thread` wraps callbacks so an idle handler never repeats.

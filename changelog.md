@@ -73,3 +73,11 @@
 | 2026-09-21T21:55:00 | App icon in Alt+Tab/panel: WM_CLASS linscanner, icon list, hicolor icon, StartupWMClass |
 | 2026-09-21T21:55:00 | Signature fonts: 9 OFL + 4 licence-checked freeware (Arkipelago, Julia Lauren, Paul Signature, Sandra Belhock) |
 | 2026-09-21T21:55:00 | Follow-up #33 rewritten for the bundled fonts only; v0.3.1; 105 tests |
+| 2026-09-21T22:30:00 | Preview: PDF-editor toolbar groups (history, pages, arrange, content) with Phosphor icons and hover captions |
+| 2026-09-21T22:30:00 | Add Text (text-t) and Signature (user-list) replace Quick Edit...; Add Image (arrow-square-in) replaces Import images |
+| 2026-09-21T22:30:00 | Add Page (file-plus): insert PDF / image pages after the current page |
+| 2026-09-21T22:30:00 | Duplicate page, Save page as (extract), Reverse order, Undo / Redo (Ctrl+Z / Ctrl+Shift+Z) |
+| 2026-09-21T22:30:00 | Page navigation (first / previous / next / last), Fit width |
+| 2026-09-21T22:30:00 | Window resizable and snappable: non-homogeneous page stack, scrolled pages, min ~200x400 |
+| 2026-09-21T22:30:00 | Fix: feature buttons shown without their icons (show_all skips no-show-all widgets) |
+| 2026-09-21T22:30:00 | v0.3.2; 106 tests |

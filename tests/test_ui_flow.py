@@ -144,10 +144,10 @@ def test_features_in_the_window(tmp_path, monkeypatch):
 
     preview = ctx.nav.get_page_widget("preview")
     assert set(preview.feature_buttons) == {"quick_edit", "import_images"}
-    assert preview.feature_buttons["quick_edit"].get_visible()
+    assert all(b.get_visible() for b in preview.feature_buttons["quick_edit"])  # Add Text, Signature
     ctx.features.set_enabled("quick_edit", False)  # what the Settings checkbox does
     ctx.emit("features-changed")
-    assert not preview.feature_buttons["quick_edit"].get_visible()
+    assert not any(b.get_visible() for b in preview.feature_buttons["quick_edit"])
     ctx.features.set_enabled("quick_edit", True)
     ctx.emit("features-changed")
 
@@ -175,5 +175,51 @@ def test_features_in_the_window(tmp_path, monkeypatch):
     ctx.emit("features-changed")
     profiles.apply(page, "Receipt")
     assert (page.color.get_active(), page.quality.get_active()) == ("bw", "low")
+    window.destroy()
+    scan.cleanup()
+
+
+def test_preview_document_tools_and_undo(tmp_path):
+    """Add Page (PDF), duplicate, reverse, delete with undo / redo; groups; window min size"""
+    import shutil
+
+    from PIL import Image
+
+    ctx, window, scan = build_app(with_features=True)
+    preview = ctx.nav.get_page_widget("preview")
+    ctx.nav.navigate_to("preview")
+    pdf = str(tmp_path / "two.pdf")
+    Image.new("RGB", (425, 550), "white").save(
+        pdf, "PDF", save_all=True, append_images=[Image.new("RGB", (425, 550), "gray")], resolution=50
+    )
+    if shutil.which("gs"):
+        assert preview.add_pages([pdf]) == 2 and len(scan.pages) == 2
+    else:
+        scan.pages += [{"path": pdf, "rotation": 0, "dpi": 100, "mode": "x"}] * 2
+    preview.reload()
+    preview.preview.select(0)
+    first = scan.pages[0]["path"]
+    preview.duplicate_page()
+    assert len(scan.pages) == 3 and scan.pages[1]["path"] == first
+    preview.reverse_pages()
+    assert scan.pages[-1]["path"] == first
+    preview.delete_page()
+    assert len(scan.pages) == 2
+    for expected in (3, 3, 2):  # undo delete, undo reverse (still 3), undo duplicate
+        preview.undo()
+        assert len(scan.pages) == expected
+    preview.redo()
+    assert len(scan.pages) == 3
+    names = [b.get_tooltip_text().split(":")[0] for b in preview.groups["pages"].get_children()]
+    assert names[:2] == ["Add Page", "Add Image"]
+    assert [b.get_tooltip_text().split(":")[0] for b in preview.groups["content"].get_children()] == [
+        "Add Text",
+        "Signature",
+    ]
+    for pid in ("scan", "preview", "recent", "devices", "settings", "about"):
+        ctx.nav.navigate_to(pid)
+        wait_for(lambda: True, 0.3)
+        minimum, _natural = window.get_preferred_size()
+        assert minimum.width <= 1280 and minimum.height <= 540, pid  # fits a quarter of a 2560x1080 screen
     window.destroy()
     scan.cleanup()

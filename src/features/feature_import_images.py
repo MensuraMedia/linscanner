@@ -37,22 +37,22 @@ class Feature(BaseFeature):
     """Add image files as pages"""
 
     id = "import_images"
-    name = "Import images"
-    description = "Adds PNG/JPEG/TIFF files as pages, e.g. scans the scanner saved to a USB stick."
+    name = "Add Image"
+    description = "Adds PNG/JPEG/TIFF files as new pages, e.g. scans the scanner saved to a USB stick."
     default_enabled = True
     order = 90
 
     def extend_preview(self, page):
-        """Add an 'Import images…' button to the Preview toolbar"""
-        import gi
+        """Add an 'Add Image' button to the Preview toolbar's pages group"""
+        from utils.util_icons import icon_button
 
-        gi.require_version("Gtk", "3.0")
-        from gi.repository import Gtk
-
-        btn = Gtk.Button(label="Import images…")
-        btn.connect("clicked", lambda *_: self.choose(page))
-        page.feature_toolbar.pack_start(btn, False, False, 0)
-        page.feature_buttons[self.id] = btn
+        btn = icon_button(
+            "arrow-square-in",
+            "Add Image: add image files (PNG, JPEG, TIFF) as new pages",
+            lambda: self.choose(page),
+        )
+        btn.works_without_pages = True
+        page.add_tool("pages", btn, self.id, after=getattr(page, "btn_add_page", None))
 
     def choose(self, page):
         """File dialog, then import"""
@@ -75,6 +75,9 @@ class Feature(BaseFeature):
         paths = dlg.get_filenames() if dlg.run() == Gtk.ResponseType.ACCEPT else []
         dlg.destroy()
         if paths:
+            before = page._snapshot() if hasattr(page, "_snapshot") else None
             added = import_files(page.ctx, paths)
-            page.ctx.emit("pages-changed")
-            page.set_status(f"Imported {added} page(s).")
+            if before is not None and added:
+                page.checkpoint(before)
+            page.changed() if hasattr(page, "changed") else page.ctx.emit("pages-changed")
+            page.set_status(f"Added {added} image page(s).")

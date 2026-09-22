@@ -161,6 +161,16 @@ class PagePreview(Gtk.Box):
         """Fit the whole page in the window"""
         self.set_zoom(1.0)
 
+    def zoom_fit_width(self):
+        """Fill the window's width with the page (tall pages then scroll)"""
+        if self.selected < 0 or not self.pages:
+            return
+        w, h = self._last_size
+        fit_w, fit_h = max(w - 24, 200), max(h - 24, 200)
+        pw, ph = self.cache.size(self.pages[self.selected])
+        fit = min(fit_w / pw, fit_h / ph)
+        self.set_zoom((fit_w / pw) / fit)
+
     # -- thumbnails ------------------------------------------------------------
     def _apply_strip_height(self):
         """Strip tall enough for 1 or 2 rows, plus the scroll bar"""

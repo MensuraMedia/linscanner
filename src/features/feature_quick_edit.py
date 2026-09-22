@@ -90,27 +90,47 @@ class Feature(BaseFeature):
     order = 85
 
     def extend_preview(self, page):
-        """Add a 'Quick Edit' button to the Preview toolbar"""
-        import gi
+        """Add Text and Signature buttons to the Preview toolbar's content group"""
+        page.add_tool(
+            "content",
+            icon_button(
+                "text-t",
+                "Add Text: click anywhere on the page and type",
+                lambda: self.open_editor(page, "text"),
+            ),
+            self.id,
+        )
+        page.add_tool(
+            "content",
+            icon_button(
+                "user-list",
+                "Signature: place your signature on the page",
+                lambda: self.open_editor(page, "signature"),
+            ),
+            self.id,
+        )
 
-        gi.require_version("Gtk", "3.0")
-        from gi.repository import Gtk
-
-        btn = Gtk.Button(label="Quick Edit…")
-        btn.connect("clicked", lambda *_: self.open_editor(page))
-        page.feature_toolbar.pack_start(btn, False, False, 0)
-        page.feature_buttons[self.id] = btn
-
-    def open_editor(self, preview_page):
-        """Open the editor for the selected page; store overlays on Apply"""
+    def open_editor(self, preview_page, start=None):
+        """Open the editor for the selected page (start: "text" or "signature"); store overlays on Apply"""
         pages = preview_page.ctx.scan.pages
         index = preview_page.preview.selected
         if not pages or index < 0:
             return
+        before = preview_page._snapshot() if hasattr(preview_page, "_snapshot") else None
         editor = QuickEditor(preview_page.ctx, pages, index)
+        if start == "text":
+            editor.set_mode("text")
+        elif start == "signature":
+            editor.apply_signature()
         if editor.run():
-            preview_page.ctx.emit("pages-changed")
-            preview_page.set_status("Quick Edit applied. Text and signatures are added when you save.")
+            if before is not None:
+                preview_page.checkpoint(before)  # Undo removes the whole edit
+            (
+                preview_page.changed()
+                if hasattr(preview_page, "changed")
+                else preview_page.ctx.emit("pages-changed")
+            )
+            preview_page.set_status("Edits applied. Text and signatures are added to the file when you save.")
 
 
 class QuickEditor:

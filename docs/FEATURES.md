@@ -1,4 +1,4 @@
-# linscanner features and functions (v0.3.1)
+# linscanner features and functions (v0.3.2)
 
 Every user-facing feature, page by page, plus command-line options, files and
 limits.
@@ -45,19 +45,26 @@ Verified hardware: Epson ES-400 II (USB `04b8:0181`), reached via epsonds
 
 ## 3. Preview and Recent pages
 
-**Preview**
+**Preview** (toolbar groups; every tool is a Phosphor icon with a caption on hover)
 
-| Control | Function |
+| Group / control | Function |
 |---|---|
-| Large view | Fit-to-window, or **zoom** 25–800 % of fit (magnifier icons, Ctrl + wheel, Ctrl + / − / 0); drag to pan when zoomed. Pages are drawn from small display copies made in the background, so switching pages takes about 25 ms |
-| Thumbnail strip | Left-aligned, always-visible horizontal scroll bar; **1 row / 2 rows** (remembered); Page Up / Page Down change page; Quick Edit layers shown |
-| Rotate left / right / 180° (Phosphor `arrow-counter-clockwise`, `arrow-clockwise`, `arrows-clockwise`) | Per page, non-destructive; captions on hover |
-| Move left / right (`arrow-left`, `arrow-right`) | Reorder pages |
-| Delete page (`file-x`), Clear all (`trash-simple`) | Remove one page, or all after confirmation |
-| **Quick Edit…** (feature) | Text and signature editor (§6) |
-| **Import images…** (feature) | Add PNG/JPEG/TIFF (multi-page) files as pages |
-| **Save** | Writes to the document's file (last Save / Save As, or the file opened from Recent) in its format; a new document is saved as a PDF in the Save folder with an automatic name |
-| **Save As…** | PDF, TIFF (multi-page), PNG, JPEG (one file per page). Applies rotation and layers, and runs the export features (split, OCR, PDF/A) |
+| History: Undo (`arrow-u-up-left`), Redo (`arrow-u-up-right`) | Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y; up to 30 steps; a new scan or opened document starts a fresh history |
+| Pages: Add Page (`file-plus`) | Insert the pages of PDFs (rendered at 300 dpi) or images after the current page |
+| Pages: Add Image (`arrow-square-in`, feature) | Add PNG / JPEG / TIFF files as new pages |
+| Pages: Duplicate (`copy`), Save page as… (`export`) | Copy the page (with its rotation and edits) after itself; save only this page to its own file |
+| Pages: Delete page (`file-x`), Clear all (`trash-simple`) | Remove one page, or all (after confirming; Undo brings them back) |
+| Arrange: rotate left / right / 180° (`arrow-counter-clockwise`, `arrow-clockwise`, `arrows-clockwise`) | Per page, non-destructive |
+| Arrange: move left / right (`arrow-left`, `arrow-right`), reverse order (`arrows-left-right`) | Reorder pages |
+| Content: Add Text (`text-t`), Signature (`user-list`) (Quick Edit feature) | Open the editor with Add Text active, or with Apply Signature armed (§6) |
+| View bar: first / previous / next / last (`caret-double-left`, `caret-left`, `caret-right`, `caret-double-right`) | Home, Page Up, Page Down, End |
+| View bar: zoom out / in, fit page (`arrows-in`), fit width (`arrows-out-line-horizontal`) | 25–800 % of fit; Ctrl + wheel; drag to pan. Pages are drawn from display copies, so switching takes about 25 ms |
+| Thumbnails | Left-aligned, scroll bar always shown, **1 row / 2 rows** (remembered) |
+| **Save** / **Save As…** | Save writes to the document's file (a new document goes to the Save folder as a PDF); Save As chooses the name and format (PDF, TIFF, PNG, JPEG) |
+
+The groups wrap onto a second row in narrow windows, and the page scrolls when
+the window is smaller than it. The window can be snapped to half or a quarter
+of the screen.
 
 **Recent** (sidebar)
 
@@ -152,7 +159,7 @@ Populates automatically; **Check for devices again** re-runs discovery.
 |---|---|---|
 | Build | `python3 -m compileall -q src` | passes |
 | Lint | `python3 -m black --check src tests && python3 -m pyflakes src tests` | clean |
-| Test | `python3 -m pytest -q` | 105 passed |
+| Test | `python3 -m pytest -q` | 106 passed |
 | Offline | `../bin/test-offline linscanner` | 304 packages install; feature pipeline verified offline |
 | Docs | `python3 tools/gen_api_docs.py` | every symbol documented |
 

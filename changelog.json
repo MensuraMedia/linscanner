@@ -277,6 +277,38 @@
     {
       "datetime": "2026-09-21T21:55:00",
       "description": "Follow-up #33 rewritten for the bundled fonts only; v0.3.1; 105 tests"
+    },
+    {
+      "datetime": "2026-09-21T22:30:00",
+      "description": "Preview: PDF-editor toolbar groups (history, pages, arrange, content) with Phosphor icons and hover captions"
+    },
+    {
+      "datetime": "2026-09-21T22:30:00",
+      "description": "Add Text (text-t) and Signature (user-list) replace Quick Edit...; Add Image (arrow-square-in) replaces Import images"
+    },
+    {
+      "datetime": "2026-09-21T22:30:00",
+      "description": "Add Page (file-plus): insert PDF / image pages after the current page"
+    },
+    {
+      "datetime": "2026-09-21T22:30:00",
+      "description": "Duplicate page, Save page as (extract), Reverse order, Undo / Redo (Ctrl+Z / Ctrl+Shift+Z)"
+    },
+    {
+      "datetime": "2026-09-21T22:30:00",
+      "description": "Page navigation (first / previous / next / last), Fit width"
+    },
+    {
+      "datetime": "2026-09-21T22:30:00",
+      "description": "Window resizable and snappable: non-homogeneous page stack, scrolled pages, min ~200x400"
+    },
+    {
+      "datetime": "2026-09-21T22:30:00",
+      "description": "Fix: feature buttons shown without their icons (show_all skips no-show-all widgets)"
+    },
+    {
+      "datetime": "2026-09-21T22:30:00",
+      "description": "v0.3.2; 106 tests"
     }
   ]
 }

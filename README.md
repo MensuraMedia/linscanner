@@ -12,7 +12,7 @@ Linux's standard scanning system (SANE) can drive.
 
 | | |
 |---|---|
-| Version | 0.3.1 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
+| Version | 0.3.2 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
 | Platform | Linux desktop, GTK 3 |
 | Tested on | Linux Mint 22.3 (Ubuntu 24.04 base), kernel 7.0, amd64, with an Epson WorkForce ES-400 II |
 | Part of | [linux-peripherals](../README.md), which has offline installers and device references |
@@ -55,7 +55,8 @@ Linux's standard scanning system (SANE) can drive.
 | **Clear feedback** | A summary line shows exactly what will be scanned; per-page progress; page count; plain-language errors (feeder empty, paper jam, scanner busy, not responding) |
 | **Cancel** | Stops the scan and keeps the pages already scanned |
 | **Preview** | Fast page switching; **zoom** (buttons, Ctrl + wheel, drag to pan); a scrollable, left-aligned thumbnail strip with **1 or 2 rows**; opens automatically after scanning |
-| **Page tools** | Icon buttons with captions on hover: rotate left, right or 180°; move a page left or right; delete a page; clear all |
+| **Page tools** | A PDF-editor style toolbar of icons with captions on hover: undo / redo; add pages from a PDF or images, duplicate, extract a page, delete, clear; rotate, move, reverse order; add text, signature; page navigation, zoom, fit page, fit width |
+| **Window** | Resizable, and small enough to snap to half or a quarter of the screen (the pages scroll when needed); its own icon in the panel and Alt+Tab |
 | **Blank Pages** | *Keep* or *Remove* right on the Scan page (the same switch as the Blank-page removal module) |
 | **Quick Edit** | **Add Text**: click anywhere on the page and type, with alignment guides that line text up with earlier text. **Apply Signature** places your signature; the edit icon beside it chooses or creates one (up to 4 saved, typed in one of 9 signature fonts or uploaded as a PNG). Hand pointer to move, text pointer to edit, corner to resize. Non-destructive until you save |
 | **Recent** | A table of saved documents (date, folder, file name), newest first: the folder icon opens the file manager, the document icon opens the file for Quick Edit, the trash icon removes the entry; clear all or entries older than 5–90 days |
@@ -205,17 +206,21 @@ Pages appear as they are scanned, and **Preview** opens when the scan finishes.
 ![Recent](docs/images/screenshot-recent.png)
 
 ### Fix and save
-- Click a thumbnail (or press Page Up / Page Down) to view that page. The
-  strip scrolls sideways; choose **1 row** or **2 rows** of thumbnails.
-- **Zoom** with the magnifier icons, Ctrl + mouse wheel or Ctrl + / −; the
-  fit icon (or Ctrl 0) shows the whole page. Drag a zoomed page to move around.
-- The page tools are icons; hover over one to see its name. **Rotate left /
-  right / 180°** correct orientation, for example if your
-  feeder delivers pages upside down.
-- **Delete page** (page with an ×) removes a bad page, and the arrows move a
-  page left or right. **Clear all** (trash) starts over.
-- **Quick Edit…** opens the page editor:
-  - **Add Text** (pencil icon): the pointer becomes a text cursor. Click
+The toolbar works like a PDF editor's. Every tool is an icon; hover over one
+to see its name. The tools are grouped from left to right:
+
+| Group | Tools |
+|---|---|
+| **History** | **Undo** (Ctrl+Z), **Redo** (Ctrl+Shift+Z / Ctrl+Y). Every change to the pages can be undone until you close linscanner |
+| **Pages** | **Add Page** (insert the pages of a PDF, or images, after the current page) · **Add Image** (add image files as new pages) · **Duplicate page** · **Save this page as…** (extract one page to its own file) · **Delete page** · **Clear all** |
+| **Arrange** | **Rotate left / right / 180°** · **Move page left / right** · **Reverse page order** (for a stack fed last page first) |
+| **Content** | **Add Text** (T icon) · **Signature** |
+| View bar | **First / Previous / Next / Last page** (Home, Page Up, Page Down, End) · **Zoom out / in** (Ctrl − / +, Ctrl + wheel) · **Fit page** (Ctrl 0) · **Fit width** · thumbnails in **1 row** or **2 rows** |
+
+- Click a thumbnail to view that page. The strip scrolls sideways. Drag a
+  zoomed page to move around.
+- **Add Text** and **Signature** open the page editor:
+  - **Add Text** (T icon): the pointer becomes a text cursor. Click
     anywhere on the page and type. Enter starts a new line underneath, Esc
     finishes. Choose the font (20 basic fonts plus the signature fonts), size
     and colour.
@@ -457,6 +462,10 @@ do its seven dark themes:
 - Cameras (PTP) and document cameras are detected and explained, but not captured.
 - Settings stored inside the scanner (sleep timer, etc.) can't be changed from Linux.
 - OCR is English only.
+
+**Done in 0.3.2:**
+- the PDF-editor style Preview toolbar (Add Page, Add Image, Add Text, Signature, duplicate, extract, reverse, undo / redo, page navigation, fit width);
+- the window resizes and snaps to half or a quarter of the screen.
 
 **Done in 0.3.1:**
 - Phosphor Icons;

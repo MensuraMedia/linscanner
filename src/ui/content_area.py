@@ -18,7 +18,7 @@ from pages.page_settings import SettingsPage  # noqa: E402
 
 PAGES = [
     ("scan", ScanPage, True),
-    ("preview", PreviewPage, False),  # False: page manages its own scrolling
+    ("preview", PreviewPage, True),  # scrolls only when the window is smaller than the page
     ("recent", RecentPage, False),  # has its own scrolling table
     ("devices", DevicesPage, True),
     ("settings", SettingsPage, True),
@@ -35,6 +35,9 @@ class ContentArea(Gtk.Box):
         self.get_style_context().add_class("content-area")
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.NONE)
+        # size to the visible page only, so the window can be made small and snapped to screen halves/quarters
+        self.stack.set_hhomogeneous(False)
+        self.stack.set_vhomogeneous(False)
         self.pack_start(self.stack, True, True, 0)
         ctx.nav.set_page_stack(self.stack)
 
@@ -43,7 +46,7 @@ class ContentArea(Gtk.Box):
             widget = page
             if scrolled:
                 widget = Gtk.ScrolledWindow()
-                widget.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+                widget.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
                 widget.add(page)
             self.stack.add_named(widget, page_id)
             ctx.nav.register_page(page_id, page)

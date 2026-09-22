@@ -20,7 +20,7 @@ class Dimensions:
     WINDOW_DEFAULT_HEIGHT = 820
 
     THUMBNAIL_HEIGHT = 120  # preview page strip
-    PREVIEW_MIN_HEIGHT = 420
+    PREVIEW_MIN_HEIGHT = 160  # small, so the window can be snapped to a quarter of the screen
 
 
 class Spacing:

@@ -340,6 +340,7 @@ Constants: `ZOOM_STEPS`, `THUMB_CACHE_MAX`, `LARGE_CACHE_MAX`
 | &nbsp;&nbsp;`.zoom_in(self)` | Next zoom step |
 | &nbsp;&nbsp;`.zoom_out(self)` | Previous zoom step |
 | &nbsp;&nbsp;`.zoom_fit(self)` | Fit the whole page in the window |
+| &nbsp;&nbsp;`.zoom_fit_width(self)` | Fill the window's width with the page (tall pages then scroll) |
 | &nbsp;&nbsp;`._apply_strip_height(self)` | Strip tall enough for 1 or 2 rows, plus the scroll bar |
 | &nbsp;&nbsp;`._thumb_pixbuf(self, page)` | Cached thumbnail for a page (redrawn only when the page changed) |
 | &nbsp;&nbsp;`._thumb_button(self, i, page)` | Button with a page thumbnail and its number |
@@ -442,30 +443,48 @@ Constants: `LEVEL_CSS`
 
 ### `src/pages/page_preview.py`
 
-Preview Page Shows scanned (or opened) pages: zoom, rotate, reorder and delete pages, then Save or Save As PDF, PNG, JPEG or TIFF.  - Save: writes to the document's file (the last Save / Save As, or the file   opened from Recent). A new document is saved as a PDF in the Save folder   with an automatic name, without a dialog. - Save As…: choose the name, folder and format. - Thumbnails: 1 or 2 rows (the user's choice is remembered).
+Preview Page Shows scanned (or opened) pages with a PDF-editor style toolbar (Phosphor icons, captions on hover), grouped left to right:    History   undo, redo   Pages     add page (PDF / images), add image, duplicate, save page as,             delete page, clear all   Arrange   rotate left / right / 180°, move left / right, reverse order   Content   add text, signature (Quick Edit feature)                                                               Save / Save As…   View bar  first / previous / next / last page, zoom out / in, fit page,             fit width, thumbnails in 1 or 2 rows  The groups wrap onto a second row in narrow windows. Every change to the pages can be undone (Ctrl+Z) and redone (Ctrl+Shift+Z / Ctrl+Y).  - Save: writes to the document's file (the last Save / Save As, or the file   opened from Recent). A new document is saved as a PDF in the Save folder   with an automatic name, without a dialog. - Save As…: choose the name, folder and format.
+
+Constants: `HISTORY_MAX`, `TOOL_GROUPS`, `ADDABLE`
 
 | Symbol | Purpose |
 |---|---|
-| class `PreviewPage(BasePage)` | Page viewer with editing actions, zoom, Save and Save As |
-| &nbsp;&nbsp;`.build_content(self)` | Toolbars (page actions, features, zoom, thumbnails), Save / Save As, preview and status |
-| &nbsp;&nbsp;`.update_feature_buttons(self, *_)` | Show buttons of enabled features only |
-| &nbsp;&nbsp;`._icon(bar, name, caption, action)` | Add an icon button with a hover caption |
+| class `PreviewPage(BasePage)` | Page viewer with editing actions, undo, zoom, Save and Save As |
+| &nbsp;&nbsp;`.build_content(self)` | Toolbar groups, Save / Save As, view bar, preview and status |
+| &nbsp;&nbsp;`._icon(box, name, caption, action)` | Add an icon button with a hover caption to a box |
+| &nbsp;&nbsp;`.tool(self, group, name, caption, action, feature_id=None)` | Add an icon button (with a hover caption) to a toolbar group; features pass their id |
+| &nbsp;&nbsp;`.add_tool(self, group, button, feature_id, after=None)` | Add a ready-made button to a group (for feature modules), optionally right after another |
+| &nbsp;&nbsp;`.update_feature_buttons(self, *_)` | Show buttons of enabled features only; hide a group left empty |
 | &nbsp;&nbsp;`.on_shown(self)` | Reload pages when the page is opened |
 | &nbsp;&nbsp;`.set_status(self, text, error=False)` | Status line under the preview (errors in red) |
+| &nbsp;&nbsp;`._snapshot(self)` | The pages and document as they are now |
+| &nbsp;&nbsp;`.checkpoint(self, snapshot=None)` | Remember the pages before a change (features call this too, with a snapshot taken earlier) |
+| &nbsp;&nbsp;`._restore(self, snap)` | Put a snapshot back |
+| &nbsp;&nbsp;`.undo(self)` | Undo the last change to the pages |
+| &nbsp;&nbsp;`.redo(self)` | Redo a change that was undone |
+| &nbsp;&nbsp;`._update_history_buttons(self)` | Undo / redo available only when there is something to undo / redo |
+| &nbsp;&nbsp;`.on_pages_changed(self, *_)` | Pages changed elsewhere (a scan, an import): start a fresh history |
+| &nbsp;&nbsp;`.changed(self)` | Tell other pages this page changed the pages (history is kept) |
 | &nbsp;&nbsp;`.on_zoom(self, zoom)` | Show the zoom level ('Fit' or a percentage of fit) |
 | &nbsp;&nbsp;`.on_rows_changed(self, key)` | 1 or 2 rows of thumbnails; remembered |
-| &nbsp;&nbsp;`.on_key(self, _widget, event)` | Page Up / Page Down change page; Ctrl + plus / minus / 0 zoom |
+| &nbsp;&nbsp;`.step(self, delta)` | Previous / next page |
+| &nbsp;&nbsp;`.on_key(self, _widget, event)` | Page keys, Home / End, zoom and undo / redo shortcuts |
 | &nbsp;&nbsp;`.reload(self, *_)` | Show the session's pages and enable/disable actions |
 | &nbsp;&nbsp;`.update_info(self)` | Show 'Page n of m · mode · dpi' (and the document's file) for the selected page |
 | &nbsp;&nbsp;`.rotate(self, degrees)` | Rotate the selected page and re-render |
 | &nbsp;&nbsp;`.move(self, step)` | Move the selected page one place earlier (-1) or later (+1) |
+| &nbsp;&nbsp;`.reverse_pages(self)` | Reverse the page order |
+| &nbsp;&nbsp;`.duplicate_page(self)` | Insert a copy of the selected page right after it |
 | &nbsp;&nbsp;`.delete_page(self)` | Delete the selected page and select its neighbour |
-| &nbsp;&nbsp;`.clear_pages(self)` | Remove all pages after confirmation |
+| &nbsp;&nbsp;`.clear_pages(self)` | Remove all pages after confirmation (Undo brings them back) |
+| &nbsp;&nbsp;`.add_pages(self, paths=None)` | Add Page: insert the pages of PDFs or images after the selected page |
+| &nbsp;&nbsp;`._choose_files(self, title)` | File dialog for PDFs and images (several at once) |
+| &nbsp;&nbsp;`.extract_page(self)` | Save only the selected page to a file of its own (the document is unchanged) |
 | &nbsp;&nbsp;`._confirm(self, title, detail)` | Modal OK/Cancel question; True if OK |
 | &nbsp;&nbsp;`.open_document(self, path, quick_edit=False)` | Open a saved document (from Recent) as the current pages; optionally start Quick Edit |
 | &nbsp;&nbsp;`.on_save(self)` | Save to the document's file; a new document goes to the Save folder as a PDF |
-| &nbsp;&nbsp;`.on_save_as(self, _btn)` | Save As dialog (PDF/PNG/JPEG/TIFF), export, remember the folder |
-| &nbsp;&nbsp;`._write(self, pages, path, fmt)` | Export, remember the document and the folder, report the result |
+| &nbsp;&nbsp;`.on_save_as(self, _btn, pages=None, title='Save scanned document', remember=True)` | Save As dialog (PDF/PNG/JPEG/TIFF), export, remember the folder |
+| &nbsp;&nbsp;`._write(self, pages, path, fmt, remember=True)` | Export, remember the document (unless extracting a page) and the folder, report the result |
 
 ### `src/pages/page_recent.py`
 
@@ -817,7 +836,7 @@ Constants: `EXTENSIONS`
 |---|---|
 | `import_files(ctx, paths)` | Append image files to the session as pages; returns the number of pages added |
 | class `Feature(BaseFeature)` | Add image files as pages |
-| &nbsp;&nbsp;`.extend_preview(self, page)` | Add an 'Import images…' button to the Preview toolbar |
+| &nbsp;&nbsp;`.extend_preview(self, page)` | Add an 'Add Image' button to the Preview toolbar's pages group |
 | &nbsp;&nbsp;`.choose(self, page)` | File dialog, then import |
 
 ### `src/features/feature_ocr.py`
@@ -870,8 +889,8 @@ Constants: `HANDLE`, `SNAP_PX`, `DEFAULT_SIGNATURE_WIDTH`, `SIGNATURE_INK`
 | `on_paper(img, pad=10)` | A transparent signature on a white "paper" tile, so dark ink shows on the dark theme |
 | `_pixbuf(img)` | Pillow image -> GdkPixbuf (RGBA kept) |
 | class `Feature(BaseFeature)` | Text and signatures on scanned pages |
-| &nbsp;&nbsp;`.extend_preview(self, page)` | Add a 'Quick Edit' button to the Preview toolbar |
-| &nbsp;&nbsp;`.open_editor(self, preview_page)` | Open the editor for the selected page; store overlays on Apply |
+| &nbsp;&nbsp;`.extend_preview(self, page)` | Add Text and Signature buttons to the Preview toolbar's content group |
+| &nbsp;&nbsp;`.open_editor(self, preview_page, start=None)` | Open the editor for the selected page (start: "text" or "signature"); store overlays on Apply |
 | class `QuickEditor()` | Modal editor window: canvas + tools. run() returns True if changes were applied. |
 | &nbsp;&nbsp;`.__init__(self, ctx, pages, index)` | Build the dialog for pages[index] (overlays are edited on a copy) |
 | &nbsp;&nbsp;`._stop_blink(self)` | Stop the caret timer when the dialog closes |
