@@ -71,6 +71,12 @@ def export_pages(pages, path, fmt=None, registry=None):
         f"{os.path.basename(w)} ({os.path.getsize(w) // 1024} KB)" for w in written if os.path.exists(w)
     )
     log.info("export done in %.1f s: %s", time.monotonic() - start, sizes)
+    try:
+        from modules.manager_documents import add_recent
+
+        add_recent(written, len(pages), fmt)  # for the Recent page
+    except OSError as e:
+        log.warning("could not update the recent list: %s", e)
     return written
 
 

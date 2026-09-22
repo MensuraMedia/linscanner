@@ -156,6 +156,9 @@ class DevicesPage(BasePage):
         run_in_background(lambda: info.check_status(d), lambda r: show(*r), lambda e: show("error", e))
 
     def on_shown(self):
-        """Refresh the sections when the page is opened"""
-        if self.ctx.scan.devices:
+        """Refresh the sections when the page is opened; a remembered scanner gets a full check"""
+        devices = self.ctx.scan.devices
+        if any(getattr(d, "restored", False) for d in devices) and not self.ctx.scan.busy:
+            self.ctx.emit("request-device-refresh")  # USB facts, every driver, other scanners
+        elif devices:
             self.show_devices()

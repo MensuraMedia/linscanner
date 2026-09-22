@@ -1,13 +1,23 @@
 """
 About Page
-Version, scanning stack versions and credits.
+What linscanner is, privacy and licence in brief, where your files are,
+handy shortcuts, system versions, credits and font attributions (bundled
+signature fonts with their designers and licence).
 """
 
+import os
+import platform
 import shutil
 import subprocess
 
-from pages.page_base import BasePage
-from utils.util_paths import read_version
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk  # noqa: E402
+
+from pages.page_base import BasePage  # noqa: E402
+from utils.util_fonts import bundled_signature_fonts, user_signature_fonts  # noqa: E402
+from utils.util_paths import APP_ROOT, read_version, resource  # noqa: E402
 
 
 def sane_version():
@@ -21,38 +31,156 @@ def sane_version():
     return out.strip().splitlines()[0] if out.strip() else "unknown"
 
 
+def tilde(path):
+    """A path with the home folder shown as ~"""
+    home = os.path.expanduser("~")
+    return "~" + path[len(home) :] if path.startswith(home) else path
+
+
+def user_paths():
+    """(what, path) for every place linscanner keeps your data"""
+    from modules.manager_settings import default_path
+    from utils.util_fonts import user_fonts_dir
+    from utils.util_logging import log_dir
+    from utils.util_signatures import signatures_dir
+
+    data = os.path.dirname(signatures_dir())
+    return [
+        ("Settings", default_path()),
+        ("Saved signatures (up to 4)", signatures_dir()),
+        ("Fonts you added", user_fonts_dir()),
+        ("Recent documents list", os.path.join(data, "recent.json")),
+        ("Logs (kept 14 days)", log_dir()),
+        ("Scans in progress", "/tmp/linscanner-*/ (deleted when linscanner closes)"),
+    ]
+
+
 class AboutPage(BasePage):
     """About linscanner"""
 
+    def _text(self, card, text, css="secondary", selectable=False):
+        """Add a wrapped label to a card"""
+        card.pack_start(self.label(text, css, wrap=True, selectable=selectable), False, False, 0)
+
+    def _grid(self, card, rows):
+        """Two-column key / value grid"""
+        grid = Gtk.Grid(column_spacing=18, row_spacing=3)
+        for n, (key, value) in enumerate(rows):
+            grid.attach(self.label(key, "info-key"), 0, n, 1, 1)
+            val = self.label(value, "info-value", wrap=True, selectable=True)
+            val.set_hexpand(True)
+            grid.attach(val, 1, n, 1, 1)
+        card.pack_start(grid, False, False, 0)
+
     def build_content(self):
-        """Version, description, SANE version and credits"""
-        self.add_title("linscanner", f"Version {read_version()}")
+        """All About sections"""
+        self.add_title("linscanner", f"Version {read_version()} · a document scanner for Linux")
+
         card = self.add_card("What it is")
-        card.pack_start(
-            self.label(
-                "A universal document scanner for Linux. It works with any scanner that has a "
-                "SANE driver: USB scanners, network scanners through sane-airscan (eSCL/WSD), "
-                "HP devices through hplip, and more. Scan in color or black & white at three "
-                "quality levels, preview and fix pages, then save as PDF, PNG, JPEG or TIFF.",
-                "secondary",
-                wrap=True,
-            ),
-            False,
-            False,
-            0,
+        self._text(
+            card,
+            "Scan documents from any USB-connected scanner that Linux supports (SANE drivers), in "
+            "color or black & white at three quality levels. Check and fix the pages, add text and "
+            "signatures with Quick Edit, then save as PDF, PNG, JPEG or TIFF.",
         )
+        self._text(
+            card,
+            "Connection: USB cable only. Wi-Fi and network scanning are not supported at this time.",
+            "muted",
+        )
+
+        card = self.add_card("Privacy")
+        self._text(
+            card,
+            "Everything happens on this computer. linscanner never sends your scans, documents, "
+            "signatures, settings or any other information to anyone: no cloud, no accounts, no "
+            "telemetry, no network scanner search. OCR runs locally. Files leave this computer only "
+            "if you copy or send them yourself.",
+        )
+
+        card = self.add_card("Licence")
+        self._text(
+            card,
+            "linscanner Community License (Noncommercial) 1.0. You're welcome to use it free of "
+            "charge, and to copy, modify and share it for any noncommercial purpose. Commercial use "
+            "needs written permission from MensuraMedia; we're happy to talk. The components "
+            "linscanner builds on keep their own licences.",
+        )
+        self._text(card, f"Full text: {tilde(os.path.join(APP_ROOT, 'LICENSE'))}", "muted", selectable=True)
+
+        card = self.add_card("Your files")
+        self._grid(card, [(what, tilde(path)) for what, path in user_paths()])
+
+        card = self.add_card("Handy shortcuts")
+        self._grid(
+            card,
+            [
+                (
+                    "Preview",
+                    "Ctrl + mouse wheel or Ctrl + / Ctrl − to zoom, Ctrl 0 to fit; drag to move around",
+                ),
+                ("Preview", "Page Up / Page Down for the next or previous page"),
+                ("Quick Edit", "Add Text, then click anywhere and type; Enter starts a line below"),
+                ("Quick Edit", "Guides line text up with earlier text; hold Alt to place freely"),
+                ("Quick Edit", "Double-click text to edit it; Delete removes; arrow keys nudge"),
+                ("Recent", "Folder icon: open in the file manager · document icon: open in Quick Edit"),
+            ],
+        )
+
         card = self.add_card("System")
-        card.pack_start(self.label(sane_version(), "secondary", selectable=True), False, False, 0)
-        card = self.add_card("Credits")
-        card.pack_start(
-            self.label(
-                "UI framework: gtk-python-dashboard-starter by mikesdatawork\n"
-                "Build process and color scheme: MensuraMedia universal-instruction-set\n"
-                "Part of MensuraMedia/linux-peripherals",
-                "secondary",
-                wrap=True,
-            ),
-            False,
-            False,
-            0,
+        try:
+            gtk = f"{Gtk.get_major_version()}.{Gtk.get_minor_version()}.{Gtk.get_micro_version()}"
+        except Exception:
+            gtk = "?"
+        self._grid(
+            card,
+            [
+                ("linscanner", read_version()),
+                ("Scanning (SANE)", sane_version()),
+                ("Python", platform.python_version()),
+                ("GTK", gtk),
+            ],
         )
+
+        card = self.add_card("Credits")
+        self._grid(
+            card,
+            [
+                ("Made by", "MensuraMedia · part of linux-peripherals"),
+                ("Interface", "gtk-python-dashboard-starter by mikesdatawork"),
+                ("Build process", "MensuraMedia universal-instruction-set"),
+                ("Scanning", "SANE project, sane-airscan (Alexander Pevzner), ipp-usb (OpenPrinting)"),
+                ("Images and PDF", "Pillow, NumPy, Ghostscript (Artifex)"),
+                ("Text recognition", "Tesseract OCR"),
+                ("Text fonts", "DejaVu, Liberation, Noto, Ubuntu and URW base35, from your system"),
+            ],
+        )
+
+        card = self.add_card("Signature fonts")
+        self._text(
+            card,
+            "These fonts are included with linscanner under the SIL Open Font License 1.1, which "
+            "allows them to be bundled and shared. Thank you to their designers.",
+            "muted",
+        )
+        fonts = bundled_signature_fonts()
+        self._grid(
+            card,
+            [(f["family"], f"{f['designer']} · {f['copyright']} · {f['license']}") for f in fonts]
+            or [("—", "No bundled signature fonts found")],
+        )
+        self._text(
+            card,
+            f"Licence texts: {tilde(resource('fonts', 'signature'))}/<font>/OFL.txt · source: Google Fonts",
+            "muted",
+            selectable=True,
+        )
+        mine = user_signature_fonts()
+        if mine:
+            self._text(
+                card,
+                "Fonts you added (kept on this computer, not part of linscanner): "
+                + ", ".join(f["family"] for f in mine)
+                + ". Please respect their own licences.",
+                "muted",
+            )

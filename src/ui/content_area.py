@@ -12,12 +12,14 @@ from gi.repository import Gtk  # noqa: E402
 from pages.page_about import AboutPage  # noqa: E402
 from pages.page_devices import DevicesPage  # noqa: E402
 from pages.page_preview import PreviewPage  # noqa: E402
+from pages.page_recent import RecentPage  # noqa: E402
 from pages.page_scan import ScanPage  # noqa: E402
 from pages.page_settings import SettingsPage  # noqa: E402
 
 PAGES = [
     ("scan", ScanPage, True),
     ("preview", PreviewPage, False),  # False: page manages its own scrolling
+    ("recent", RecentPage, True),
     ("devices", DevicesPage, True),
     ("settings", SettingsPage, True),
     ("about", AboutPage, True),

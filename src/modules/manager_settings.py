@@ -18,6 +18,8 @@ DEFAULTS = {
     "bw_style": DEFAULT_BW_STYLE,
     "save_folder": os.path.join(os.path.expanduser("~"), "Documents"),
     "last_device": "",
+    "last_device_info": {},  # the remembered scanner: {"vendor", "model", "methods": [...]}
+    "thumbnail_rows": 1,  # Preview thumbnails: 1 or 2 rows
     "show_all_backends": False,  # show duplicate backends and SANE's test scanner
     "features": {},  # feature id -> enabled (missing = the feature's default)
     "feature_settings": {},  # feature id -> {option: value}

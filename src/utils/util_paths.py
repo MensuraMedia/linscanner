@@ -20,3 +20,11 @@ def read_version():
             return f.read().strip()
     except OSError:
         return "unknown"
+
+
+def data_dir(*parts):
+    """Folder under ~/.local/share/linscanner (honours XDG_DATA_HOME); created on demand"""
+    base = os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+    path = os.path.join(base, "linscanner", *parts)
+    os.makedirs(path, exist_ok=True)
+    return path

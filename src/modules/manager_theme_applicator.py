@@ -118,6 +118,8 @@ button:disabled label {{ color: {t.text_muted}; }}
 .segment button label {{ color: {t.text_secondary}; }}
 .segment button:checked {{ background: {t.accent_color}; border-color: {t.accent_color}; }}
 .segment button:checked label {{ color: {t.accent_text}; font-weight: bold; }}
+list row:selected {{ background-color: {t.accent_color}; }}
+list row:selected label {{ color: {t.accent_text}; }}
 
 /* Progress */
 progressbar trough {{ background: {t.card_bg}; border: 1px solid {border}; border-radius: 0; min-height: 6px; }}

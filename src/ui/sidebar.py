@@ -15,7 +15,13 @@ from gi.repository import GdkPixbuf, GLib, Gtk  # noqa: E402
 from config.config_layout import Layout  # noqa: E402
 from utils.util_paths import resource  # noqa: E402
 
-NAV_ITEMS = [("Scan", "scan"), ("Preview", "preview"), ("Device Info", "devices"), ("About", "about")]
+NAV_ITEMS = [
+    ("Scan", "scan"),
+    ("Preview", "preview"),
+    ("Recent", "recent"),
+    ("Device Info", "devices"),
+    ("About", "about"),
+]
 BOTTOM_ITEMS = [("Settings", "settings")]
 
 

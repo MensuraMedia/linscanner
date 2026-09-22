@@ -49,7 +49,7 @@ def test_scan_preview_save(tmp_path):
     page = ctx.nav.get_page_widget("scan")
 
     # scanner found and options loaded
-    assert wait_for(lambda: page.status.get_text() == "Ready.")
+    assert wait_for(lambda: page.status.get_text() == "Scanner Found")
     assert page.device_combo.get_active_id() == "test:0"
 
     # feeder + Black & White + Low
@@ -111,7 +111,7 @@ def build_app(with_features=False):
 def test_one_sheet_at_a_time_builds_one_document():
     ctx, window, scan = build_app()
     page = ctx.nav.get_page_widget("scan")
-    assert wait_for(lambda: page.status.get_text() == "Ready.")
+    assert wait_for(lambda: page.status.get_text() == "Scanner Found")
     page.source_combo.set_active_id("Automatic Document Feeder")
     assert page.sheets_row.get_visible()  # Sheets choice appears for feeder sources
     page.sheets.set_active("one")
@@ -135,7 +135,7 @@ def test_features_in_the_window(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     ctx, window, scan = build_app(with_features=True)
     page = ctx.nav.get_page_widget("scan")
-    assert wait_for(lambda: page.status.get_text() == "Ready.")
+    assert wait_for(lambda: page.status.get_text() == "Scanner Found")
     page.source_combo.set_active_id("Automatic Document Feeder")
     page.sheets.set_active("all")
     page.on_scan(None)

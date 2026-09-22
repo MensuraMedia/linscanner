@@ -45,3 +45,11 @@
 | 2026-09-21T20:10:00 | Settings: 'Network scanning (Wi-Fi / Ethernet)' shown greyed out, marked Not Supported; tests/test_usb_only.py (5 tests, 74 total) |
 | 2026-09-21T20:10:00 | Docs: README privacy section updated (linscanner doesn't use your network), FEATURES, TECHNICAL §3.0 |
 | 2026-09-21T21:00:00 | Docs: handoff (0.3.0 request list), follow-ups #31/#32, reference, architecture, CLAUDE.md, memory; backup |
+| 2026-09-21T20:05:00 | Preview: fast page switching (display copies, cached thumbnails), zoom + pan, scrollable 1/2-row thumbnails |
+| 2026-09-21T20:05:00 | Save button above Save As (overwrites the document's file; new documents go to the Save folder as PDF) |
+| 2026-09-21T20:05:00 | Recent page: saved documents with folder / document icons; open a PDF or image back into Quick Edit |
+| 2026-09-21T20:05:00 | Quick Edit: Add Text tool (click and type), soft alignment guides, 4 persistent signature slots |
+| 2026-09-21T20:05:00 | Signatures from 9 bundled SIL OFL fonts (font browser); Add fonts... imports personal fonts locally |
+| 2026-09-21T20:05:00 | Scan page: spinner, 'Scanner Found', remembered scanner reached directly at start, plain problem messages |
+| 2026-09-21T20:05:00 | About: privacy, licence, your files, shortcuts, system, credits, signature-font attributions |
+| 2026-09-21T20:05:00 | Fix: background callbacks are one-shot; display-copy writes are atomic; tests use a private data dir |

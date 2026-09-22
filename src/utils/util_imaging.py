@@ -6,9 +6,9 @@ Kept in the core so features never depend on each other.
 import os
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
-from utils.util_fonts import font_file
+from utils.util_fonts import render_text
 
 
 def small_gray(img, width=600):
@@ -51,6 +51,15 @@ def overlay_pixels(page, size):
     return lambda fx, fy: (int(fx * w), int(fy * h))
 
 
+def composite_at(base, layer, x, y):
+    """Alpha-composite an RGBA layer onto base at (x, y); parts outside the page are cut off"""
+    x, y = int(x), int(y)
+    left, top = max(0, -x), max(0, -y)
+    right, bottom = min(layer.width, base.width - x), min(layer.height, base.height - y)
+    if right > left and bottom > top:
+        base.alpha_composite(layer.crop((left, top, right, bottom)), (x + left, y + top))
+
+
 def flatten(page, img=None):
     """Page image with rotation and Quick Edit overlays applied"""
     if img is None:
@@ -64,22 +73,19 @@ def flatten(page, img=None):
     base = img.convert("RGBA")
     w, h = base.size
     dpi = page.get("dpi") or 300
-    draw = ImageDraw.Draw(base)
     for item in overlays:
         x, y = int(item["x"] * w), int(item["y"] * h)
         if item["type"] == "text":
             px = max(6, int(item.get("size_pt", 14) * dpi / 72))
-            path = font_file(item.get("font", "DejaVu Sans"))
-            try:
-                font = ImageFont.truetype(path, px) if path else ImageFont.load_default()
-            except OSError:
-                font = ImageFont.load_default()
-            draw.text((x, y), item.get("text", ""), font=font, fill=item.get("color", "#000000"))
+            text, dx, dy = render_text(
+                item.get("text", ""), item.get("font", "DejaVu Sans"), px, item.get("color", "#000000")
+            )
+            composite_at(base, text, x + dx, y + dy)
         elif item["type"] == "image" and os.path.exists(item.get("path", "")):
             sig = Image.open(item["path"]).convert("RGBA")  # keep the PNG's transparency
             sw = max(1, int(item["w"] * w))
             sh = max(1, int(sig.height * sw / sig.width))
-            base.alpha_composite(sig.resize((sw, sh), Image.LANCZOS), (x, y))
+            composite_at(base, sig.resize((sw, sh), Image.LANCZOS), x, y)
     return (
         base.convert("RGB")
         if img.mode in ("RGB", "RGBA", "P")

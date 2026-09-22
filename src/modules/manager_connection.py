@@ -93,6 +93,7 @@ class PhysicalDevice:
     usb: object = None  # UsbDevice when known
     attempts: list = field(default_factory=list)  # [(method label, "ok" or error message)]
     hint: str = ""  # shown when no method works
+    restored: bool = False  # True: remembered from the last run, not (yet) from a full search
 
     @property
     def id(self):

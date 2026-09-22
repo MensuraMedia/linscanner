@@ -77,4 +77,4 @@ class Feature(BaseFeature):
         if paths:
             added = import_files(page.ctx, paths)
             page.ctx.emit("pages-changed")
-            page.status.set_text(f"Imported {added} page(s).")
+            page.set_status(f"Imported {added} page(s).")

@@ -1,0 +1,86 @@
+{
+  "description": "Signature fonts bundled with linscanner. All are SIL Open Font License 1.1 (bundling and redistribution permitted, unmodified). Source: Google Fonts.",
+  "fonts": [
+    {
+      "family": "Alex Brush",
+      "file": "alexbrush/AlexBrush-Regular.ttf",
+      "designer": "Robert Leuschke",
+      "copyright": "Copyright 2011 The Alex Brush Project Authors (https://github.com/googlefonts/alex-brush)",
+      "license": "SIL Open Font License 1.1",
+      "license_file": "alexbrush/OFL.txt",
+      "source": "https://github.com/google/fonts/tree/main/ofl/alexbrush"
+    },
+    {
+      "family": "Allura",
+      "file": "allura/Allura-Regular.ttf",
+      "designer": "Robert Leuschke",
+      "copyright": "Copyright 2010 The Allura Project Authors (https://github.com/googlefonts/allura)",
+      "license": "SIL Open Font License 1.1",
+      "license_file": "allura/OFL.txt",
+      "source": "https://github.com/google/fonts/tree/main/ofl/allura"
+    },
+    {
+      "family": "Great Vibes",
+      "file": "greatvibes/GreatVibes-Regular.ttf",
+      "designer": "Robert Leuschke",
+      "copyright": "Copyright 2015 The Great Vibes Pro Project Authors (https://github.com/googlefonts/great-vibes)",
+      "license": "SIL Open Font License 1.1",
+      "license_file": "greatvibes/OFL.txt",
+      "source": "https://github.com/google/fonts/tree/main/ofl/greatvibes"
+    },
+    {
+      "family": "Herr Von Muellerhoff",
+      "file": "herrvonmuellerhoff/HerrVonMuellerhoff-Regular.ttf",
+      "designer": "Sudtipos",
+      "copyright": "Copyright (c) 2011 Alejandro Paul (sudtipos@sudtipos.com),",
+      "license": "SIL Open Font License 1.1",
+      "license_file": "herrvonmuellerhoff/OFL.txt",
+      "source": "https://github.com/google/fonts/tree/main/ofl/herrvonmuellerhoff"
+    },
+    {
+      "family": "Monsieur La Doulaise",
+      "file": "monsieurladoulaise/MonsieurLaDoulaise-Regular.ttf",
+      "designer": "Sudtipos",
+      "copyright": "Copyright (c) 2011 Alejandro Paul (sudtipos@sudtipos.com),",
+      "license": "SIL Open Font License 1.1",
+      "license_file": "monsieurladoulaise/OFL.txt",
+      "source": "https://github.com/google/fonts/tree/main/ofl/monsieurladoulaise"
+    },
+    {
+      "family": "Mr Dafoe",
+      "file": "mrdafoe/MrDafoe-Regular.ttf",
+      "designer": "Sudtipos",
+      "copyright": "Copyright (c) 2011 Alejandro Paul (sudtipos@sudtipos.com),",
+      "license": "SIL Open Font License 1.1",
+      "license_file": "mrdafoe/OFL.txt",
+      "source": "https://github.com/google/fonts/tree/main/ofl/mrdafoe"
+    },
+    {
+      "family": "Mrs Saint Delafield",
+      "file": "mrssaintdelafield/MrsSaintDelafield-Regular.ttf",
+      "designer": "Sudtipos",
+      "copyright": "Copyright (c) 2011 Alejandro Paul (sudtipos@sudtipos.com),",
+      "license": "SIL Open Font License 1.1",
+      "license_file": "mrssaintdelafield/OFL.txt",
+      "source": "https://github.com/google/fonts/tree/main/ofl/mrssaintdelafield"
+    },
+    {
+      "family": "Pinyon Script",
+      "file": "pinyonscript/PinyonScript-Regular.ttf",
+      "designer": "Nicole Fally",
+      "copyright": "Copyright 2024 The Pinyon Project Authors (https://github.com/SorkinType/Pinyon)",
+      "license": "SIL Open Font License 1.1",
+      "license_file": "pinyonscript/OFL.txt",
+      "source": "https://github.com/google/fonts/tree/main/ofl/pinyonscript"
+    },
+    {
+      "family": "Sacramento",
+      "file": "sacramento/Sacramento-Regular.ttf",
+      "designer": "Astigmatic",
+      "copyright": "Copyright (c) 2012, Brian J. Bonislawsky DBA Astigmatic (AOETI) (astigma@astigmatic.com), with Reserved Font Names 'Sacramento'",
+      "license": "SIL Open Font License 1.1",
+      "license_file": "sacramento/OFL.txt",
+      "source": "https://github.com/google/fonts/tree/main/ofl/sacramento"
+    }
+  ]
+}

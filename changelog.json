@@ -165,6 +165,38 @@
     {
       "datetime": "2026-09-21T21:00:00",
       "description": "Docs: handoff (0.3.0 request list), follow-ups #31/#32, reference, architecture, CLAUDE.md, memory; backup"
+    },
+    {
+      "datetime": "2026-09-21T20:05:00",
+      "description": "Preview: fast page switching (display copies, cached thumbnails), zoom + pan, scrollable 1/2-row thumbnails"
+    },
+    {
+      "datetime": "2026-09-21T20:05:00",
+      "description": "Save button above Save As (overwrites the document's file; new documents go to the Save folder as PDF)"
+    },
+    {
+      "datetime": "2026-09-21T20:05:00",
+      "description": "Recent page: saved documents with folder / document icons; open a PDF or image back into Quick Edit"
+    },
+    {
+      "datetime": "2026-09-21T20:05:00",
+      "description": "Quick Edit: Add Text tool (click and type), soft alignment guides, 4 persistent signature slots"
+    },
+    {
+      "datetime": "2026-09-21T20:05:00",
+      "description": "Signatures from 9 bundled SIL OFL fonts (font browser); Add fonts... imports personal fonts locally"
+    },
+    {
+      "datetime": "2026-09-21T20:05:00",
+      "description": "Scan page: spinner, 'Scanner Found', remembered scanner reached directly at start, plain problem messages"
+    },
+    {
+      "datetime": "2026-09-21T20:05:00",
+      "description": "About: privacy, licence, your files, shortcuts, system, credits, signature-font attributions"
+    },
+    {
+      "datetime": "2026-09-21T20:05:00",
+      "description": "Fix: background callbacks are one-shot; display-copy writes are atomic; tests use a private data dir"
     }
   ]
 }

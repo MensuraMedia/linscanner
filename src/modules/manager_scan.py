@@ -142,6 +142,7 @@ class ScanManager:
         self.pages = []  # [{"path", "rotation", "dpi", "mode", optional "overlays", "separator"}]
         self.features = None  # FeatureRegistry: page processors (crop, deskew, blank removal, …)
         self.dropped_pages = 0  # pages removed by processors during the last scan
+        self.document = None  # {"path", "format"} once saved or opened: what Save writes to
         self._cancel = threading.Event()
         self.busy = False
 
@@ -149,15 +150,19 @@ class ScanManager:
     def _in_thread(self, work, on_done, on_error):
         """Run work() in a thread; deliver result or error on the GTK thread"""
 
+        def once(callback, value):
+            callback(value)
+            return False  # never repeat, whatever the callback returns
+
         def runner():
             try:
                 result = work()
             except ScanError as e:
-                GLib.idle_add(on_error, str(e))
+                GLib.idle_add(once, on_error, str(e))
             except Exception as e:  # unexpected: show it instead of a silent UI
-                GLib.idle_add(on_error, f"Unexpected error: {e}")
+                GLib.idle_add(once, on_error, f"Unexpected error: {e}")
             else:
-                GLib.idle_add(on_done, result)
+                GLib.idle_add(once, on_done, result)
 
         threading.Thread(target=runner, daemon=True).start()
 
@@ -168,6 +173,70 @@ class ScanManager:
             found = self.engine.discover()
             self.devices = found
             return filter_devices(found, self.settings.get("show_all_backends"))
+
+        self._in_thread(work, on_done, on_error)
+
+    # -- remembered scanner ------------------------------------------------------
+    def remember_device(self, physical):
+        """Store the scanner in use, so the next start can reach it without a full search"""
+        info = {
+            "key": physical.key,
+            "vendor": physical.vendor,
+            "model": physical.model,
+            "methods": [
+                {
+                    "code": m.code,
+                    "backend": m.backend.name,
+                    "id": m.device.id,
+                    "vendor": m.device.vendor,
+                    "model": m.device.model,
+                    "kind": m.device.kind,
+                    "driver": m.device.backend,
+                }
+                for m in physical.methods
+            ],
+        }
+        if info != self.settings.get("last_device_info"):
+            self.settings.set("last_device_info", info)
+
+    def restore_device(self, on_done, on_error):
+        """Reach the remembered scanner directly (a few seconds instead of a full search).
+
+        on_done([physical]) if it answers; on_error(message) if there is no
+        remembered scanner or it doesn't answer (then do a full search)."""
+        info = self.settings.get("last_device_info") or {}
+
+        def work():
+            from backends.backend_base import ScannerDevice
+            from modules.manager_connection import Method, PhysicalDevice
+
+            backends = {getattr(b, "name", ""): b for b in self.engine.backends}
+            methods = [
+                Method(
+                    m["code"],
+                    backends[m["backend"]],
+                    ScannerDevice(m["id"], m["vendor"], m["model"], m["kind"], m["driver"]),
+                )
+                for m in info.get("methods", [])
+                if m.get("backend") in backends
+            ]
+            if not methods:
+                raise ScanError("No remembered scanner.", "no_device")
+            physical = PhysicalDevice(
+                key=info["key"], vendor=info["vendor"], model=info["model"], methods=methods, restored=True
+            )
+            first = methods[0]
+            caps = first.backend.get_capabilities(first.device.id)  # proves it answers
+            self.devices = [physical]
+            self.engine.devices = [physical]
+            self.capabilities[physical.id] = caps
+            log.info(
+                "remembered scanner %s %s answered via %s",
+                physical.vendor,
+                physical.model,
+                first.device.backend,
+            )
+            return [physical]
 
         self._in_thread(work, on_done, on_error)
 
@@ -336,8 +405,19 @@ class ScanManager:
         del self.pages[index]
 
     def clear_pages(self):
-        """Remove all pages from the session"""
+        """Remove all pages from the session (the next Save starts a new document)"""
         self.pages = []
+        self.document = None
+
+    def open_document(self, path):
+        """Replace the session's pages with a saved document's pages (ValueError if it can't be read)"""
+        from modules.manager_documents import open_document
+        from modules.manager_export import format_for_path
+
+        pages = open_document(path, self.session_dir)
+        self.pages = pages
+        self.document = {"path": path, "format": format_for_path(path) or "pdf"}
+        return pages
 
     def cleanup(self):
         """Delete session temp files and backend temp config"""

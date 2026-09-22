@@ -37,6 +37,9 @@ class ScanPage(BasePage):
         self.device_combo = Gtk.ComboBoxText()
         self.device_combo.connect("changed", self.on_device_changed)
         row.pack_start(self.device_combo, True, True, 0)
+        self.spinner = Gtk.Spinner()  # turns while looking for the scanner
+        self.spinner.set_size_request(18, 18)
+        row.pack_start(self.spinner, False, False, 0)
         self.refresh_btn = Gtk.Button(label="Refresh")
         self.refresh_btn.connect("clicked", lambda *_: self.refresh_devices())
         row.pack_start(self.refresh_btn, False, False, 0)
@@ -45,6 +48,7 @@ class ScanPage(BasePage):
         row.pack_start(info_btn, False, False, 0)
         card.pack_start(row, False, False, 0)
         self.device_status = self.label("", "muted", wrap=True)
+        self.device_status.set_no_show_all(True)  # only shown when there's something to fix
         card.pack_start(self.device_status, False, False, 0)
 
         # -- options card
@@ -106,7 +110,7 @@ class ScanPage(BasePage):
 
         self.progress = Gtk.ProgressBar()
         self.pack_start(self.progress, False, False, 0)
-        self.status = self.label("Looking for scanners…", "muted", wrap=True)
+        self.status = self.label("Looking for your scanner…", "status-busy", wrap=True)
         self.pack_start(self.status, False, False, 0)
 
         if self.ctx.features:
@@ -115,7 +119,7 @@ class ScanPage(BasePage):
         self.ctx.on("devices-changed", self.devices_loaded)
         self.ctx.on("request-device-refresh", self.refresh_devices)
         self.set_busy(True)
-        GLib.idle_add(self.refresh_devices)  # after every page has subscribed
+        GLib.idle_add(self.startup)  # after every page has subscribed
 
     # -- helpers -----------------------------------------------------------
     def on_settings_changed(self, key):
@@ -162,12 +166,38 @@ class ScanPage(BasePage):
         return next((d for d in self.devices if d.id == dev_id), None)
 
     # -- devices -----------------------------------------------------------
+    def show_device_issue(self, text=None):
+        """The line under the scanner list: shown only when something needs fixing"""
+        self.device_status.set_text(text or "")
+        self.device_status.set_visible(bool(text))
+
+    def looking(self, on):
+        """Spinner on while looking for the scanner"""
+        (self.spinner.start if on else self.spinner.stop)()
+
+    def startup(self):
+        """At start: reach the remembered scanner directly; otherwise do a full search"""
+        info = self.ctx.settings.get("last_device_info")
+        if not info or not info.get("methods"):
+            return self.refresh_devices()
+        self.set_busy(True)
+        self.looking(True)
+        self.set_status(f"Connecting to your {info.get('model', 'scanner')}…", "status-busy")
+
+        def failed(message):
+            log.info("remembered scanner didn't answer (%s); searching for scanners", message)
+            self.refresh_devices()
+
+        self.ctx.scan.restore_device(lambda devs: self.ctx.emit("devices-changed", devs), failed)
+        return False
+
     def refresh_devices(self):
-        """Start a background device listing (ignored while scanning)"""
+        """Start a background device search (ignored while scanning)"""
         if self.ctx.scan.busy:
             return False
         self.set_busy(True)
-        self.set_status("Looking for scanners… (this can take about 10–20 seconds)", "status-busy")
+        self.looking(True)
+        self.set_status("Looking for your scanner…", "status-busy")
         self.ctx.emit("devices-refreshing")
         self.ctx.scan.refresh_devices(
             lambda devs: self.ctx.emit("devices-changed", devs), self.devices_failed
@@ -184,9 +214,11 @@ class ScanPage(BasePage):
             )
         if not devices:
             self.set_busy(False)
+            self.looking(False)
             self.scan_btn.set_sensitive(False)
             self.set_status(
-                "No scanners found. Check the cable and power, then press Refresh.", "status-error"
+                "Unable to detect scanner. Check that it's connected and powered on, then press Refresh.",
+                "status-error",
             )
             return
         last = self.ctx.settings.get("last_device")
@@ -194,9 +226,14 @@ class ScanPage(BasePage):
             self.device_combo.set_active(0)
 
     def devices_failed(self, message):
-        """Show a listing or options error"""
+        """A search or options error: plain words on screen, the details in the log"""
+        log.warning("scanner not reachable: %s", message)
         self.set_busy(False)
-        self.set_status(message, "status-error")
+        self.looking(False)
+        self.set_status(
+            "Unable to reach the scanner. Check that it's connected and powered on, then press Refresh.",
+            "status-error",
+        )
 
     def on_device_changed(self, combo):
         """Remember the device and load its capabilities"""
@@ -206,14 +243,17 @@ class ScanPage(BasePage):
         self.ctx.settings.set("last_device", dev.id)
         if not dev.methods:  # detected on USB, but nothing can drive it
             self.set_busy(False)
+            self.looking(False)
             self.scan_btn.set_sensitive(False)
-            self.device_status.set_text("Detected on USB · no working driver (see Device Info)")
+            self.show_device_issue(
+                "This scanner is connected, but no driver can use it yet (see Device Info)."
+            )
             self.set_status(dev.hint, "status-error")
             return
+        self.show_device_issue(None)
         self.set_busy(True)
-        methods = " → ".join(m.device.backend for m in dev.methods)
-        self.device_status.set_text(f"{dev.kind} · connection methods: {methods}")
-        self.set_status(f"Reading {dev.model} options…", "status-busy")
+        self.looking(True)
+        self.set_status(f"Connecting to your {dev.model}…", "status-busy")
         self.ctx.scan.load_capabilities(dev.id, self.caps_loaded, self.devices_failed)
 
     def caps_loaded(self, caps):
@@ -224,7 +264,11 @@ class ScanPage(BasePage):
         if not self.source_combo.set_active_id(caps.default_source):
             self.source_combo.set_active(0)
         self.set_busy(False)
-        self.set_status("Ready.", "status-ok")
+        self.looking(False)
+        self.set_status("Scanner Found", "status-ok")
+        dev = self.current_device()
+        if dev and dev.methods:
+            self.ctx.scan.remember_device(dev)  # reached directly at the next start
         self.update_summary()
 
     def sheet_mode(self):

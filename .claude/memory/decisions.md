@@ -6,6 +6,13 @@ type: project
 
 # Decisions
 
+### 2026-09-21: Bundle SIL OFL signature fonts, not the 9 supplied fonts
+- Reason: the 9 fonts in assets/signatures are personal-use or demo licences, and some (Jareth, Rochester) explicitly forbid embedding in apps and redistribution. Bailey allows commercial use, but its publisher forbids sharing the files. The user said to use only permissible fonts.
+- Impact:
+  - 9 OFL fonts from Google Fonts are in `resources/fonts/signature/`, with `fonts.json` holding the credits.
+  - "Add fonts…" imports personal fonts to ~/.local/share/linscanner/fonts; they are never bundled.
+  - Follow-up #33: ask the authors about bundling, and donate when possible.
+
 ### 2026-09-21: USB only; network discovery disabled
 - Reason: user decision. Wi-Fi / network scanning isn't supported at this time, and "no information is sent outside the machine".
 - Impact:
