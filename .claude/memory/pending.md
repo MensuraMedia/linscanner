@@ -33,3 +33,4 @@ type: project
   - Apply Signature and the edit-icon chooser.
 - [x] 0.3.1 polish built (docs/design/0.3.1-ui-polish.md)
 - [ ] Restart linscanner and check the icon in Alt+Tab and the panel (Cinnamon)
+- [x] Moved to its own repository, MensuraMedia/linscanner (2026-09-22); commit here, then bump the submodule in linux-peripherals

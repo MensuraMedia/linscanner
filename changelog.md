@@ -95,3 +95,5 @@
 | 2026-09-22T01:10:00 | Program name is LinScanner (window title, sidebar, About, menu entry, messages, docs, LICENSE); technical names stay lowercase |
 | 2026-09-22T01:10:00 | Scan page: scanner list, power mark and Devices take half the width |
 | 2026-09-22T01:10:00 | v0.3.5 |
+| 2026-09-22T01:40:00 | Own repository: MensuraMedia/linscanner (history kept; test serial replaced by a placeholder); linux-peripherals includes it as a submodule |
+| 2026-09-22T01:40:00 | Fix: installer start check accepts the name LinScanner |

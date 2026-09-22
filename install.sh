@@ -93,7 +93,7 @@ fi
 
 step "Verifying"
 VER=$("$APP_DIR/run.sh" --version 2>/dev/null)
-[[ "$VER" == linscanner* ]] && ok "App starts: $VER" || fail "App did not start: run $APP_DIR/run.sh to see the error"
+[[ "${VER,,}" == linscanner* ]] && ok "App starts: $VER" || fail "App did not start: run $APP_DIR/run.sh to see the error"
 if python3 -c 'import gi; gi.require_version("Gtk","3.0"); from gi.repository import Gtk; import PIL' 2>/dev/null; then
     ok "GTK 3 and Pillow importable"
 else

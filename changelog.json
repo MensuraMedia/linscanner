@@ -365,6 +365,14 @@
     {
       "datetime": "2026-09-22T01:10:00",
       "description": "v0.3.5"
+    },
+    {
+      "datetime": "2026-09-22T01:40:00",
+      "description": "Own repository: MensuraMedia/linscanner (history kept; test serial replaced by a placeholder); linux-peripherals includes it as a submodule"
+    },
+    {
+      "datetime": "2026-09-22T01:40:00",
+      "description": "Fix: installer start check accepts the name LinScanner"
     }
   ]
 }
