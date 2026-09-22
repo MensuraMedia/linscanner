@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-linscanner
+LinScanner
 Universal document scanner for Linux (SANE). Entry point.
 """
 
@@ -15,10 +15,10 @@ gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, GLib, Gtk  # noqa: E402
 
-# Identify the app to the desktop before any window exists: WM_CLASS "linscanner"
+# Identify the app to the desktop before any window exists: WM_CLASS "LinScanner"
 # matches the menu entry (StartupWMClass), so the panel and Alt+Tab show its icon.
 GLib.set_prgname("linscanner")
-GLib.set_application_name("linscanner")
+GLib.set_application_name("LinScanner")
 Gdk.set_program_class("linscanner")
 
 from backends.backend_escl import EsclBackend  # noqa: E402
@@ -40,7 +40,7 @@ from utils.util_paths import read_version  # noqa: E402
 def parse_args(argv):
     """Parse command-line options (--version, --test-scanner, --page, --quit-after, --debug)"""
     p = argparse.ArgumentParser(prog="linscanner", description="Universal document scanner (SANE)")
-    p.add_argument("--version", action="version", version=f"linscanner {read_version()}")
+    p.add_argument("--version", action="version", version=f"LinScanner {read_version()}")
     p.add_argument(
         "--test-scanner", action="store_true", help="use only SANE's virtual test scanner (no hardware)"
     )
@@ -61,7 +61,7 @@ def main(argv=None):
     install_excepthook()
     log = get_logger("app")
     log.info(
-        "===== linscanner start (args: %s) =====", " ".join(sys.argv[1:] if argv is None else argv) or "none"
+        "===== LinScanner start (args: %s) =====", " ".join(sys.argv[1:] if argv is None else argv) or "none"
     )
     for line in system_info().splitlines():
         log.info("  %s", line)
@@ -75,7 +75,7 @@ def main(argv=None):
         backend = SaneBackend(only_backends=["test"])
     else:
         settings = SettingsManager()
-        backend = None  # production: SANE + linscanner's eSCL client + USB probe
+        backend = None  # production: SANE + LinScanner's eSCL client + USB probe
 
     theme = ThemeApplicator()
     theme.apply_theme(get_theme(settings.get("theme")))
@@ -107,7 +107,7 @@ def main(argv=None):
         Gtk.main()
     finally:
         scan.cleanup()  # remove this session's temporary scan images
-        log.info("===== linscanner exit (%d page(s) in session) =====", len(scan.pages))
+        log.info("===== LinScanner exit (%d page(s) in session) =====", len(scan.pages))
     return 0
 
 

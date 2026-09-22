@@ -1,4 +1,4 @@
-# CLAUDE.md — linscanner
+# CLAUDE.md — LinScanner
 
 ## Overview
 Universal Linux document scanner (GTK 3 + SANE). Must run from distro packages

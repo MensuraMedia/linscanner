@@ -1,6 +1,6 @@
 """
 Documents Manager
-- Recent documents: every file linscanner saves is remembered (newest first)
+- Recent documents: every file LinScanner saves is remembered (newest first)
   in ~/.local/share/linscanner/recent.json, for the Recent page. Only the
   path, time, page count and format are stored; the list stays on this
   computer.
@@ -95,7 +95,7 @@ def open_document(path, out_dir):
     frame by frame. Raises ValueError with a plain message on failure."""
     ext = os.path.splitext(path)[1].lower()
     if ext not in OPENABLE:
-        raise ValueError("linscanner can open PDF, PNG, JPEG and TIFF files.")
+        raise ValueError("LinScanner can open PDF, PNG, JPEG and TIFF files.")
     if not os.path.exists(path):
         raise ValueError("The file isn't there any more. It may have been moved or deleted.")
     stamp = int(time.time() * 1000)

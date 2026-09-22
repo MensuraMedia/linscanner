@@ -1,4 +1,4 @@
-# linscanner
+# LinScanner
 
 **A universal document scanner for Linux.** Scan in **Color** or **Black &
 White** at **High, Medium or Low** quality, check the pages in a preview,
@@ -6,18 +6,18 @@ rotate or remove pages, then **Save As** PDF, PNG, JPEG or TIFF. It works
 with any **cable-connected (USB)** scanner or multifunction printer that
 Linux's standard scanning system (SANE) can drive.
 
-> **Supported connection:** linscanner currently supports scanners
+> **Supported connection:** LinScanner currently supports scanners
 > **connected by cable (USB) only**. Scanning over **Wi-Fi or a network
 > (Ethernet) connection is not supported at this time.**
 
 | | |
 |---|---|
-| Version | 0.3.4 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
+| Version | 0.3.5 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
 | Platform | Linux desktop, GTK 3 |
 | Tested on | Linux Mint 22.3 (Ubuntu 24.04 base), kernel 7.0, amd64, with an Epson WorkForce ES-400 II |
 | Part of | [linux-peripherals](../README.md), which has offline installers and device references |
 | Connection | USB cable only (Wi-Fi / network scanning not supported at this time) |
-| License | [linscanner Community License (Noncommercial)](LICENSE): free to use, copy, modify and share; commercial use by permission |
+| License | [LinScanner Community License (Noncommercial)](LICENSE): free to use, copy, modify and share; commercial use by permission |
 
 ![Scan page](docs/images/screenshot-scan.png)
 
@@ -28,7 +28,7 @@ Linux's standard scanning system (SANE) can drive.
 1. [Features](#1-features)
 2. [Compatibility](#2-compatibility)
 3. [Installation](#3-installation)
-4. [Using linscanner](#4-using-linscanner)
+4. [Using LinScanner](#4-using-linscanner)
 5. [Settings, files and command line](#5-settings-files-and-command-line)
 6. [Troubleshooting](#6-troubleshooting)
 7. [Safety, security and privacy](#7-safety-security-and-privacy)
@@ -44,7 +44,7 @@ Linux's standard scanning system (SANE) can drive.
 
 | Area | What you get |
 |---|---|
-| **Scanning** | Any cable-connected (USB) SANE scanner, plus linscanner's own driverless eSCL client. **Scan Type**: *Front Page* or *Front & Back* (and *Flatbed* on scanners with both) |
+| **Scanning** | Any cable-connected (USB) SANE scanner, plus LinScanner's own driverless eSCL client. **Scan Type**: *Front Page* or *Front & Back* (and *Flatbed* on scanners with both) |
 | **Remembers your scanner** | Reached directly at the next start (a second or two instead of a full search); a spinner while looking, then a green power icon when it's ready, or a red one with "Device may be off. Check power settings."; and plain words when something needs fixing ("Unable to detect scanner. Check that it's connected and powered on") |
 | **Sheet-fed modes** | **Multi-Page** (the whole stack as one document) or **Single Page** (the whole stack, each sheet its own document: view each in Preview, **Save** one or **Save All**) |
 | **Connection fallback** | Tries every way to reach the scanner in order over the USB cable (open-source driver → vendor driver → driverless IPP-over-USB → own eSCL client), until one scans. Never retries when you need to act (feeder empty, jam, cover open) |
@@ -90,12 +90,12 @@ every code function is in [`docs/api-reference.md`](docs/api-reference.md).
 
 ### Scanners
 
-linscanner uses **SANE**, so it supports every **cable-connected (USB)**
+LinScanner uses **SANE**, so it supports every **cable-connected (USB)**
 scanner that has a SANE driver on your system.
 
 > **Wi-Fi and network scanning is not supported at this time.** Please
 > connect your scanner with a USB cable. Many Wi-Fi models also have a USB
-> port and work well that way. linscanner doesn't search the network, so
+> port and work well that way. LinScanner doesn't search the network, so
 > network scanners aren't listed. The option appears in Settings as
 > **Not Supported**. Network support may be added in a future version.
 
@@ -122,7 +122,7 @@ scanimage -L                                 # lists every scanner SANE can use
 sane-find-scanner -q                         # "found possible USB scanner" = recognised on USB
 ../bin/device-finder --scanners              # full inventory, marks scanners and their driver
 ```
-If `scanimage -L` lists your scanner, linscanner can use it. If not, see
+If `scanimage -L` lists your scanner, LinScanner can use it. If not, see
 [Troubleshooting](#6-troubleshooting). For the full research on every
 connection method, see
 [`docs/research/connection-methods.md`](docs/research/connection-methods.md).
@@ -147,7 +147,7 @@ bash linscanner/install.sh
 ```
 It installs any missing packages, **from the repo's offline pool first**, so
 no internet is needed on Mint 22 / Ubuntu 24.04. It asks for your password
-only if packages are missing. It then adds **linscanner** to your
+only if packages are missing. It then adds **LinScanner** to your
 applications menu and checks that the app starts and that SANE sees scanners.
 It's safe to run again.
 
@@ -170,14 +170,14 @@ rm -rf ~/.config/linscanner                # removes your settings (optional)
 
 ---
 
-## 4. Using linscanner
+## 4. Using LinScanner
 
 ### Scan a document
-1. Open **linscanner** from the menu (or run `linscanner/run.sh`).
+1. Open **LinScanner** from the menu (or run `linscanner/run.sh`).
 2. **Scanner:** it's found automatically. Finding scanners takes about 10
    seconds; press **Find** (before the scanner list, under **Detect Scanner**) after plugging one in.
    A spinner turns while it looks. A **green power icon** after the
-   scanner's name means it's ready, and linscanner remembers it for next time.
+   scanner's name means it's ready, and LinScanner remembers it for next time.
    A **red power icon** with "Device may be off. Check power settings." means
    it can't be found: switch it on or check the cable, then press **Find**.
 3. **Scan Options:** the first row is the scan type. *Front Page* scans one
@@ -219,7 +219,7 @@ to see its name. The tools are grouped from left to right:
 
 | Group | Tools |
 |---|---|
-| **History** | **Undo** (Ctrl+Z), **Redo** (Ctrl+Shift+Z / Ctrl+Y). Every change to the pages can be undone until you close linscanner |
+| **History** | **Undo** (Ctrl+Z), **Redo** (Ctrl+Shift+Z / Ctrl+Y). Every change to the pages can be undone until you close LinScanner |
 | **Pages** | **Add Page** (insert the pages of a PDF, or images, after the current page) · **Add Image** (add image files as new pages) · **Duplicate page** · **Save this page as…** (extract one page to its own file) · **Delete page** · **Clear all** |
 | **Arrange** | **Rotate left / right / 180°** · **Move page left / right** · **Reverse page order** (for a stack fed last page first) |
 | **Content** | **Add Text** (T icon) · **Signature** |
@@ -287,7 +287,7 @@ to see its name. The tools are grouped from left to right:
 | Black & White | Grayscale (default) or Pure black & white |
 | Default save location | Where **Save** puts new documents and **Save As** starts (**Choose…**); saving somewhere else doesn't change it |
 | Features | Switch each module on or off, with its options (blank-page sensitivity, enhancement sliders, PDF/A and size, auto-save folder and name template) |
-| Network scanning (Wi-Fi / Ethernet) | Shown greyed out and marked **Not Supported**. Only USB-connected scanners are supported at this time, and linscanner doesn't search the network |
+| Network scanning (Wi-Fi / Ethernet) | Shown greyed out and marked **Not Supported**. Only USB-connected scanners are supported at this time, and LinScanner doesn't search the network |
 | Drivers | Show every driver per scanner, and SANE's virtual test scanner (off by default) |
 
 **Files:**
@@ -299,14 +299,14 @@ to see its name. The tools are grouped from left to right:
 | `~/.local/share/linscanner/fonts/` | Signature fonts you added (kept on this computer) |
 | `~/.local/share/linscanner/recent.json` | The Recent list (paths, dates, page counts) |
 | `~/.local/state/linscanner/logs/` | Daily logs (14 days), redacted |
-| `/tmp/linscanner-*/` | This session's scans (deleted when you close linscanner, so save first) |
+| `/tmp/linscanner-*/` | This session's scans (deleted when you close LinScanner, so save first) |
 | `~/.local/share/applications/linscanner.desktop` | Menu entry |
 
 **Command line:**
 
 | Command | Effect |
 |---|---|
-| `run.sh` | Start linscanner |
+| `run.sh` | Start LinScanner |
 | `run.sh --test-scanner` | Use only SANE's virtual scanner, with separate throwaway settings (no hardware needed) |
 | `run.sh --page devices` | Open on a page: `scan`, `preview`, `devices`, `settings`, `about` |
 | `run.sh --version` | Show the version |
@@ -317,7 +317,7 @@ to see its name. The tools are grouped from left to right:
 
 ## 6. Troubleshooting
 
-**Logs:** linscanner keeps a log of every session in
+**Logs:** LinScanner keeps a log of every session in
 `~/.local/state/linscanner/logs/` (one file per day, kept 14 days).
 It records:
 - detection: scanners, connection methods, timing;
@@ -342,12 +342,12 @@ send for help). Start with `run.sh --debug` for extra detail.
 | A page with content was removed as blank | Lower the blank-page sensitivity in Settings → Features, or turn blank-page removal off |
 | Can't find the text in a saved PDF | Turn on **Searchable PDF (OCR)** in Settings → Features |
 | Scanning is slow at High quality | Use a USB 3 port and cable if the scanner supports it (`../bin/device-finder` shows the link speed) |
-| Scanner appears twice in other apps | A vendor driver (e.g. Epson's `epsonscan2`) adds a second entry; linscanner hides it automatically |
+| Scanner appears twice in other apps | A vendor driver (e.g. Epson's `epsonscan2`) adds a second entry; LinScanner hides it automatically |
 | Only works with sudo | Permissions: log out and in, or re-run the device installer (for the ES-400 II: `devices/scanner/epson-es-400-ii/install.sh`) |
 | "Unable to detect scanner" | Check the USB cable and that the scanner is switched on (many turn themselves off after a while), then press **Find** |
 | Auto-Detect didn't trim the page | The paper looks the same as the scanner's background (for example white paper on a white backing), so its edges can't be found. Choose the matching paper size instead |
-| A remembered scanner isn't found at start | linscanner searches for scanners automatically when the remembered one doesn't answer (for example after plugging it into another port) |
-| My Wi-Fi / network scanner isn't listed | Wi-Fi and network scanning isn't supported at this time, so linscanner doesn't search the network. Connect the scanner with a USB cable |
+| A remembered scanner isn't found at start | LinScanner searches for scanners automatically when the remembered one doesn't answer (for example after plugging it into another port) |
+| My Wi-Fi / network scanner isn't listed | Wi-Fi and network scanning isn't supported at this time, so LinScanner doesn't search the network. Connect the scanner with a USB cable |
 
 **Scanner-specific notes** are in the device references, e.g.
 [`../devices/scanner/epson-es-400-ii/README.md`](../devices/scanner/epson-es-400-ii/README.md).
@@ -358,16 +358,16 @@ send for help). Start with `run.sh --debug` for extra detail.
 
 ### Our commitment
 
-**Your scans and information never leave your computer.** linscanner does not
+**Your scans and information never leave your computer.** LinScanner does not
 send documents, scan images, text, signatures, settings, logs, device details
-or any other data to anyone else. That includes the linscanner developers,
+or any other data to anyone else. That includes the LinScanner developers,
 cloud services, analytics or advertising companies, AI or OCR services, and
 any other second or third party.
 
 - **No cloud.** Every step runs on the computer that did the scan: scanning,
   page processing, OCR, PDF creation, Quick Edit and saving.
 - **No accounts, sign-in, telemetry, analytics, crash reporting, ads or
-  update checks.** linscanner never contacts the internet.
+  update checks.** LinScanner never contacts the internet.
 - **OCR is local.** Searchable PDFs use Tesseract, installed on your
   computer. Your text is never uploaded for recognition.
 - **You decide what leaves.** A file leaves your computer only if you copy,
@@ -377,7 +377,7 @@ any other second or third party.
 
 | Data | Location | Lifetime |
 |---|---|---|
-| Scans in progress | `/tmp/linscanner-*/`, a folder only your user can read | Deleted when linscanner closes |
+| Scans in progress | `/tmp/linscanner-*/`, a folder only your user can read | Deleted when LinScanner closes |
 | Saved documents | The folder you choose in **Save As** or Auto-save | Until you delete them |
 | Settings and profiles | `~/.config/linscanner/settings.json` | Until you delete them |
 | Signatures | `~/.local/share/linscanner/signatures/` | Until you delete them (Quick Edit → edit icon → trash) |
@@ -394,12 +394,12 @@ any other second or third party.
   sharing it (for example, to get help) is your choice. It contains the same
   redacted logs and system details, and no scans.
 
-### linscanner doesn't use your network
+### LinScanner doesn't use your network
 
-linscanner doesn't search your network for scanners, doesn't send anything
+LinScanner doesn't search your network for scanners, doesn't send anything
 onto it, and never contacts the internet.
 
-- **Network discovery is switched off.** linscanner gives the scanner drivers
+- **Network discovery is switched off.** LinScanner gives the scanner drivers
   its own private copy of the SANE settings, with every network search turned
   off:
   - mDNS / Bonjour, WS-Discovery;
@@ -424,14 +424,14 @@ none to the internet.
 
 ### Security
 
-- **No elevated rights.** linscanner runs as your normal user and never asks
+- **No elevated rights.** LinScanner runs as your normal user and never asks
   for administrator access. Access to USB scanners comes from standard
   desktop permissions (udev `uaccess`).
 - **The installer** asks for your password only to install missing distro
   packages. It takes them from the repository's offline package pool first,
   and only falls back to your system's configured Debian/Ubuntu/Mint
   package sources if that pool isn't available.
-- **Trusted components only.** linscanner uses Python, GTK and the
+- **Trusted components only.** LinScanner uses Python, GTK and the
   distribution's SANE, Tesseract and Ghostscript packages, plus Epson's own
   driver for Epson scanners. No code is downloaded at run time.
 - **Private temporary files.** Scans in progress are kept in a folder only
@@ -439,7 +439,7 @@ none to the internet.
 
 ## 8. Themes and appearance
 
-linscanner's structure comes from **gtk-python-dashboard-starter**, and so
+LinScanner's structure comes from **gtk-python-dashboard-starter**, and so
 do its seven dark themes:
 
 | Theme | Accent |
@@ -458,12 +458,12 @@ do its seven dark themes:
 - The default then briefly became Nord.
 - On 2026-09-21 the user corrected this. The default is the **framework's
   Default Blue**, and Black Yellow Gray was **removed**.
-- If your saved settings name a removed theme, linscanner falls back to
+- If your saved settings name a removed theme, LinScanner falls back to
   Default Blue.
 - Older commits and the append-only change log still mention the earlier
   defaults.
 
-**Styling:** since 0.2.0 linscanner uses the framework's flat, square layout (full-width sidebar rows, active row filled with the accent colour, flat buttons).
+**Styling:** since 0.2.0 LinScanner uses the framework's flat, square layout (full-width sidebar rows, active row filled with the accent colour, flat buttons).
 
 ---
 
@@ -583,8 +583,8 @@ The design is in [`docs/architecture.md`](docs/architecture.md).
 
 ## 12. License
 
-linscanner is shared under the
-[**linscanner Community License (Noncommercial)**](LICENSE).
+LinScanner is shared under the
+[**LinScanner Community License (Noncommercial)**](LICENSE).
 
 - **You're welcome to** use it free of charge, and to copy, modify and share
   it for any noncommercial purpose. This includes personal and household
@@ -594,7 +594,7 @@ linscanner is shared under the
   selling it, bundling it into a paid product or service, or using it in the
   operations of a business. We're happy to talk; please contact
   [MensuraMedia](https://github.com/MensuraMedia).
-- The components linscanner builds on (SANE, GTK, Tesseract, Ghostscript,
+- The components LinScanner builds on (SANE, GTK, Tesseract, Ghostscript,
   Pillow, vendor drivers, the dashboard framework, …) keep their own
   licenses.
 

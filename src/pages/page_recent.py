@@ -1,13 +1,13 @@
 """
 Recent Page
-Documents saved with linscanner, as a table sorted by date (newest first):
+Documents saved with LinScanner, as a table sorted by date (newest first):
 
   Date saved | [folder] Folder | File name [document] | Pages | Format | [trash]
 
 - folder icon: opens the system file manager at that folder (the file is
   highlighted when the file manager supports it)
 - document icon (or double-click / Enter on a row): opens the document in
-  linscanner (Preview + Quick Edit)
+  LinScanner (Preview + Quick Edit)
 - trash icon: removes the entry from the list (the file is not touched)
 - Clear: All, or entries older than 5 / 10 / 20 / 30 / 60 / 90 days
 
@@ -112,7 +112,7 @@ class RecentPage(BasePage):
         self._add_icon_column(C_FOLDER_ICON, "open_folder", "Open the folder in your file manager")
         self._add_text_column("Folder", C_FOLDER, 260, expand=True, ellipsize=Pango.EllipsizeMode.MIDDLE)
         self._add_text_column("File name", C_NAME, 250, sort=C_NAME, ellipsize=Pango.EllipsizeMode.END)
-        self._add_icon_column(C_DOC_ICON, "open_document", "Open in linscanner (Preview and Quick Edit)")
+        self._add_icon_column(C_DOC_ICON, "open_document", "Open in LinScanner (Preview and Quick Edit)")
         self._add_text_column("Pages", C_PAGES, 60, xalign=1.0)
         self._add_text_column("Format", C_FORMAT, 70)
         self._add_icon_column(C_TRASH, "forget", "Remove from this list (the file is not touched)")

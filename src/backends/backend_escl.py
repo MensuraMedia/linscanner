@@ -1,6 +1,6 @@
 """
 Direct eSCL Backend
-linscanner's own driverless client for eSCL (AirScan / Mopria), used when SANE
+LinScanner's own driverless client for eSCL (AirScan / Mopria), used when SANE
 can't reach a scanner that speaks eSCL. Covers:
   - IPP-over-USB devices (USB class 07/01/04) exposed by ipp-usb on
     http://127.0.0.1:60000+ (loopback), and
@@ -34,7 +34,7 @@ NS = {
     "scan": "http://schemas.hp.com/imaging/escl/2011/05/03",
     "pwg": "http://www.pwg.org/schemas/2010/12/sm",
 }
-# eSCL colour modes <-> the SANE-style names linscanner's mapping understands
+# eSCL colour modes <-> the SANE-style names LinScanner's mapping understands
 MODE_TO_NAME = {
     "RGB24": "Color",
     "RGB48": "Color",
@@ -43,7 +43,7 @@ MODE_TO_NAME = {
     "BlackAndWhite1": "Lineart",
 }
 NAME_TO_MODE = {"Color": "RGB24", "Gray": "Grayscale8", "Lineart": "BlackAndWhite1"}
-# eSCL AdfState / State -> linscanner error codes (research §2 / SANE escl mapping)
+# eSCL AdfState / State -> LinScanner error codes (research §2 / SANE escl mapping)
 STATUS_CODES = {
     "ScannerAdfEmpty": "no_docs",
     "ScannerAdfJam": "jammed",

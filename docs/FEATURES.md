@@ -1,4 +1,4 @@
-# linscanner features and functions (v0.3.4)
+# LinScanner features and functions (v0.3.4)
 
 Every user-facing feature, page by page, plus command-line options, files and
 limits.
@@ -15,8 +15,8 @@ limits.
 |---|---|
 | Any scanner with a SANE driver | `backends/backend_sane.py` runs `scanimage` (80+ open-source drivers on Mint 22, plus vendor plugins) |
 | Network / Wi-Fi scanners | **Not supported at this time**: USB cable only. `NETWORK_SCANNING = False` (`config/config_scan.py`) switches off all network discovery: SANE drivers get a private config (no `net`/`escl`/`dell1600n_net`, no Epson/Kodak/Magicolor `net` lines, pixma `networking=no`, airscan discovery disabled with IPP-USB devices listed on 127.0.0.1); the eSCL client doesn't use mDNS and only uses loopback URLs |
-| Driverless USB MFPs (IPP-over-USB) | via `ipp-usb`; SANE airscan, or linscanner's own eSCL client |
-| linscanner's own eSCL client | `backends/backend_escl.py`: loopback ports 60000+ (IPP-over-USB); mDNS browsing only when network scanning is on (it's off); capabilities, status, jobs, cancel |
+| Driverless USB MFPs (IPP-over-USB) | via `ipp-usb`; SANE airscan, or LinScanner's own eSCL client |
+| LinScanner's own eSCL client | `backends/backend_escl.py`: loopback ports 60000+ (IPP-over-USB); mDNS browsing only when network scanning is on (it's off); capabilities, status, jobs, cancel |
 | One scanner, several drivers | grouped as one physical scanner; methods ranked A1 open driver → A3 vendor → B2 IPP-USB → D1 own eSCL → B1 network → C1 saned |
 | Fallback | on busy / I/O / timeout / access / unsupported / missing driver, it tries the next method. It never does on feeder empty, jam or cover open |
 | USB scanners without a driver | detected from sysfs/udev and listed with advice (permissions, ipp-usb, vendor driver, firmware) |
@@ -122,7 +122,7 @@ Populates automatically; **Check for devices again** re-runs discovery.
 
 | Command | Function |
 |---|---|
-| `./run.sh` | Start linscanner |
+| `./run.sh` | Start LinScanner |
 | `./run.sh --test-scanner` | Only SANE's virtual scanner, with throwaway settings |
 | `./run.sh --page devices` | Open on a page (`scan`, `preview`, `devices`, `settings`, `about`) |
 | `./run.sh --quit-after N` | Close after N seconds (tests) |
@@ -177,4 +177,4 @@ Populates automatically; **Check for devices again** re-runs discovery.
 
 ## 12. About page
 
-Version and description; **Compatibility** (scanners, multifunction printers, verified devices, systems, paper, formats, what's not supported yet, and a note that compatibility keeps evolving); **Privacy**; **Licence**; **Your files**; **Handy shortcuts**; **System** (linscanner, SANE, Python, GTK); **Credits** (including Phosphor Icons); (signature-font credits are kept in the backlog, `../docs/FOLLOW-UP.md` #33).
+Version and description; **Compatibility** (scanners, multifunction printers, verified devices, systems, paper, formats, what's not supported yet, and a note that compatibility keeps evolving); **Privacy**; **Licence**; **Your files**; **Handy shortcuts**; **System** (LinScanner, SANE, Python, GTK); **Credits** (including Phosphor Icons); (signature-font credits are kept in the backlog, `../docs/FOLLOW-UP.md` #33).

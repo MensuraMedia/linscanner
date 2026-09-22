@@ -70,7 +70,7 @@ class Sidebar(Gtk.Box):
                 box.pack_start(Gtk.Image.new_from_pixbuf(pix), True, True, 0)
             except GLib.Error:
                 pass
-        text = Gtk.Label(label="LINSCANNER")
+        text = Gtk.Label(label="LinScanner")
         text.get_style_context().add_class("logo-text")
         box.pack_start(text, False, False, 0)
         sub = Gtk.Label(label="DOCUMENT SCANNER")

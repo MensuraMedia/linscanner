@@ -92,3 +92,6 @@
 | 2026-09-22T00:30:00 | Single Page now scans the whole tray with each sheet as its own document (front + back together) |
 | 2026-09-22T00:30:00 | Preview: Doc n labels with a saved mark, per-document Save / Save As, Save All (one PDF per document) |
 | 2026-09-22T00:30:00 | Auto-save writes one file per document; undo remembers documents; v0.3.4; 114 tests |
+| 2026-09-22T01:10:00 | Program name is LinScanner (window title, sidebar, About, menu entry, messages, docs, LICENSE); technical names stay lowercase |
+| 2026-09-22T01:10:00 | Scan page: scanner list, power mark and Devices take half the width |
+| 2026-09-22T01:10:00 | v0.3.5 |

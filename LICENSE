@@ -1,8 +1,8 @@
-linscanner Community License (Noncommercial), version 1.0
+LinScanner Community License (Noncommercial), version 1.0
 
 Copyright (c) 2026 MensuraMedia. All rights reserved except as granted below.
 
-Thank you for your interest in linscanner. We want it to be useful to as
+Thank you for your interest in LinScanner. We want it to be useful to as
 many people as possible, so it is free to use, share and improve. We ask
 only that it not be used commercially without talking to us first.
 
@@ -10,7 +10,7 @@ only that it not be used commercially without talking to us first.
 
    Anyone may, free of charge and for any noncommercial purpose:
 
-   a. use linscanner, on as many computers as they like;
+   a. use LinScanner, on as many computers as they like;
    b. copy it;
    c. modify it and create works based on it; and
    d. distribute it, in original or modified form.
@@ -28,14 +28,14 @@ only that it not be used commercially without talking to us first.
 
    Commercial use is not permitted without the express written permission
    of MensuraMedia. We are glad to hear from anyone who would like to use
-   linscanner commercially; please contact us through
+   LinScanner commercially; please contact us through
    https://github.com/MensuraMedia and we will be happy to discuss it.
 
    "Commercial use" means any use that is primarily intended for, or
    directed toward, commercial advantage or monetary compensation. For
    example:
 
-   - selling linscanner, or a modified version, or charging for access to
+   - selling LinScanner, or a modified version, or charging for access to
      it;
    - including it in a product, device, service or package that is sold or
      licensed for a fee;
@@ -51,7 +51,7 @@ only that it not be used commercially without talking to us first.
 
 4. Third-party components
 
-   linscanner relies on software that it does not own, including Python,
+   LinScanner relies on software that it does not own, including Python,
    GTK, SANE, sane-airscan, ipp-usb, Pillow, NumPy, Tesseract, Ghostscript,
    system fonts and, optionally, vendor scanner drivers. Its interface is
    based on gtk-python-dashboard-starter by mikesdatawork. Each of these
@@ -60,7 +60,7 @@ only that it not be used commercially without talking to us first.
 
 5. No warranty
 
-   linscanner is provided "as is", without warranty of any kind, express or
+   LinScanner is provided "as is", without warranty of any kind, express or
    implied, including the warranties of merchantability, fitness for a
    particular purpose and non-infringement. In no event shall the authors
    or copyright holders be liable for any claim, damages or other

@@ -80,7 +80,7 @@ class SettingsPage(BasePage):
         row.pack_start(self.label("Not Supported", "muted"), False, False, 0)
         card.pack_start(row, False, False, 0)
         desc = self.label(
-            "Only scanners connected by USB cable are supported at this time. linscanner does "
+            "Only scanners connected by USB cable are supported at this time. LinScanner does "
             "not search the network for scanners.",
             "muted",
             wrap=True,

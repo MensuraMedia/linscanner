@@ -1,4 +1,4 @@
-# linscanner architecture
+# LinScanner architecture
 
 > Full technical description (USB processes, connection methods, fallback,
 > capability/status interaction, feature modules): [`TECHNICAL.md`](TECHNICAL.md).

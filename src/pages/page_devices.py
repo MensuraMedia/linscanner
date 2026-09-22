@@ -40,7 +40,7 @@ class DevicesPage(BasePage):
         """Title, check-again button, summary line and the device sections"""
         self.add_title(
             "Scan Devices Found",
-            "Scanners linscanner can see, how it reaches each one (in fallback order), and what they can do.",
+            "Scanners LinScanner can see, how it reaches each one (in fallback order), and what they can do.",
         )
         row = Gtk.Box(spacing=10)
         self.check_btn = Gtk.Button(label="Check for devices again")

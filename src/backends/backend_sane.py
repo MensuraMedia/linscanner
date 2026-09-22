@@ -36,8 +36,8 @@ from utils.util_logging import get_logger
 log = get_logger("sane")
 
 # A scanner is a single-user device: two scanimage processes opening it at once
-# makes one fail with "Device busy". Every SANE call in linscanner (listing,
-# options, status, firmware, scans) takes this lock, so linscanner never competes
+# makes one fail with "Device busy". Every SANE call in LinScanner (listing,
+# options, status, firmware, scans) takes this lock, so LinScanner never competes
 # with itself. Re-entrant so a scan can call helpers that also lock.
 DEVICE_LOCK = threading.RLock()
 
@@ -64,7 +64,7 @@ def usb_only_config(folder):
         with open(dll, "w") as f:
             for ln in lines:
                 off = ln.strip() in NETWORK_ONLY_DRIVERS
-                f.write(("# linscanner USB-only: " + ln if off else ln) + "\n")
+                f.write(("# LinScanner USB-only: " + ln if off else ln) + "\n")
     for name in NET_LINE_CONFIGS:
         path = os.path.join(folder, name)
         if os.path.exists(path):
@@ -73,15 +73,15 @@ def usb_only_config(folder):
             with open(path, "w") as f:
                 for ln in lines:
                     off = re.match(r"\s*net\b", ln) is not None
-                    f.write(("# linscanner USB-only: " + ln if off else ln) + "\n")
+                    f.write(("# LinScanner USB-only: " + ln if off else ln) + "\n")
     with open(os.path.join(folder, "pixma.conf"), "a") as f:
-        f.write("\n# linscanner USB-only\nnetworking=no\n")
+        f.write("\n# LinScanner USB-only\nnetworking=no\n")
     refresh_airscan_devices(folder)
 
 
 def refresh_airscan_devices(folder):
     """airscan.conf with discovery off, listing only IPP-over-USB devices on 127.0.0.1"""
-    lines = ["# written by linscanner: USB only, no network discovery", "[devices]"]
+    lines = ["# written by LinScanner: USB only, no network discovery", "[devices]"]
     for i, url in enumerate(ipp_usb_urls(), 1):
         lines.append(f'"IPP-USB scanner {i}" = {url}, eSCL')
     lines += ["", "[options]", "discovery = disable", "ws-discovery = off", ""]

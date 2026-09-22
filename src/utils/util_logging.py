@@ -134,7 +134,7 @@ def system_info():
     from utils.util_paths import read_version
 
     lines = [
-        f"linscanner {read_version()}",
+        f"LinScanner {read_version()}",
         f"Python {platform.python_version()} · {platform.platform()}",
     ]
     try:

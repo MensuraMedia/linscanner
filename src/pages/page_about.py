@@ -1,6 +1,6 @@
 """
 About Page
-What linscanner is, privacy and licence in brief, where your files are,
+What LinScanner is, privacy and licence in brief, where your files are,
 handy shortcuts, system versions and credits. (Signature-font credits are
 kept in the backlog, docs/FOLLOW-UP.md #33, as requested.)
 """
@@ -37,7 +37,7 @@ def tilde(path):
 
 
 def user_paths():
-    """(what, path) for every place linscanner keeps your data"""
+    """(what, path) for every place LinScanner keeps your data"""
     from modules.manager_settings import default_path
     from utils.util_fonts import user_fonts_dir
     from utils.util_logging import log_dir
@@ -50,12 +50,12 @@ def user_paths():
         ("Fonts you added", user_fonts_dir()),
         ("Recent documents list", os.path.join(data, "recent.json")),
         ("Logs (kept 14 days)", log_dir()),
-        ("Scans in progress", "/tmp/linscanner-*/ (deleted when linscanner closes)"),
+        ("Scans in progress", "/tmp/linscanner-*/ (deleted when LinScanner closes)"),
     ]
 
 
 class AboutPage(BasePage):
-    """About linscanner"""
+    """About LinScanner"""
 
     def _text(self, card, text, css="secondary", selectable=False):
         """Add a wrapped label to a card"""
@@ -73,7 +73,7 @@ class AboutPage(BasePage):
 
     def build_content(self):
         """All About sections"""
-        self.add_title("linscanner", f"Version {read_version()} · a document scanner for Linux")
+        self.add_title("LinScanner", f"Version {read_version()} · a document scanner for Linux")
 
         card = self.add_card("What it is")
         self._text(
@@ -91,7 +91,7 @@ class AboutPage(BasePage):
         card = self.add_card("Compatibility")
         self._text(
             card,
-            "linscanner is ever evolving. Each release adds and verifies more devices and systems, and "
+            "LinScanner is ever evolving. Each release adds and verifies more devices and systems, and "
             "reports of what works (or doesn't) on your hardware help it grow. What it works with today:",
             "muted",
         )
@@ -134,7 +134,7 @@ class AboutPage(BasePage):
         card = self.add_card("Privacy")
         self._text(
             card,
-            "Everything happens on this computer. linscanner never sends your scans, documents, "
+            "Everything happens on this computer. LinScanner never sends your scans, documents, "
             "signatures, settings or any other information to anyone: no cloud, no accounts, no "
             "telemetry, no network scanner search. OCR runs locally. Files leave this computer only "
             "if you copy or send them yourself.",
@@ -143,10 +143,10 @@ class AboutPage(BasePage):
         card = self.add_card("Licence")
         self._text(
             card,
-            "linscanner Community License (Noncommercial) 1.0. You're welcome to use it free of "
+            "LinScanner Community License (Noncommercial) 1.0. You're welcome to use it free of "
             "charge, and to copy, modify and share it for any noncommercial purpose. Commercial use "
             "needs written permission from MensuraMedia; we're happy to talk. The components "
-            "linscanner builds on keep their own licences.",
+            "LinScanner builds on keep their own licences.",
         )
         self._text(card, f"Full text: {tilde(os.path.join(APP_ROOT, 'LICENSE'))}", "muted", selectable=True)
 
@@ -177,7 +177,7 @@ class AboutPage(BasePage):
         self._grid(
             card,
             [
-                ("linscanner", read_version()),
+                ("LinScanner", read_version()),
                 ("Scanning (SANE)", sane_version()),
                 ("Python", platform.python_version()),
                 ("GTK", gtk),

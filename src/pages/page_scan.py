@@ -43,7 +43,13 @@ class ScanPage(BasePage):
         row.pack_start(self.refresh_btn, False, False, 0)
         self.device_combo = Gtk.ComboBoxText()
         self.device_combo.connect("changed", self.on_device_changed)
-        row.pack_start(self.device_combo, True, True, 0)
+        # the scanner list, its power mark and Devices take half the width (like Document Size)
+        half = Gtk.Box(homogeneous=True)
+        scanner_box = Gtk.Box(spacing=10)
+        scanner_box.pack_start(self.device_combo, True, True, 0)
+        half.pack_start(scanner_box, True, True, 0)
+        half.pack_start(Gtk.Box(), True, True, 0)
+        row.pack_start(half, True, True, 0)
         # power mark after the scanner name: spinner while looking, green when connected, red when not
         theme = getattr(self.ctx.theme, "current_theme", None)
         self.mark = Gtk.Stack()
@@ -56,12 +62,12 @@ class ScanPage(BasePage):
         self.power_off_icon = icon_image("power", 22, getattr(theme, "error", None) or "#e8555d")
         self.mark.add_named(self.power_off_icon, "off")
         self.mark.add_named(Gtk.Box(), "none")
-        row.pack_start(self.mark, False, False, 0)
+        scanner_box.pack_start(self.mark, False, False, 0)  # right after the scanner name
         self.power_state = "none"
         info_btn = Gtk.Button(label="Devices")
         info_btn.set_tooltip_text("Every scanner found, with its connection and capabilities")
         info_btn.connect("clicked", lambda *_: self.ctx.nav.navigate_to("devices"))
-        row.pack_start(info_btn, False, False, 0)
+        scanner_box.pack_start(info_btn, False, False, 0)
         card.pack_start(row, False, False, 0)
         self.device_status = self.label("", "status-error", wrap=True)
         self.device_status.set_no_show_all(True)  # only shown when the scanner can't be used

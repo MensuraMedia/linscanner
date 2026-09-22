@@ -8,7 +8,7 @@ Heuristic, multi-method scanner connection (docs/research/connection-methods.md)
      A1 open-source SANE driver (USB)      e.g. epsonds, pixma, genesys
      A3 vendor SANE driver                 e.g. epsonscan2, hpaio, brother*
      B2 driverless eSCL over IPP-USB       SANE airscan/escl on 127.0.0.1
-     D1 linscanner's own eSCL client       backend_escl (USB or network)
+     D1 LinScanner's own eSCL client       backend_escl (USB or network)
      B1 driverless network eSCL / WSD      SANE airscan/escl
      C1 remote SANE (saned)                SANE net
      T  SANE virtual test scanner
@@ -33,7 +33,7 @@ METHOD_LABELS = {
     "A1": "Open-source SANE driver",
     "A3": "Vendor SANE driver",
     "B2": "Driverless eSCL over USB (ipp-usb)",
-    "D1": "linscanner eSCL client",
+    "D1": "LinScanner eSCL client",
     "B1": "Driverless network scanning (eSCL/WSD)",
     "C1": "Remote SANE (saned)",
     "T": "SANE virtual test scanner",

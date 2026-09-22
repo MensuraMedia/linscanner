@@ -7,7 +7,7 @@ is scanner-independent; backends map these onto what a device supports.
 # Network scanning (Wi-Fi / Ethernet) is not supported at this time: only
 # cable-connected (USB) scanners are. With this off, no network discovery is
 # done at all: SANE drivers get a private config with their network discovery
-# disabled, and linscanner's eSCL client only talks to ipp-usb on 127.0.0.1.
+# disabled, and LinScanner's eSCL client only talks to ipp-usb on 127.0.0.1.
 NETWORK_SCANNING = False
 
 # Colour choices shown to the user -> SANE mode names to look for, in order.

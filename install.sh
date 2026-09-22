@@ -73,7 +73,7 @@ step "Desktop menu entry"
 mkdir -p "$(dirname "$DESKTOP")"
 ENTRY="[Desktop Entry]
 Type=Application
-Name=linscanner
+Name=LinScanner
 GenericName=Document Scanner
 Comment=Scan documents in color or black & white and save as PDF or images
 Exec=$APP_DIR/run.sh

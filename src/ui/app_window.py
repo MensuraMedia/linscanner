@@ -18,7 +18,7 @@ ICON_SIZES = (16, 24, 32, 48, 64, 128, 256)
 
 
 def set_app_icon(window=None):
-    """The linscanner icon in several sizes, for every window (panel, Alt+Tab, dialogs)"""
+    """The LinScanner icon in several sizes, for every window (panel, Alt+Tab, dialogs)"""
     from gi.repository import GdkPixbuf, GLib
 
     try:
@@ -36,7 +36,7 @@ class AppWindow(Gtk.Window):
 
     def __init__(self, ctx):
         """Window with sidebar and content area; registers itself as dialog parent"""
-        super().__init__(title="linscanner")
+        super().__init__(title="LinScanner")
         ctx.window = self
         self.set_default_size(Layout.dimensions.WINDOW_DEFAULT_WIDTH, Layout.dimensions.WINDOW_DEFAULT_HEIGHT)
         self.set_position(Gtk.WindowPosition.CENTER)

@@ -1,6 +1,6 @@
-# linscanner technical document (v0.3.4)
+# LinScanner technical document (v0.3.4)
 
-How linscanner detects, connects to and drives scanners on Linux, what every
+How LinScanner detects, connects to and drives scanners on Linux, what every
 part does, and how the optional feature modules plug in. The user guide is
 [`../README.md`](../README.md), the feature list [`FEATURES.md`](FEATURES.md),
 and the code reference [`api-reference.md`](api-reference.md) (generated).
@@ -52,7 +52,7 @@ unit-tested. The UI only calls `ScanManager`, `manager_device_info` and the
    (`/etc/sane.d/dll.conf` and `dll.d/*`). Each backend probes libusb for the
    VID:PIDs it supports.
 
-### 2.2 What linscanner reads (`backends/usb_probe.py`)
+### 2.2 What LinScanner reads (`backends/usb_probe.py`)
 
 It reads everything without drivers, root or subprocesses:
 
@@ -83,16 +83,16 @@ Reference device: the Epson ES-400 II reports interfaces `ff/ff/ff` and
 
 ## 3. Universal, generic connection capabilities
 
-linscanner doesn't hard-code scanners. It uses **every standard way Linux
+LinScanner doesn't hard-code scanners. It uses **every standard way Linux
 can reach a scanner**, from a MECE taxonomy
 ([`research/connection-methods.md`](research/connection-methods.md)):
 
-| Code | Method | Transport | In linscanner |
+| Code | Method | Transport | In LinScanner |
 |---|---|---|---|
 | **A1** | Open-source SANE driver | USB (libusb) | `SaneBackend` (epsonds, pixma, genesys, fujitsu, avision, … 80+) |
 | **A3** | Vendor SANE driver | USB / network | `SaneBackend` (epsonscan2, hpaio, brother*, …) |
 | **B2** | Driverless eSCL over IPP-USB | USB → `ipp-usb` → HTTP | `SaneBackend` via `airscan`/`escl` on 127.0.0.1 |
-| **D1** | linscanner's own eSCL client | HTTP (USB loopback or network) | `EsclBackend` (standard library only) |
+| **D1** | LinScanner's own eSCL client | HTTP (USB loopback or network) | `EsclBackend` (standard library only) |
 | **B1** | Driverless network scanning | eSCL / WSD over the network | **Disabled** (USB only, see §3.0) |
 | **C1** | Remote SANE | TCP 6566 (`saned`) | **Disabled** (USB only, see §3.0) |
 | **D4** | Device-side scan-to-USB/folder | files | "Import images" feature module |
@@ -332,7 +332,7 @@ load is reported and the rest load normally. All of this is tested.
     the offline pool.
 - **Signatures:**
   - Library: `~/.local/share/linscanner/signatures/` (honours `$XDG_DATA_HOME`).
-  - PNG transparency is kept. If an import has none, linscanner offers to
+  - PNG transparency is kept. If an import has none, LinScanner offers to
     make the near-white background transparent and trims the border.
 - **Editing:**
   - Click to select (blue frame); drag to move; drag the corner square to

@@ -181,7 +181,7 @@ def text_fonts():
 
 
 def resolve_font(family):
-    """Font file for any family offered by linscanner (signature fonts first)"""
+    """Font file for any family offered by LinScanner (signature fonts first)"""
     return signature_font_file(family) or font_file(family)
 
 

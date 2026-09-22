@@ -491,7 +491,7 @@ class PreviewPage(BasePage):
     def clear_pages(self):
         """Remove all pages after confirmation (Undo brings them back)"""
         if self._confirm(
-            "Remove all pages?", "You can bring them back with Undo until you close linscanner."
+            "Remove all pages?", "You can bring them back with Undo until you close LinScanner."
         ):
             self.checkpoint()
             self.ctx.scan.clear_pages()
