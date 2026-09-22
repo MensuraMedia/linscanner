@@ -33,7 +33,7 @@ info()  { echo "          $*"; }
 report() {
     echo; echo "${B}================ linscanner install summary ================${N}"
     printf '  %s\n' "${SUMMARY[@]}"
-    [[ $FAILED -eq 0 ]] && echo "  ${G}${B}Result: linscanner ready - find it in the menu or run $APP_DIR/run.sh${N}" \
+    [[ $FAILED -eq 0 ]] && echo "  ${G}${B}Result: LinScanner ready - find it in the menu or run $APP_DIR/run.sh${N}" \
                         || echo "  ${R}${B}Result: setup incomplete - see FAIL lines above${N}"
     exit $FAILED
 }
