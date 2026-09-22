@@ -1,4 +1,4 @@
-# linscanner features and functions (v0.3.0)
+# linscanner features and functions (v0.3.1)
 
 Every user-facing feature, page by page, plus command-line options, files and
 limits.
@@ -30,14 +30,15 @@ Verified hardware: Epson ES-400 II (USB `04b8:0181`), reached via epsonds
 
 | Control | Function |
 |---|---|
-| Scanner list, spinner, **Refresh**, **Device info** | Physical scanners ("Epson ES-400II (epsonds (+1 more))"). The spinner turns while looking. The scanner in use is **remembered** and reached directly at the next start; if it doesn't answer, a full search runs |
+| **Detect Scanner**: **Find**, scanner list, spinner / green ✓, **Devices** | **Find** (before the list) searches again. Physical scanners ("Epson ES-400II (epsonds (+1 more))"). The spinner turns while looking. The scanner in use is **remembered** and reached directly at the next start; if it doesn't answer, a full search runs |
 | Status line | **Scanner Found** (green). Problems in plain words, e.g. "Unable to detect scanner. Check that it's connected and powered on, then press Refresh."; the technical detail goes to the log |
 | **Profile** (feature) | One-click presets and "Save as profile…" |
 | **Scan Type** | **Front Page** (one side), **Front & Back** (duplex, when the scanner can), **Flatbed** (only on scanners with both a glass and a feeder). Mapped to the driver's sources by `scan_types()`; remembered |
 | **Sheets** (feeder) | **All sheets** (until the feeder is empty) or **One sheet at a time** (1 page, or 2 for Front & Back, per press; same document) |
 | **Color** / **Black & White** | Color, or B&W: grayscale by default, pure lineart via Settings |
 | **High / Medium / Low** | 600 / 300 / 150 dpi, snapped to the nearest supported resolution |
-| **Paper size** | **Auto-Detect** (default: scans the whole area, then fits each page to the paper; the scanner's own auto-size option, e.g. epsonds `--adf-crp`, is switched on too). Documents: Letter, Legal, Executive, Half Letter, A4, A5, A6, B5. Receipts: 80 / 58 mm wide. Cards: business, ID / credit, index. Photos: 4×6, 5×7. Other: check, full scan area. Receipts, cards and checks are fitted to the paper, falling back to their nominal size |
+| **Blank Pages** | **Keep** / **Remove**: switches the Blank-page removal module (kept in sync with Settings → Features) |
+| **Document Size** (half width) | **Auto-Detect** (default: scans the whole area, then fits each page to the paper; the scanner's own auto-size option, e.g. epsonds `--adf-crp`, is switched on too). Documents: Letter, Legal, Executive, Half Letter, A4, A5, A6, B5. Receipts: 80 / 58 mm wide. Cards: business, ID / credit, index. Photos: 4×6, 5×7. Other: check, full scan area. Receipts, cards and checks are fitted to the paper, falling back to their nominal size |
 | Summary line | Exactly what will be sent, and how sheets are handled |
 | **Scan** / **Scan next sheet**, **Cancel**, **Done → Preview** | Start, stop (keeping pages), finish a one-sheet document |
 | Progress + status | Per-page progress, page count, blank pages removed, plain-language errors |
@@ -50,9 +51,9 @@ Verified hardware: Epson ES-400 II (USB `04b8:0181`), reached via epsonds
 |---|---|
 | Large view | Fit-to-window, or **zoom** 25–800 % of fit (magnifier icons, Ctrl + wheel, Ctrl + / − / 0); drag to pan when zoomed. Pages are drawn from small display copies made in the background, so switching pages takes about 25 ms |
 | Thumbnail strip | Left-aligned, always-visible horizontal scroll bar; **1 row / 2 rows** (remembered); Page Up / Page Down change page; Quick Edit layers shown |
-| **Rotate left / right / 180°** | Per page, non-destructive |
-| **Move ← / Move →** | Reorder pages |
-| **Delete page**, **Clear all** | Remove one page, or all after confirmation |
+| Rotate left / right / 180° (Phosphor `arrow-counter-clockwise`, `arrow-clockwise`, `arrows-clockwise`) | Per page, non-destructive; captions on hover |
+| Move left / right (`arrow-left`, `arrow-right`) | Reorder pages |
+| Delete page (`file-x`), Clear all (`trash-simple`) | Remove one page, or all after confirmation |
 | **Quick Edit…** (feature) | Text and signature editor (§6) |
 | **Import images…** (feature) | Add PNG/JPEG/TIFF (multi-page) files as pages |
 | **Save** | Writes to the document's file (last Save / Save As, or the file opened from Recent) in its format; a new document is saved as a PDF in the Save folder with an automatic name |
@@ -63,12 +64,12 @@ Verified hardware: Epson ES-400 II (USB `04b8:0181`), reached via epsonds
 | Part | Function |
 |---|---|
 | Table | Date saved · 📂 · Folder · File name · 📄 · Pages · Format · 🗑; uniform rows, fixed columns, newest first, scrollable |
-| 📂 folder icon (Heroicons `folder-open`) | Opens the system file manager at the folder, highlighting the file (freedesktop FileManager1), else just the folder |
-| 📄 document icon (`document-text`), double-click, Enter | Opens the document (PDF rendered at 300 dpi with Ghostscript; images frame by frame) in Preview and starts Quick Edit; **Save** then writes back to it |
+| 📂 folder icon (Phosphor `folder-open`) | Opens the system file manager at the folder, highlighting the file (freedesktop FileManager1), else just the folder |
+| 📄 document icon (`file-text`), double-click, Enter | Opens the document (PDF rendered at 300 dpi with Ghostscript; images frame by frame) in Preview and starts Quick Edit; **Save** then writes back to it |
 | 🗑 trash icon | Removes the entry from the list (the file is never touched) |
 | **Clear** + *All / Older than 5, 10, 20, 30, 60, 90 days* | Clears entries after confirming (files untouched) |
 
-## 4. Scan Device Information page
+## 4. Scan Devices Found page (sidebar: Devices)
 
 Populates automatically; **Check for devices again** re-runs discovery.
 
@@ -99,7 +100,7 @@ Populates automatically; **Check for devices again** re-runs discovery.
 | Auto-crop | on | Removes the feeder overrun at the end of a sheet (never cuts page margins) |
 | Auto-straighten (deskew) | on | Straightens pages tilted up to ±5° |
 | Blank-page removal | on | Removes empty pages; sensitivity slider; colour content is never "blank" |
-| Quick Edit | on | **Add Text** tool (click anywhere and type; Enter adds a line below) in 20 basic fonts plus 9 signature fonts; soft **alignment guides** (edges, centre, equal spacing, mirror; Alt = free); **Apply Signature** + edit icon (signature chooser: up to 4 saved, delete, **Create Signature** by typed name in a signature font or PNG upload); pointer zones (hand on the frame = move, text cursor inside = edit, corner = resize); delete and apply to all pages (icons) |
+| Quick Edit | on | **Add Text** tool (click anywhere and type; Enter adds a line below) in 20 basic fonts plus 13 signature fonts; soft **alignment guides** (edges, centre, equal spacing, mirror; Alt = free); **Apply Signature** + edit icon (signature chooser: up to 4 saved, delete, **Create Signature** by typed name in a signature font or PNG upload); pointer zones (hand on the frame = move, text cursor inside = edit, corner = resize); delete and apply to all pages (icons) |
 | Import images | on | Adds image files as pages (the last-resort method: scan-to-USB on the device) |
 | Auto-rotate | off | Turns upside-down or sideways pages upright (Tesseract orientation detection) |
 | Batch splitting | off | Blank separator sheets split the stack into files `name-001.pdf`, … |
@@ -130,8 +131,8 @@ Populates automatically; **Check for devices again** re-runs discovery.
 | `~/.local/share/linscanner/signatures/` | Saved signatures (max 4) |
 | `~/.local/share/linscanner/fonts/` | Signature fonts the user added (never bundled) |
 | `~/.local/share/linscanner/recent.json` | Recent list |
-| `resources/fonts/signature/` | 9 bundled SIL OFL signature fonts + `fonts.json` credits |
-| `resources/icons/heroicons/` | The Heroicons used (MIT) |
+| `resources/fonts/signature/` | 13 bundled signature fonts (9 SIL OFL, 4 freeware) + `fonts.json` credits |
+| `resources/icons/phosphor/` | The Phosphor Icons used (MIT) |
 | `~/.local/share/applications/linscanner.desktop` | Menu entry |
 
 ## 9. Logging and diagnostics
@@ -151,7 +152,7 @@ Populates automatically; **Check for devices again** re-runs discovery.
 |---|---|---|
 | Build | `python3 -m compileall -q src` | passes |
 | Lint | `python3 -m black --check src tests && python3 -m pyflakes src tests` | clean |
-| Test | `python3 -m pytest -q` | 103 passed |
+| Test | `python3 -m pytest -q` | 105 passed |
 | Offline | `../bin/test-offline linscanner` | 304 packages install; feature pipeline verified offline |
 | Docs | `python3 tools/gen_api_docs.py` | every symbol documented |
 
@@ -160,7 +161,7 @@ Populates automatically; **Check for devices again** re-runs discovery.
 - Discovery takes about 10–20 s: SANE probes every driver over USB.
 - USB only: network / Wi-Fi scanning is not supported at this time.
 - Auto-crop can't tell an overrun from the paper when both are the same
-  colour; use Paper size then.
+  colour; use Document Size then.
 - Cameras / PTP devices are detected and explained, not captured.
 - OCR is English only.
 - Settings stored inside the scanner can't be changed from Linux.
@@ -168,4 +169,4 @@ Populates automatically; **Check for devices again** re-runs discovery.
 
 ## 12. About page
 
-Version and description; **Compatibility** (scanners, multifunction printers, verified devices, systems, paper, formats, what's not supported yet, and a note that compatibility keeps evolving); **Privacy**; **Licence**; **Your files**; **Handy shortcuts**; **System** (linscanner, SANE, Python, GTK); **Credits** (including Heroicons); **Signature fonts** (each bundled font with its designer, copyright and licence, plus the fonts you added).
+Version and description; **Compatibility** (scanners, multifunction printers, verified devices, systems, paper, formats, what's not supported yet, and a note that compatibility keeps evolving); **Privacy**; **Licence**; **Your files**; **Handy shortcuts**; **System** (linscanner, SANE, Python, GTK); **Credits** (including Phosphor Icons); **Signature fonts** (each bundled font with its designer, copyright and licence, plus the fonts you added).

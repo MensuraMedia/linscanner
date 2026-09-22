@@ -185,7 +185,7 @@ Constants: `METHOD_ORDER`, `METHOD_LABELS`, `VENDOR_SANE_BACKENDS`, `VENDOR_SANE
 
 ### `src/modules/manager_device_info.py`
 
-Device Information Builds the "Scan Device Information" content for a physical scanner: identity, connection path, connection methods (fallback order), permissions, capabilities, live status and firmware. No GTK: returns plain data. See docs/research/device-capabilities.md §8.
+Device Information Builds the "Scan Devices Found" content for a physical scanner: identity, connection path, connection methods (fallback order), permissions, capabilities, live status and firmware. No GTK: returns plain data. See docs/research/device-capabilities.md §8.
 
 Constants: `STATUS_TEXT`
 
@@ -313,8 +313,11 @@ Theme Applicator Generates the application CSS from a ThemeDefinition and applie
 
 Main Window Sidebar + content area (layout from gtk-python-dashboard-starter).
 
+Constants: `ICON_SIZES`
+
 | Symbol | Purpose |
 |---|---|
+| `set_app_icon(window=None)` | The linscanner icon in several sizes, for every window (panel, Alt+Tab, dialogs) |
 | class `AppWindow(Gtk.Window)` | Main application window |
 | &nbsp;&nbsp;`.__init__(self, ctx)` | Window with sidebar and content area; registers itself as dialog parent |
 
@@ -357,7 +360,7 @@ Segmented Control Pill-shaped group of mutually exclusive toggle buttons (e.g. C
 | Symbol | Purpose |
 |---|---|
 | class `SegmentedControl(Gtk.Box)` | Radio-style toggle buttons; on_changed(key) fires on user selection |
-| &nbsp;&nbsp;`.__init__(self, items, active=None, on_changed=None)` | items: [(key, label)] |
+| &nbsp;&nbsp;`.__init__(self, items, active=None, on_changed=None, button_width=None)` | items: [(key, label)]; button_width: same width for every button (uniform rows) |
 | &nbsp;&nbsp;`._toggled(self, button, key)` | Keep exactly one button active; report user changes |
 | &nbsp;&nbsp;`.set_active(self, key)` | Select a key without firing on_changed |
 | &nbsp;&nbsp;`.get_active(self)` | Currently selected key |
@@ -420,14 +423,14 @@ Base Page Class Base class for all pages (from gtk-python-dashboard-starter), ex
 
 ### `src/pages/page_devices.py`
 
-Scan Device Information Page Every detected scanner with identity, connection path, connection methods in fallback order, permissions, capabilities, live status and firmware. Populates automatically; "Check for devices again" re-runs detection (SANE, eSCL, USB).
+Scan Devices Found Page (sidebar: Devices) Every detected scanner with identity, connection path, connection methods in fallback order, permissions, capabilities, live status and firmware. Populates automatically; "Check for devices again" re-runs detection (SANE, eSCL, USB).
 
 Constants: `LEVEL_CSS`
 
 | Symbol | Purpose |
 |---|---|
 | `run_in_background(work, on_done, on_fail)` | Run work() in a thread; on_done(result) or on_fail(message) on the GTK thread |
-| class `DevicesPage(BasePage)` | Scan Device Information |
+| class `DevicesPage(BasePage)` | Scan Devices Found |
 | &nbsp;&nbsp;`.build_content(self)` | Title, check-again button, summary line and the device sections |
 | &nbsp;&nbsp;`.on_refreshing(self)` | Show that detection is running |
 | &nbsp;&nbsp;`._summary(self, text, css)` | Set the summary line text and colour |
@@ -446,7 +449,7 @@ Preview Page Shows scanned (or opened) pages: zoom, rotate, reorder and delete p
 | class `PreviewPage(BasePage)` | Page viewer with editing actions, zoom, Save and Save As |
 | &nbsp;&nbsp;`.build_content(self)` | Toolbars (page actions, features, zoom, thumbnails), Save / Save As, preview and status |
 | &nbsp;&nbsp;`.update_feature_buttons(self, *_)` | Show buttons of enabled features only |
-| &nbsp;&nbsp;`._tool(self, bar, text, action)` | Add a toolbar button that calls action() |
+| &nbsp;&nbsp;`._icon(bar, name, caption, action)` | Add an icon button with a hover caption |
 | &nbsp;&nbsp;`.on_shown(self)` | Reload pages when the page is opened |
 | &nbsp;&nbsp;`.set_status(self, text, error=False)` | Status line under the preview (errors in red) |
 | &nbsp;&nbsp;`.on_zoom(self, zoom)` | Show the zoom level ('Fit' or a percentage of fit) |
@@ -466,7 +469,7 @@ Preview Page Shows scanned (or opened) pages: zoom, rotate, reorder and delete p
 
 ### `src/pages/page_recent.py`
 
-Recent Page Documents saved with linscanner, as a table sorted by date (newest first):    Date saved | [folder] Folder | File name [document] | Pages | Format | [trash]  - folder icon: opens the system file manager at that folder (the file is   highlighted when the file manager supports it) - document icon (or double-click / Enter on a row): opens the document in   linscanner (Preview + Quick Edit) - trash icon: removes the entry from the list (the file is not touched) - Clear: All, or entries older than 5 / 10 / 20 / 30 / 60 / 90 days  Icons are Heroicons. The list is stored on this computer only (~/.local/share/linscanner/recent.json).
+Recent Page Documents saved with linscanner, as a table sorted by date (newest first):    Date saved | [folder] Folder | File name [document] | Pages | Format | [trash]  - folder icon: opens the system file manager at that folder (the file is   highlighted when the file manager supports it) - document icon (or double-click / Enter on a row): opens the document in   linscanner (Preview + Quick Edit) - trash icon: removes the entry from the list (the file is not touched) - Clear: All, or entries older than 5 / 10 / 20 / 30 / 60 / 90 days  Icons are Phosphor Icons. The list is stored on this computer only (~/.local/share/linscanner/recent.json).
 
 Constants: `CLEAR_CHOICES`, `ICON_PX`
 
@@ -477,7 +480,7 @@ Constants: `CLEAR_CHOICES`, `ICON_PX`
 | class `RecentPage(BasePage)` | Recently saved documents, as a table |
 | &nbsp;&nbsp;`.build_content(self)` | Title, Clear controls and the scrollable table |
 | &nbsp;&nbsp;`._add_text_column(self, title, col, width, sort=None, expand=False, xalign=0.0, ellipsize=None)` | Fixed-width text column |
-| &nbsp;&nbsp;`._add_icon_column(self, col, action, tooltip)` | Narrow column of clickable Heroicons |
+| &nbsp;&nbsp;`._add_icon_column(self, col, action, tooltip)` | Narrow column of clickable icons |
 | &nbsp;&nbsp;`._column_at(self, x, y)` | (row path, column) under a point of the table, or (None, None) |
 | &nbsp;&nbsp;`.on_shown(self)` | Refresh when opened (files may have been moved or deleted) |
 | &nbsp;&nbsp;`.refresh(self, *_)` | Reload the table from the recent list (newest first) |
@@ -493,17 +496,24 @@ Constants: `CLEAR_CHOICES`, `ICON_PX`
 
 Scan Page Choose scanner, source, colour, quality and paper; scan with live progress. Pages go to the Preview page as they arrive.
 
+Constants: `OPTION_BUTTON_WIDTH`
+
 | Symbol | Purpose |
 |---|---|
 | class `ScanPage(BasePage)` | Scanner selection, scan options and the Scan button |
 | &nbsp;&nbsp;`.build_content(self)` | Scanner card, options card, Scan/Cancel, progress and status |
+| &nbsp;&nbsp;`._blank_feature(self)` | The Blank-page removal module, or None if it was removed |
+| &nbsp;&nbsp;`._blank_enabled(self)` | True if blank pages are removed |
+| &nbsp;&nbsp;`.on_blank_changed(self, key)` | Keep / Remove: switch the Blank-page removal module (Settings → Features follows) |
+| &nbsp;&nbsp;`.sync_blank(self, *_)` | Follow the module's switch when it changes in Settings |
 | &nbsp;&nbsp;`.on_settings_changed(self, key)` | Re-list devices if driver visibility changed; else refresh the summary |
 | &nbsp;&nbsp;`.remember(self, key, value)` | Persist an option choice and refresh the summary |
 | &nbsp;&nbsp;`.set_status(self, text, css='muted')` | Show a status message styled muted / ok / error / busy (errors and results are logged) |
 | &nbsp;&nbsp;`.set_busy(self, busy, scanning=False)` | Enable or disable controls while working; Cancel only while scanning |
 | &nbsp;&nbsp;`.current_device(self)` | The ScannerDevice selected in the combo, or None |
 | &nbsp;&nbsp;`.show_device_issue(self, text=None)` | The line under the scanner list: shown only when something needs fixing |
-| &nbsp;&nbsp;`.looking(self, on)` | Spinner on while looking for the scanner |
+| &nbsp;&nbsp;`.looking(self, on)` | Spinner on while looking for the scanner (the check mark hides) |
+| &nbsp;&nbsp;`.connected(self, on=True)` | Green check mark after the scanner name when it answered |
 | &nbsp;&nbsp;`.startup(self)` | At start: reach the remembered scanner directly; otherwise do a full search |
 | &nbsp;&nbsp;`.refresh_devices(self)` | Start a background device search (ignored while scanning) |
 | &nbsp;&nbsp;`.devices_loaded(self, devices)` | Fill the scanner combo; reselect the last used scanner |
@@ -537,6 +547,7 @@ Settings Page Theme, default save folder, Black & White style, network scanning 
 | &nbsp;&nbsp;`.save(self, key, value)` | Persist a setting and broadcast settings-changed |
 | &nbsp;&nbsp;`.on_theme(self, combo)` | Apply and remember the selected theme |
 | &nbsp;&nbsp;`.on_feature_toggled(self, check, feature)` | Enable or disable a feature module; pages update immediately |
+| &nbsp;&nbsp;`.sync_feature_checks(self, *_)` | Follow switches made elsewhere (e.g. Scan page → Blank Pages) |
 | &nbsp;&nbsp;`.open_log_folder(self)` | Open the log folder in the file manager |
 | &nbsp;&nbsp;`.save_diagnostics(self)` | Save a zip with recent logs, system info, device info and feature states |
 | &nbsp;&nbsp;`.on_show_all(self, btn)` | Toggle showing all drivers and the test scanner |
@@ -616,17 +627,17 @@ Alignment guides for Quick Edit While an item is placed or dragged, its edges ar
 
 ### `src/utils/util_icons.py`
 
-Icons Heroicons v2.2.0 (Tailwind Labs, MIT): resources/icons/heroicons/<size>/<style>/<name>.svg. The SVGs draw with currentColor, which is replaced by the theme's text colour (or a given colour) before rendering, so icons suit light and dark themes. Rendered pixbufs are cached per (name, size, colour, style).  To add an icon, copy its SVG from ~/projects/assets/Icons/heroicons (see its INDEX.txt for the names) into resources/icons/heroicons/24/outline/.
+Icons Phosphor Icons v2.0.8 (Helena Zhang and Tobias Fried, MIT): resources/icons/phosphor/regular/<name>.svg (other weights: <weight>/<name>-<weight>.svg). The SVGs draw with currentColor, which is replaced by the theme's text colour (or a given colour) before rendering, so icons suit light and dark themes. Rendered pixbufs are cached per (name, size, colour, weight).  To add an icon, copy its SVG from ~/projects/assets/Icons/phosphoricons (see its INDEX.txt for names and search tags) into resources/icons/phosphor/regular/.
 
 Constants: `DEFAULT_COLOR`
 
 | Symbol | Purpose |
 |---|---|
 | `set_icon_color(color)` | Colour for icons without an explicit colour (set from the active theme) |
-| `icon_path(name, style='outline')` | SVG path of a bundled icon (24px outline, or 20px solid for style='solid') |
-| `icon_pixbuf(name, size=20, color=None, style='outline')` | The icon as a pixbuf of size x size pixels, drawn in color (theme text colour by default) |
-| `icon_image(name, size=20, color=None, style='outline')` | A Gtk.Image of the icon (a generic icon if the file is missing) |
-| `icon_button(name, tooltip, on_click=None, size=18, toggle=False)` | A compact, square button showing only an icon (the tooltip names the action) |
+| `icon_path(name, style='regular')` | SVG path of a bundled icon in a Phosphor weight (regular, bold, fill, ...) |
+| `icon_pixbuf(name, size=20, color=None, style='regular')` | The icon as a pixbuf of size x size pixels, drawn in color (theme text colour by default) |
+| `icon_image(name, size=20, color=None, style='regular')` | A Gtk.Image of the icon (a generic icon if the file is missing) |
+| `icon_button(name, tooltip, on_click=None, size=18, toggle=False, color=None)` | A compact, square button showing only an icon (the tooltip names the action) |
 | `icon_label_button(name, label, tooltip=None, on_click=None, size=16)` | A button with an icon followed by a short label |
 
 ### `src/utils/util_imaging.py`
@@ -865,7 +876,7 @@ Constants: `HANDLE`, `SNAP_PX`, `DEFAULT_SIGNATURE_WIDTH`, `SIGNATURE_INK`
 | &nbsp;&nbsp;`.__init__(self, ctx, pages, index)` | Build the dialog for pages[index] (overlays are edited on a copy) |
 | &nbsp;&nbsp;`._stop_blink(self)` | Stop the caret timer when the dialog closes |
 | &nbsp;&nbsp;`._mask(*names)` | Combine Gdk event mask names |
-| &nbsp;&nbsp;`._tools(self)` | Right-hand panel: tools, text style, Apply Signature, item actions (icons: Heroicons) |
+| &nbsp;&nbsp;`._tools(self)` | Right-hand panel: tools, text style, Apply Signature, item actions (icons: Phosphor) |
 | &nbsp;&nbsp;`._heading(self, text)` | Section heading label |
 | &nbsp;&nbsp;`.show_hint(self, text=None)` | Help text for the current tool (or a message) |
 | &nbsp;&nbsp;`.current_signature(self)` | Path of the chosen signature (remembered between sessions), or None |

@@ -41,14 +41,22 @@ class PreviewPage(BasePage):
         top.pack_start(left, True, True, 0)
 
         # page actions
-        bar = Gtk.Box(spacing=8)
-        self.btn_left = self._tool(bar, "Rotate left", lambda: self.rotate(270))
-        self.btn_right = self._tool(bar, "Rotate right", lambda: self.rotate(90))
-        self.btn_flip = self._tool(bar, "Rotate 180°", lambda: self.rotate(180))
-        self.btn_delete = self._tool(bar, "Delete page", self.delete_page)
-        self.btn_clear = self._tool(bar, "Clear all", self.clear_pages)
-        self.btn_back = self._tool(bar, "Move ←", lambda: self.move(-1))
-        self.btn_fwd = self._tool(bar, "Move →", lambda: self.move(1))
+        # page actions as icons (Phosphor); the tooltip is the caption shown on hover
+        bar = Gtk.Box(spacing=6)
+        self.btn_left = self._icon(
+            bar, "arrow-counter-clockwise", "Rotate left (90° anticlockwise)", lambda: self.rotate(270)
+        )
+        self.btn_right = self._icon(
+            bar, "arrow-clockwise", "Rotate right (90° clockwise)", lambda: self.rotate(90)
+        )
+        self.btn_flip = self._icon(
+            bar, "arrows-clockwise", "Rotate 180° (upside down)", lambda: self.rotate(180)
+        )
+        self.btn_back = self._icon(bar, "arrow-left", "Move page left (earlier)", lambda: self.move(-1))
+        self.btn_fwd = self._icon(bar, "arrow-right", "Move page right (later)", lambda: self.move(1))
+        bar.pack_start(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), False, False, 4)
+        self.btn_delete = self._icon(bar, "file-x", "Delete page", self.delete_page)
+        self.btn_clear = self._icon(bar, "trash-simple", "Clear all pages", self.clear_pages)
         left.pack_start(bar, False, False, 0)
 
         # optional feature buttons (Quick Edit, Import images, ...) go in this row
@@ -88,7 +96,7 @@ class PreviewPage(BasePage):
         )
         view_bar.pack_start(self.btn_zoom_in, False, False, 0)
         self.btn_fit = icon_button(
-            "arrows-pointing-in", "Fit the whole page (Ctrl 0)", lambda: self.preview.zoom_fit()
+            "arrows-in", "Fit the whole page (Ctrl 0)", lambda: self.preview.zoom_fit()
         )
         view_bar.pack_start(self.btn_fit, False, False, 0)
         self.info = self.label("", "muted")
@@ -128,10 +136,10 @@ class PreviewPage(BasePage):
             btn.set_visible(bool(feature and self.ctx.features.is_enabled(feature)))
         self.feature_toolbar.set_visible(any(b.get_visible() for b in self.feature_buttons.values()))
 
-    def _tool(self, bar, text, action):
-        """Add a toolbar button that calls action()"""
-        btn = Gtk.Button(label=text)
-        btn.connect("clicked", lambda *_: action())
+    @staticmethod
+    def _icon(bar, name, caption, action):
+        """Add an icon button with a hover caption"""
+        btn = icon_button(name, caption, action)
         bar.pack_start(btn, False, False, 0)
         return btn
 

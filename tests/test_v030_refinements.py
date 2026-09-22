@@ -1,5 +1,5 @@
 """0.3.0 refinements (docs/design/0.3.0-ui-refinements.md): Scan Type, paper sizes and
-Auto-Detect, Heroicons, Quick Edit Apply Signature and pointer zones, Recent table"""
+Auto-Detect, icons, Quick Edit Apply Signature and pointer zones, Recent table"""
 
 import json
 import os
@@ -113,7 +113,7 @@ def test_auto_size_driver_option():
 def test_icons_recolour_and_cache():
     from utils import util_icons
 
-    for name in ("folder-open", "document-text", "trash", "finger-print", "pencil-square"):
+    for name in ("folder-open", "file-text", "trash", "signature", "pencil-simple"):
         assert os.path.exists(util_icons.icon_path(name)), name
     a = util_icons.icon_pixbuf("trash", 20, "#ff0000")
     assert a.get_width() == 20 and util_icons.icon_pixbuf("trash", 20, "#ff0000") is a
@@ -250,3 +250,37 @@ def test_recent_table_sorted_and_trash(tmp_path):
     page.forget(page.store[0][C_PATH])
     assert [row[C_NAME] for row in page.store] == ["f2.pdf", "f0.pdf"]
     assert os.path.exists(tmp_path / "f1.pdf")  # the file itself is kept
+
+
+# -- 0.3.1 polish (docs/design/0.3.1-ui-polish.md) --------------------------------------------
+@requires_display
+def test_uniform_segment_width_and_app_icon():
+    from gi.repository import Gtk
+
+    from ui.app_window import ICON_SIZES, set_app_icon
+    from ui.components.component_segmented import SegmentedControl
+
+    seg = SegmentedControl([("a", "A"), ("b", "A much longer label")], button_width=150)
+    assert all(b.get_size_request()[0] == 150 for b in seg.buttons.values())
+    set_app_icon()
+    icons = Gtk.Window.get_default_icon_list()
+    assert sorted(i.get_width() for i in icons) == sorted(ICON_SIZES)
+
+
+def test_phosphor_icons_bundled_with_licence():
+    from utils.util_icons import icon_path
+    from utils.util_paths import resource
+
+    for name in (
+        "arrow-counter-clockwise",
+        "arrow-clockwise",
+        "arrows-clockwise",
+        "file-x",
+        "trash-simple",
+        "arrow-left",
+        "arrow-right",
+        "check",
+    ):
+        assert os.path.exists(icon_path(name)), name
+    assert "Phosphor Icons" in open(resource("icons", "phosphor", "LICENSE")).read()
+    assert not os.path.exists(resource("icons", "heroicons"))

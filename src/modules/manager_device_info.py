@@ -1,6 +1,6 @@
 """
 Device Information
-Builds the "Scan Device Information" content for a physical scanner:
+Builds the "Scan Devices Found" content for a physical scanner:
 identity, connection path, connection methods (fallback order), permissions,
 capabilities, live status and firmware. No GTK: returns plain data.
 See docs/research/device-capabilities.md §8.

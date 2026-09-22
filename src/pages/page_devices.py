@@ -1,5 +1,5 @@
 """
-Scan Device Information Page
+Scan Devices Found Page (sidebar: Devices)
 Every detected scanner with identity, connection path, connection methods in
 fallback order, permissions, capabilities, live status and firmware. Populates
 automatically; "Check for devices again" re-runs detection (SANE, eSCL, USB).
@@ -34,12 +34,12 @@ def run_in_background(work, on_done, on_fail):
 
 
 class DevicesPage(BasePage):
-    """Scan Device Information"""
+    """Scan Devices Found"""
 
     def build_content(self):
         """Title, check-again button, summary line and the device sections"""
         self.add_title(
-            "Scan Device Information",
+            "Scan Devices Found",
             "Scanners linscanner can see, how it reaches each one (in fallback order), and what they can do.",
         )
         row = Gtk.Box(spacing=10)

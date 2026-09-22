@@ -12,7 +12,14 @@ import tempfile
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import GLib, Gtk  # noqa: E402
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, GLib, Gtk  # noqa: E402
+
+# Identify the app to the desktop before any window exists: WM_CLASS "linscanner"
+# matches the menu entry (StartupWMClass), so the panel and Alt+Tab show its icon.
+GLib.set_prgname("linscanner")
+GLib.set_application_name("linscanner")
+Gdk.set_program_class("linscanner")
 
 from backends.backend_escl import EsclBackend  # noqa: E402
 from backends.backend_sane import SaneBackend  # noqa: E402

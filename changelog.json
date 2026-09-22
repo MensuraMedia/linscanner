@@ -245,6 +245,38 @@
     {
       "datetime": "2026-09-21T20:45:00",
       "description": "Docs: README, FEATURES, TECHNICAL (6b), screenshots, api-reference; 103 tests; v0.3.0"
+    },
+    {
+      "datetime": "2026-09-21T21:55:00",
+      "description": "Design doc docs/design/0.3.1-ui-polish.md (before the build; outcome recorded)"
+    },
+    {
+      "datetime": "2026-09-21T21:55:00",
+      "description": "Phosphor Icons (MIT) replace Heroicons; Preview page tools are icons with hover captions"
+    },
+    {
+      "datetime": "2026-09-21T21:55:00",
+      "description": "Scan page: Detect Scanner, Find before the list, green check when connected, Devices button"
+    },
+    {
+      "datetime": "2026-09-21T21:55:00",
+      "description": "Options: uniform 150 px buttons; Blank Pages Keep/Remove (synced with Settings); Document Size half width"
+    },
+    {
+      "datetime": "2026-09-21T21:55:00",
+      "description": "Button text 10 pt (sidebar size); sidebar Devices; page title Scan Devices Found"
+    },
+    {
+      "datetime": "2026-09-21T21:55:00",
+      "description": "App icon in Alt+Tab/panel: WM_CLASS linscanner, icon list, hicolor icon, StartupWMClass"
+    },
+    {
+      "datetime": "2026-09-21T21:55:00",
+      "description": "Signature fonts: 9 OFL + 4 licence-checked freeware (Arkipelago, Julia Lauren, Paul Signature, Sandra Belhock)"
+    },
+    {
+      "datetime": "2026-09-21T21:55:00",
+      "description": "Follow-up #33 rewritten for the bundled fonts only; v0.3.1; 105 tests"
     }
   ]
 }

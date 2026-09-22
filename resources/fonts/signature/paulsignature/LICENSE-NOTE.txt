@@ -1,0 +1,12 @@
+Copyright (c) 2019 by Cundrawan (cove703). All rights reserved.
+
+Licence as published by the designer on FontSpace: Freeware
+(https://www.fontspace.com/paul-signature-font-f34275)
+
+Terms found (checked 2026-09-21): the font is labelled Freeware; no restriction on personal,
+commercial or software use is stated by the designer or in the font file.
+Written confirmation of bundling in free software has been requested (docs/FOLLOW-UP.md #33).
+
+Original info.txt from the download:
+﻿license: Freeware
+link: https://www.fontspace.com/paul-signature-font-f34275

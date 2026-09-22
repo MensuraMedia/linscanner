@@ -203,7 +203,7 @@ class QuickEditor:
 
     # -- tool panel --------------------------------------------------------------
     def _tools(self):
-        """Right-hand panel: tools, text style, Apply Signature, item actions (icons: Heroicons)"""
+        """Right-hand panel: tools, text style, Apply Signature, item actions (icons: Phosphor)"""
         Gtk, Gdk = self.Gtk, self.Gdk
         panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         panel.set_size_request(340, -1)
@@ -217,10 +217,10 @@ class QuickEditor:
         for b, icon, tip in (
             (
                 self.select_tool,
-                "cursor-arrow-rays",
+                "cursor",
                 "Select / move (drag the frame to move, click inside text to edit)",
             ),
-            (self.text_tool, "pencil", "Add Text: click anywhere on the page and type"),
+            (self.text_tool, "text-t", "Add Text: click anywhere on the page and type"),
         ):
             b.set_mode(False)  # look like toggle buttons
             b.add(icon_image(icon, 18))
@@ -229,7 +229,7 @@ class QuickEditor:
             row.pack_start(b, False, False, 0)
         self.text_tool.connect("toggled", self._on_tool_toggled)
         self.guides_check = icon_button(
-            "viewfinder-circle", "Alignment guides on/off (hold Alt to place freely)", toggle=True
+            "ruler", "Alignment guides on/off (hold Alt to place freely)", toggle=True
         )
         self.guides_check.set_active(True)
         tools = Gtk.Box(spacing=12)
@@ -267,13 +267,13 @@ class QuickEditor:
         panel.pack_start(self._heading("Signature"), False, False, 0)
         row = Gtk.Box(spacing=6)
         self.apply_sig_btn = icon_label_button(
-            "finger-print",
+            "signature",
             "Apply Signature",
             "Place your signature: click on the page where it goes",
             self.apply_signature,
         )
         self.edit_sig_btn = icon_button(
-            "pencil-square", "Choose or create a different signature", self.open_signature_chooser
+            "pencil-simple", "Choose or create a different signature", self.open_signature_chooser
         )
         row.pack_start(self.apply_sig_btn, False, False, 0)
         row.pack_start(self.edit_sig_btn, False, False, 0)
@@ -295,7 +295,7 @@ class QuickEditor:
             0,
         )
         row.pack_start(
-            icon_button("square-2-stack", "Apply the selected item to all pages", self.apply_to_all),
+            icon_button("copy", "Apply the selected item to all pages", self.apply_to_all),
             False,
             False,
             0,
@@ -1115,7 +1115,7 @@ class SignatureCreator:
         page.pack_start(scroller, True, True, 0)
         row = Gtk.Box(spacing=8)
         row.pack_start(
-            icon_label_button("arrow-up-tray", "Add fonts…", None, self.add_fonts), False, False, 0
+            icon_label_button("upload-simple", "Add fonts…", None, self.add_fonts), False, False, 0
         )
         note = Gtk.Label(label="Add .ttf, .otf or .zip font files. Fonts you add stay on this computer.")
         note.get_style_context().add_class("muted")

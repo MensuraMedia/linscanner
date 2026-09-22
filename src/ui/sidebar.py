@@ -19,7 +19,7 @@ NAV_ITEMS = [
     ("Scan", "scan"),
     ("Preview", "preview"),
     ("Recent", "recent"),
-    ("Device Info", "devices"),
+    ("Devices", "devices"),
     ("About", "about"),
 ]
 BOTTOM_ITEMS = [("Settings", "settings")]

@@ -76,6 +76,8 @@ class SettingsPage(BasePage):
         # optional features
         if self.ctx.features:
             card = self.add_card("Features")
+            self.feature_checks = {}
+            self.ctx.on("features-changed", self.sync_feature_checks)
             card.pack_start(
                 self.label(
                     "Optional modules. Turn any of them off (or delete its file in src/features/) "
@@ -91,6 +93,7 @@ class SettingsPage(BasePage):
                 check = Gtk.CheckButton(label=feature.name)
                 check.set_active(self.ctx.features.is_enabled(feature))
                 check.connect("toggled", self.on_feature_toggled, feature)
+                self.feature_checks[feature.id] = check
                 card.pack_start(check, False, False, 0)
                 desc = self.label(feature.description, "muted", wrap=True)
                 desc.set_margin_start(26)
@@ -162,8 +165,17 @@ class SettingsPage(BasePage):
 
     def on_feature_toggled(self, check, feature):
         """Enable or disable a feature module; pages update immediately"""
+        if check.get_active() == self.ctx.features.is_enabled(feature):
+            return  # already in that state (e.g. switched from the Scan page)
         self.ctx.features.set_enabled(feature.id, check.get_active())
         self.ctx.emit("features-changed")
+
+    def sync_feature_checks(self, *_):
+        """Follow switches made elsewhere (e.g. Scan page → Blank Pages)"""
+        for fid, check in self.feature_checks.items():
+            feature = self.ctx.features.get(fid)
+            if feature and check.get_active() != self.ctx.features.is_enabled(feature):
+                check.set_active(self.ctx.features.is_enabled(feature))
 
     def open_log_folder(self):
         """Open the log folder in the file manager"""

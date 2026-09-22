@@ -40,11 +40,14 @@ def test_guides_equal_spacing_mirror_and_centre():
 def test_bundled_signature_fonts_have_credits_and_licence():
     from utils.util_fonts import bundled_signature_fonts
 
+    from utils.util_paths import resource
+
     fonts = bundled_signature_fonts()
-    assert len(fonts) == 9
+    assert len(fonts) == 13  # 9 SIL OFL + 4 freeware (licences checked, design 0.3.1 §9)
     for f in fonts:
-        assert os.path.exists(f["path"]) and f["designer"] and f["license"] == "SIL Open Font License 1.1"
-        assert os.path.exists(os.path.join(os.path.dirname(f["path"]), "OFL.txt"))
+        assert os.path.exists(f["path"]) and f["designer"] and f["copyright"]
+        assert f["license"] in ("SIL Open Font License 1.1", "Freeware (FontSpace)")
+        assert os.path.exists(resource("fonts", "signature", f["license_file"]))
 
 
 def test_import_fonts_from_zip_only_takes_fonts(tmp_path):
@@ -59,7 +62,7 @@ def test_import_fonts_from_zip_only_takes_fonts(tmp_path):
     added = import_fonts([str(z)])
     assert added == [bundled_signature_fonts()[0]["family"]]
     assert [os.path.basename(f["path"]) for f in user_signature_fonts()] == ["MyFont.ttf"]
-    assert len(signature_fonts()) == 9  # same family as a bundled one: listed once
+    assert len(signature_fonts()) == 13  # same family as a bundled one: listed once
 
 
 def test_render_text_offsets_keep_script_fonts_on_the_page():

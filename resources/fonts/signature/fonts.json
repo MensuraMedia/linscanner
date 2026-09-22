@@ -1,5 +1,5 @@
 {
-  "description": "Signature fonts bundled with linscanner. All are SIL Open Font License 1.1 (bundling and redistribution permitted, unmodified). Source: Google Fonts.",
+  "description": "Signature fonts bundled with linscanner: SIL Open Font License 1.1 fonts from Google Fonts (bundling and redistribution explicitly permitted) and Freeware fonts whose designers state no restriction on use (see each LICENSE-NOTE.txt). Licences checked 2026-09-21; see docs/design/0.3.1-ui-polish.md section 9.",
   "fonts": [
     {
       "family": "Alex Brush",
@@ -81,6 +81,42 @@
       "license": "SIL Open Font License 1.1",
       "license_file": "sacramento/OFL.txt",
       "source": "https://github.com/google/fonts/tree/main/ofl/sacramento"
+    },
+    {
+      "family": "Arkipelago",
+      "file": "arkipelago/Arkipelago-MxRJ.otf",
+      "designer": "Nasir Udin",
+      "copyright": "Copyright (c) 2018 by Nasir Udin. All rights reserved.",
+      "license": "Freeware (FontSpace)",
+      "license_file": "arkipelago/LICENSE-NOTE.txt",
+      "source": "https://www.fontspace.com/arkipelago-font-f30487"
+    },
+    {
+      "family": "Julia Lauren",
+      "file": "julialauren/JuliaLauren-1vJj.ttf",
+      "designer": "Fenny Wiryani (starinkbrush)",
+      "copyright": "Copyright (c) 2019 by starinkbrush - Fenny Wiryani. All rights reserved.",
+      "license": "Freeware (FontSpace)",
+      "license_file": "julialauren/LICENSE-NOTE.txt",
+      "source": "https://www.fontspace.com/julia-lauren-font-f32463"
+    },
+    {
+      "family": "Paul Signature",
+      "file": "paulsignature/PaulSignature-WEJY.ttf",
+      "designer": "Cundrawan (cove703)",
+      "copyright": "Copyright (c) 2019 by Cundrawan (cove703). All rights reserved.",
+      "license": "Freeware (FontSpace)",
+      "license_file": "paulsignature/LICENSE-NOTE.txt",
+      "source": "https://www.fontspace.com/paul-signature-font-f34275"
+    },
+    {
+      "family": "Sandra Belhock",
+      "file": "sandrabelhock/SandraBelhock-7LAE.ttf",
+      "designer": "Cundrawan (cove703)",
+      "copyright": "Copyright (c) 2019 by Cundrawan (cove703). All rights reserved.",
+      "license": "Freeware (FontSpace)",
+      "license_file": "sandrabelhock/LICENSE-NOTE.txt",
+      "source": "https://www.fontspace.com/sandra-belhock-font-f32230"
     }
   ]
 }

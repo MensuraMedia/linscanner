@@ -65,3 +65,11 @@
 | 2026-09-21T20:45:00 | Buttons sized to their labels, 28 px like the sidebar rows |
 | 2026-09-21T20:45:00 | Fix: Sheets row empty after choosing a feeder; Recent icon column type |
 | 2026-09-21T20:45:00 | Docs: README, FEATURES, TECHNICAL (6b), screenshots, api-reference; 103 tests; v0.3.0 |
+| 2026-09-21T21:55:00 | Design doc docs/design/0.3.1-ui-polish.md (before the build; outcome recorded) |
+| 2026-09-21T21:55:00 | Phosphor Icons (MIT) replace Heroicons; Preview page tools are icons with hover captions |
+| 2026-09-21T21:55:00 | Scan page: Detect Scanner, Find before the list, green check when connected, Devices button |
+| 2026-09-21T21:55:00 | Options: uniform 150 px buttons; Blank Pages Keep/Remove (synced with Settings); Document Size half width |
+| 2026-09-21T21:55:00 | Button text 10 pt (sidebar size); sidebar Devices; page title Scan Devices Found |
+| 2026-09-21T21:55:00 | App icon in Alt+Tab/panel: WM_CLASS linscanner, icon list, hicolor icon, StartupWMClass |
+| 2026-09-21T21:55:00 | Signature fonts: 9 OFL + 4 licence-checked freeware (Arkipelago, Julia Lauren, Paul Signature, Sandra Belhock) |
+| 2026-09-21T21:55:00 | Follow-up #33 rewritten for the bundled fonts only; v0.3.1; 105 tests |

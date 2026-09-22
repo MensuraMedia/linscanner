@@ -14,6 +14,23 @@ from ui.sidebar import Sidebar  # noqa: E402
 from utils.util_paths import resource  # noqa: E402
 
 
+ICON_SIZES = (16, 24, 32, 48, 64, 128, 256)
+
+
+def set_app_icon(window=None):
+    """The linscanner icon in several sizes, for every window (panel, Alt+Tab, dialogs)"""
+    from gi.repository import GdkPixbuf, GLib
+
+    try:
+        full = GdkPixbuf.Pixbuf.new_from_file(resource("images", "logo.png"))
+    except GLib.Error:  # missing icon is cosmetic
+        return
+    icons = [full.scale_simple(s, s, GdkPixbuf.InterpType.BILINEAR) for s in ICON_SIZES]
+    Gtk.Window.set_default_icon_list(icons)
+    if window is not None:
+        window.set_icon_list(icons)
+
+
 class AppWindow(Gtk.Window):
     """Main application window"""
 
@@ -23,10 +40,7 @@ class AppWindow(Gtk.Window):
         ctx.window = self
         self.set_default_size(Layout.dimensions.WINDOW_DEFAULT_WIDTH, Layout.dimensions.WINDOW_DEFAULT_HEIGHT)
         self.set_position(Gtk.WindowPosition.CENTER)
-        try:
-            self.set_icon_from_file(resource("images", "logo.png"))
-        except Exception:  # missing icon is cosmetic
-            pass
+        set_app_icon(self)
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         self.add(box)
         self.sidebar = Sidebar(ctx.nav)  # registers its callback before pages navigate

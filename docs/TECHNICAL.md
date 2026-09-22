@@ -1,4 +1,4 @@
-# linscanner technical document (v0.3.0)
+# linscanner technical document (v0.3.1)
 
 How linscanner detects, connects to and drives scanners on Linux, what every
 part does, and how the optional feature modules plug in. The user guide is
@@ -12,7 +12,7 @@ The research behind the connection design is in [`research/`](research/).
 
 ```
                  ┌────────────────────────────── GTK 3 UI (framework layout) ──────────────────────────────┐
-                 │  Scan        Preview        Scan Device Information        Settings        About            │
+                 │  Scan   Preview   Recent   Scan Devices Found   Settings   About                  │
                  └───────┬───────────┬──────────────────┬──────────────────────────┬────────────────────────┘
                          │           │                  │                          │
                  modules/manager_scan (ScanManager) ── modules/manager_device_info  features/FeatureRegistry
@@ -214,7 +214,7 @@ falls through.
 | Live status | eSCL `ScannerStatus` (`State`, `AdfState`), or an option read on SANE whose exit code is mapped to Ready / Busy / Not responding / Permission denied / Feeder empty / Jam / Cover open |
 | Firmware | epsonds debug output (`SANE_DEBUG_EPSONDS`, "version: ADF 10L5"), eSCL `Version`, else "not reported by the driver" |
 
-All of this appears on the **Scan Device Information** page (§5.3).
+All of this appears on the **Scan Devices Found** page (sidebar: Devices, §5.3).
 
 ---
 
@@ -223,16 +223,17 @@ All of this appears on the **Scan Device Information** page (§5.3).
 ### 5.1 Scan page
 
 - **Scanner:** one entry per *physical* scanner, labelled with the preferred
-  driver and "(+N more)" when there are fallbacks, plus **Refresh** and
-  **Device info** buttons. Devices with no working driver are listed with
+  driver and "(+N more)" when there are fallbacks, with **Find** before the list and a
+  **Devices** button after it (0.3.1). Devices with no working driver are listed with
   their hint.
 - **Options:**
   - **Profile** (feature);
-  - **Source**;
+  - **Scan Type** (was Source);
   - **Sheets:** *All sheets* / *One sheet at a time*, shown for feeder sources;
   - **Color / Black & White**;
   - **High / Medium / Low**;
-  - **Paper size**.
+  - **Blank Pages** (Keep / Remove);
+  - **Document Size** (was Paper size).
 - **Summary line:** exactly what will be sent to the scanner.
 - **Scan / Cancel / Done → Preview**, per-page progress, and status messages
   including how many blank pages were removed.
@@ -261,7 +262,7 @@ Export flattens rotation and Quick Edit layers. Features may split the
 pages into several documents, write the PDF themselves (OCR) and
 post-process it (PDF/A, size).
 
-### 5.3 Scan Device Information page
+### 5.3 Scan Devices Found page
 
 This page populates automatically, and **Check for devices again** re-runs
 full discovery (SANE + eSCL + USB) for this page and the Scan page. For each
@@ -360,7 +361,7 @@ Design notes, and how each idea can be reused, are in
   full search.
 - **Fallback.** If it doesn't answer (for example, a replugged USB device
   has a new `libusb:BBB:DDD`), the Scan page runs a full search.
-- **Device Info** runs a full search when opened on a restored scanner, so
+- **Devices** runs a full search when opened on a restored scanner, so
   it has the USB facts and every driver.
 
 ### Scan Type and Auto-Detect
@@ -416,7 +417,7 @@ Design notes, and how each idea can be reused, are in
     D-Bus, falling back to `Gtk.show_uri_on_window`.
 
 ### Quick Edit (`features/feature_quick_edit.py`)
-- **Tools.** Select / Add Text (radio buttons with Heroicons), a guides
+- **Tools.** Select / Add Text (radio buttons with Phosphor icons), a guides
   toggle, and text style (font, size, colour). Changing the style restyles
   the text being edited or the selected text.
 - **Typing.** It happens on the canvas through `Gtk.IMMulticontext`, so dead
@@ -454,14 +455,35 @@ Design notes, and how each idea can be reused, are in
 - **User fonts.** `import_fonts()` copies .ttf/.otf files, or the fonts
   inside a .zip, to `~/.local/share/linscanner/fonts`. The family name is
   read by Pillow. These fonts are never bundled.
-- **Icons.** `utils/util_icons.py` loads Heroicons SVGs from
-  `resources/icons/heroicons/`, replaces `currentColor` with the theme's
+- **Icons.** `utils/util_icons.py` loads Phosphor Icons SVGs (MIT, regular
+  weight) from `resources/icons/phosphor/regular/`, replaces `currentColor` with the theme's
   text colour, renders them with `GdkPixbuf.PixbufLoader` (librsvg,
   `librsvg2-common`) and caches them.
   - `icon_button()` makes a square button with just an icon;
     `icon_label_button()` adds a short label.
   - Buttons are 28 px tall (the same as the sidebar rows) and as wide as
     their label; see `.icon-button` and the `button` CSS rules.
+
+### 0.3.1 polish
+- **App identity.** `main.py` sets `GLib.set_prgname` and
+  `Gdk.set_program_class` to `linscanner` before any window exists, giving
+  `WM_CLASS "linscanner"`.
+  - `ui/app_window.set_app_icon()` sets a 16–256 px icon list as the default
+    for every window.
+  - `install.sh` installs `~/.local/share/icons/hicolor/512x512/apps/linscanner.png`
+    and writes `Icon=linscanner` and `StartupWMClass=linscanner` into the
+    menu entry. Cinnamon's panel and Alt+Tab then match the window to it.
+- **Scan page.**
+  - The `mark` stack after the scanner list shows the spinner while
+    searching, or a green Phosphor `check` once "Scanner Found".
+  - `SegmentedControl(button_width=150)` makes the option buttons line up
+    in columns.
+  - **Blank Pages** calls `FeatureRegistry.set_enabled("blank_removal", …)`
+    and emits `features-changed`; Settings → Features follows
+    (`sync_feature_checks`).
+- **Text size.** Button labels are 10 pt, the same as the sidebar labels.
+- **Fonts.** 13 signature fonts are bundled, 9 SIL OFL and 4 freeware. The
+  licence review is in `design/0.3.1-ui-polish.md` §9.
 
 ### Robustness
 - `ScanManager._in_thread` wraps callbacks so an idle handler never repeats.

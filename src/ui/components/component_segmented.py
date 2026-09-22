@@ -12,8 +12,8 @@ from gi.repository import Gtk  # noqa: E402
 class SegmentedControl(Gtk.Box):
     """Radio-style toggle buttons; on_changed(key) fires on user selection"""
 
-    def __init__(self, items, active=None, on_changed=None):
-        """items: [(key, label)]"""
+    def __init__(self, items, active=None, on_changed=None, button_width=None):
+        """items: [(key, label)]; button_width: same width for every button (uniform rows)"""
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
         self.get_style_context().add_class("segment")
         self.set_halign(Gtk.Align.START)
@@ -22,6 +22,8 @@ class SegmentedControl(Gtk.Box):
         self._updating = False
         for key, text in items:
             btn = Gtk.ToggleButton(label=text)
+            if button_width:
+                btn.set_size_request(button_width, -1)
             btn.connect("toggled", self._toggled, key)
             self.pack_start(btn, False, False, 0)
             self.buttons[key] = btn

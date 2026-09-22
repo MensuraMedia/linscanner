@@ -31,3 +31,5 @@ type: project
   - Scan Type Front & Back;
   - the Quick Edit pointer zones by hand;
   - Apply Signature and the edit-icon chooser.
+- [x] 0.3.1 polish built (docs/design/0.3.1-ui-polish.md)
+- [ ] Restart linscanner and check the icon in Alt+Tab and the panel (Cinnamon)

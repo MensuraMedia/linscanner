@@ -128,7 +128,7 @@ class AboutPage(BasePage):
                     "Wi-Fi / network scanners, text recognition in languages other than English, "
                     "cameras and document cameras",
                 ),
-                ("Check a scanner", "Device Info shows whether a driver can use your scanner and why"),
+                ("Check a scanner", "Devices shows whether a driver can use your scanner and why"),
             ],
         )
 
@@ -195,7 +195,7 @@ class AboutPage(BasePage):
                 ("Scanning", "SANE project, sane-airscan (Alexander Pevzner), ipp-usb (OpenPrinting)"),
                 ("Images and PDF", "Pillow, NumPy, Ghostscript (Artifex)"),
                 ("Text recognition", "Tesseract OCR"),
-                ("Icons", "Heroicons by Tailwind Labs (MIT licence)"),
+                ("Icons", "Phosphor Icons by Helena Zhang and Tobias Fried (MIT licence)"),
                 ("Text fonts", "DejaVu, Liberation, Noto, Ubuntu and URW base35, from your system"),
             ],
         )
@@ -203,8 +203,9 @@ class AboutPage(BasePage):
         card = self.add_card("Signature fonts")
         self._text(
             card,
-            "These fonts are included with linscanner under the SIL Open Font License 1.1, which "
-            "allows them to be bundled and shared. Thank you to their designers.",
+            "Included with linscanner. Nine are under the SIL Open Font License 1.1, which allows them "
+            "to be bundled and shared; four are Freeware fonts whose designers state no restriction on "
+            "their use. Thank you to all their designers.",
             "muted",
         )
         fonts = bundled_signature_fonts()
@@ -215,7 +216,7 @@ class AboutPage(BasePage):
         )
         self._text(
             card,
-            f"Licence texts: {tilde(resource('fonts', 'signature'))}/<font>/OFL.txt · source: Google Fonts",
+            f"Licence texts: {tilde(resource('fonts', 'signature'))}/<font>/ (OFL.txt or LICENSE-NOTE.txt)",
             "muted",
             selectable=True,
         )

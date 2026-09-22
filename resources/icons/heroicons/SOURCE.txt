@@ -1,2 +1,0 @@
-Heroicons v2.2.0 by Tailwind Labs (MIT, see LICENSE). https://heroicons.com/
-Only the icons linscanner uses are copied here; the full set and its INDEX.txt are in ~/projects/assets/Icons/heroicons.

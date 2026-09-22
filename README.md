@@ -12,7 +12,7 @@ Linux's standard scanning system (SANE) can drive.
 
 | | |
 |---|---|
-| Version | 0.3.0 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
+| Version | 0.3.1 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
 | Platform | Linux desktop, GTK 3 |
 | Tested on | Linux Mint 22.3 (Ubuntu 24.04 base), kernel 7.0, amd64, with an Epson WorkForce ES-400 II |
 | Part of | [linux-peripherals](../README.md), which has offline installers and device references |
@@ -48,14 +48,15 @@ Linux's standard scanning system (SANE) can drive.
 | **Remembers your scanner** | Reached directly at the next start (a second or two instead of a full search); a spinner while looking, a green **Scanner Found**, and plain words when something needs fixing ("Unable to detect scanner. Check that it's connected and powered on") |
 | **Sheet-fed modes** | **All sheets** (the whole stack in one go) or **One sheet at a time** (each press adds a sheet to the same document; a duplex sheet gives front + back) |
 | **Connection fallback** | Tries every way to reach the scanner in order over the USB cable (open-source driver → vendor driver → driverless IPP-over-USB → own eSCL client), until one scans. Never retries when you need to act (feeder empty, jam, cover open) |
-| **Scan Device Information** | Every detected scanner with identity, USB connection details, connection methods, permissions, capabilities, live status and firmware, plus **Check for devices again** |
+| **Scan Devices Found** (sidebar: **Devices**) | Every detected scanner with identity, USB connection details, connection methods, permissions, capabilities, live status and firmware, plus **Check for devices again** |
 | **Color / Black & White** | Color, or Black & White. B&W is grayscale by default (keeps faint text); Settings can switch it to pure black-and-white |
 | **Quality** | High 600 dpi, Medium 300 dpi, Low 150 dpi, automatically matched to the nearest resolution your scanner supports |
-| **Paper size** | **Auto-Detect** (fits each page to the paper, when its edges can be seen); documents (Letter, Legal, Executive, Half Letter, A4, A5, A6, B5); receipts (80 / 58 mm); cards (business, ID / credit, index); photos (4×6, 5×7); checks; full scan area |
+| **Document Size** | **Auto-Detect** (fits each page to the paper, when its edges can be seen); documents (Letter, Legal, Executive, Half Letter, A4, A5, A6, B5); receipts (80 / 58 mm); cards (business, ID / credit, index); photos (4×6, 5×7); checks; full scan area |
 | **Clear feedback** | A summary line shows exactly what will be scanned; per-page progress; page count; plain-language errors (feeder empty, paper jam, scanner busy, not responding) |
 | **Cancel** | Stops the scan and keeps the pages already scanned |
 | **Preview** | Fast page switching; **zoom** (buttons, Ctrl + wheel, drag to pan); a scrollable, left-aligned thumbnail strip with **1 or 2 rows**; opens automatically after scanning |
-| **Page tools** | Rotate left, right or 180°; move pages earlier or later; delete a page; clear all |
+| **Page tools** | Icon buttons with captions on hover: rotate left, right or 180°; move a page left or right; delete a page; clear all |
+| **Blank Pages** | *Keep* or *Remove* right on the Scan page (the same switch as the Blank-page removal module) |
 | **Quick Edit** | **Add Text**: click anywhere on the page and type, with alignment guides that line text up with earlier text. **Apply Signature** places your signature; the edit icon beside it chooses or creates one (up to 4 saved, typed in one of 9 signature fonts or uploaded as a PNG). Hand pointer to move, text pointer to edit, corner to resize. Non-destructive until you save |
 | **Recent** | A table of saved documents (date, folder, file name), newest first: the folder icon opens the file manager, the document icon opens the file for Quick Edit, the trash icon removes the entry; clear all or entries older than 5–90 days |
 | **Automatic clean-up** | Auto-crop (feeder overrun), deskew and blank-page removal, on by default |
@@ -112,7 +113,7 @@ scanner that has a SANE driver on your system.
 **Verified hardware:** Epson WorkForce ES-400 II (USB `04b8:0181`, driver
 `epsonds`). The initial hardware test passed on 2026-09-21.
 
-![Scan Device Information](docs/images/screenshot-device-info.png)
+![Scan Devices Found](docs/images/screenshot-device-info.png)
 
 **Check your scanner** before or after installing:
 ```bash
@@ -173,9 +174,9 @@ rm -rf ~/.config/linscanner                # removes your settings (optional)
 ### Scan a document
 1. Open **linscanner** from the menu (or run `linscanner/run.sh`).
 2. **Scanner:** it's found automatically. Finding scanners takes about 10
-   seconds; press **Refresh** after plugging one in.
-   A spinner turns while it looks. **Scanner Found** (green) means it's
-   ready, and linscanner remembers it for next time.
+   seconds; press **Find** (before the scanner list, under **Detect Scanner**) after plugging one in.
+   A spinner turns while it looks. A green check mark after the scanner's
+   name and **Scanner Found** mean it's ready; linscanner remembers it for next time.
 3. **Scan Type:** *Front Page* scans one side of each sheet; *Front & Back*
    scans both sides (shown when your scanner can). Scanners with a glass too
    also offer *Flatbed*.
@@ -186,7 +187,7 @@ rm -rf ~/.config/linscanner                # removes your settings (optional)
 4. **Color:** *Color* or *Black & White*.
 5. **Quality:** *High* for small print, photos or archiving; *Medium* for
    everyday documents; *Low* for quick copies and small files.
-6. **Paper size:** **Auto-Detect** (the default) fits each page to the paper
+6. **Document Size:** **Auto-Detect** (the default) fits each page to the paper
    you scanned: receipts, cards and letters alike. Or choose a size: documents,
    receipts (80 / 58 mm wide), cards, photos or checks. Auto-Detect needs the
    paper to look different from the scanner's background; when it doesn't,
@@ -208,10 +209,11 @@ Pages appear as they are scanned, and **Preview** opens when the scan finishes.
   strip scrolls sideways; choose **1 row** or **2 rows** of thumbnails.
 - **Zoom** with the magnifier icons, Ctrl + mouse wheel or Ctrl + / −; the
   fit icon (or Ctrl 0) shows the whole page. Drag a zoomed page to move around.
-- **Rotate left / right / 180°** to correct orientation, for example if your
+- The page tools are icons; hover over one to see its name. **Rotate left /
+  right / 180°** correct orientation, for example if your
   feeder delivers pages upside down.
-- **Delete page** removes a bad page, and **Move ← / →** reorders pages.
-  **Clear all** starts over.
+- **Delete page** (page with an ×) removes a bad page, and the arrows move a
+  page left or right. **Clear all** (trash) starts over.
 - **Quick Edit…** opens the page editor:
   - **Add Text** (pencil icon): the pointer becomes a text cursor. Click
     anywhere on the page and type. Enter starts a new line underneath, Esc
@@ -225,7 +227,7 @@ Pages appear as they are scanned, and **Preview** opens when the scan finishes.
     its corner square to resize it.
   - **Edit icon** (next to Apply Signature): choose one of your saved
     signatures (up to 4, kept between sessions), delete one with its trash
-    icon, or **Create Signature**. Type your name and pick one of 9
+    icon, or **Create Signature**. Type your name and pick one of 13
     signature fonts, or upload a PNG (a white background can be made
     transparent).
   - **Pointer:** a hand on an item's frame means drag to move; a text cursor
@@ -313,8 +315,8 @@ send for help). Start with `run.sh --debug` for extra detail.
 
 | Problem | What to do |
 |---|---|
-| "No scanners found" | Check the cable and power, then **Device Info → Check for devices again**. A scanner found on USB but with no working driver is listed there with what to do |
-| Scanner listed but "not responding" / timed out | Power-cycle the scanner and press Refresh. On the ES-400 II this happens after the Epson Scan 2 Flatpak crashes |
+| "No scanners found" | Check the cable and power, then **Devices → Check for devices again**. A scanner found on USB but with no working driver is listed there with what to do |
+| Scanner listed but "not responding" / timed out | Power-cycle the scanner and press **Find**. On the ES-400 II this happens after the Epson Scan 2 Flatpak crashes |
 | "Document feeder is empty" | Load pages **face down**, top edge first, until the feeder grips them |
 | "Scanner is busy" | Close other scanning apps (Document Scanner, Epson Scan 2, gscan2pdf) |
 | Pages come out upside down | Turn on **Auto-rotate** in Settings → Features (needs text on the page), or use **Rotate 180°** |
@@ -324,7 +326,7 @@ send for help). Start with `run.sh --debug` for extra detail.
 | Scanning is slow at High quality | Use a USB 3 port and cable if the scanner supports it (`../bin/device-finder` shows the link speed) |
 | Scanner appears twice in other apps | A vendor driver (e.g. Epson's `epsonscan2`) adds a second entry; linscanner hides it automatically |
 | Only works with sudo | Permissions: log out and in, or re-run the device installer (for the ES-400 II: `devices/scanner/epson-es-400-ii/install.sh`) |
-| "Unable to detect scanner" | Check the USB cable and that the scanner is switched on (many turn themselves off after a while), then press **Refresh** |
+| "Unable to detect scanner" | Check the USB cable and that the scanner is switched on (many turn themselves off after a while), then press **Find** |
 | Auto-Detect didn't trim the page | The paper looks the same as the scanner's background (for example white paper on a white backing), so its edges can't be found. Choose the matching paper size instead |
 | A remembered scanner isn't found at start | linscanner searches for scanners automatically when the remembered one doesn't answer (for example after plugging it into another port) |
 | My Wi-Fi / network scanner isn't listed | Wi-Fi and network scanning isn't supported at this time, so linscanner doesn't search the network. Connect the scanner with a USB cable |
@@ -456,6 +458,19 @@ do its seven dark themes:
 - Settings stored inside the scanner (sleep timer, etc.) can't be changed from Linux.
 - OCR is English only.
 
+**Done in 0.3.1:**
+- Phosphor Icons;
+- icon page tools with hover captions;
+- Detect Scanner / Find / check mark;
+- uniform Options with Blank Pages;
+- Document Size;
+- Devices;
+- the app icon in Alt+Tab and the panel;
+- 10 pt button text;
+- signature fonts limited to licence-checked ones.
+
+See [`docs/design/0.3.1-ui-polish.md`](docs/design/0.3.1-ui-polish.md).
+
 **Done in 0.3.0:**
 - faster Preview with zoom and 1- or 2-row thumbnails;
 - Save and Recent;
@@ -463,7 +478,7 @@ do its seven dark themes:
 - the remembered scanner;
 - Quick Edit Add Text with alignment guides, Apply Signature with 4 saved
   signatures and signature fonts;
-- Heroicons.
+- Heroicons (replaced by Phosphor Icons in 0.3.1).
 
 The design notes are in [`docs/design/0.3.0-ui-refinements.md`](docs/design/0.3.0-ui-refinements.md).
 
@@ -499,7 +514,7 @@ src/backends/        scanner interface, SANE backend, own eSCL client, USB probe
 src/features/        optional modules (feature_*.py), loaded by the FeatureRegistry
 src/modules/         scan manager, connection engine, device info, export, settings, theme, navigation, context
 src/ui/              window, sidebar, content area, components (segmented control, preview)
-src/pages/           scan, preview, device info, settings, about
+src/pages/           scan, preview, recent, devices, settings, about
 src/utils/           paths, version
 tests/               pytest suite + captured scanner output fixtures
 docs/                FEATURES, api-reference, architecture, research, images
@@ -528,12 +543,16 @@ The design is in [`docs/architecture.md`](docs/architecture.md).
 - Build process: [MensuraMedia/universal-instruction-set](https://github.com/MensuraMedia/universal-instruction-set)
 - Scanning: [SANE](http://www.sane-project.org/), [sane-airscan](https://github.com/alexpevzner/sane-airscan), [ipp-usb](https://github.com/OpenPrinting/ipp-usb)
 - Images and PDF: [Pillow](https://python-pillow.org/), NumPy, Ghostscript
-- Icons: [Heroicons](https://heroicons.com/) by Tailwind Labs (MIT), in `resources/icons/heroicons/`
-- Signature fonts (SIL Open Font License 1.1, from Google Fonts), in `resources/fonts/signature/` with each licence:
+- Icons: [Phosphor Icons](https://phosphoricons.com/) by Helena Zhang and Tobias Fried (MIT), in `resources/icons/phosphor/`
+- SIL OFL signature fonts (Open Font License 1.1, from Google Fonts), in `resources/fonts/signature/` with each licence:
   - Alex Brush, Allura and Great Vibes by Robert Leuschke;
   - Herr Von Muellerhoff, Monsieur La Doulaise, Mr Dafoe and Mrs Saint Delafield by Sudtipos (Alejandro Paul);
   - Pinyon Script by Nicole Fally;
   - Sacramento by Astigmatic.
+- Freeware signature fonts, in `resources/fonts/signature/` with a `LICENSE-NOTE.txt` each (licences checked; see `docs/design/0.3.1-ui-polish.md` §9):
+  - Arkipelago by Nasir Udin;
+  - Julia Lauren by Fenny Wiryani (starinkbrush);
+  - Paul Signature and Sandra Belhock by Cundrawan (cove703).
 
 ---
 

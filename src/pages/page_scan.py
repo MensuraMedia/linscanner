@@ -15,9 +15,12 @@ from config.config_scan import COLOR_MODES, PAPER_SIZES, QUALITY_PRESETS, SHEET_
 from modules.manager_scan import ScanManager, is_duplex, is_feeder, scan_types  # noqa: E402
 from pages.page_base import BasePage  # noqa: E402
 from ui.components.component_segmented import SegmentedControl  # noqa: E402
+from utils.util_icons import icon_image  # noqa: E402
 from utils.util_logging import get_logger  # noqa: E402
 
 log = get_logger("ui")
+
+OPTION_BUTTON_WIDTH = 150  # every option button the same width, so the choices line up in columns
 
 
 class ScanPage(BasePage):
@@ -32,18 +35,28 @@ class ScanPage(BasePage):
         self.add_title("Scan", "Load your pages, choose the options and press Scan.")
 
         # -- scanner card
-        card = self.add_card("Scanner")
+        card = self.add_card("Detect Scanner")
         row = Gtk.Box(spacing=10)
+        self.refresh_btn = Gtk.Button(label="Find")
+        self.refresh_btn.set_tooltip_text("Search for scanners (USB) again")
+        self.refresh_btn.connect("clicked", lambda *_: self.refresh_devices())
+        row.pack_start(self.refresh_btn, False, False, 0)
         self.device_combo = Gtk.ComboBoxText()
         self.device_combo.connect("changed", self.on_device_changed)
         row.pack_start(self.device_combo, True, True, 0)
-        self.spinner = Gtk.Spinner()  # turns while looking for the scanner
-        self.spinner.set_size_request(18, 18)
-        row.pack_start(self.spinner, False, False, 0)
-        self.refresh_btn = Gtk.Button(label="Refresh")
-        self.refresh_btn.connect("clicked", lambda *_: self.refresh_devices())
-        row.pack_start(self.refresh_btn, False, False, 0)
-        info_btn = Gtk.Button(label="Device info")
+        # status mark after the scanner name: a spinner while looking, a green check once connected
+        self.mark = Gtk.Stack()
+        self.mark.set_size_request(24, 24)
+        self.spinner = Gtk.Spinner()
+        self.mark.add_named(self.spinner, "looking")
+        success = getattr(getattr(self.ctx.theme, "current_theme", None), "success", None) or "#3fd059"
+        self.connected_icon = icon_image("check", 22, success)
+        self.connected_icon.set_tooltip_text("Scanner connected")
+        self.mark.add_named(self.connected_icon, "connected")
+        self.mark.add_named(Gtk.Box(), "none")
+        row.pack_start(self.mark, False, False, 0)
+        info_btn = Gtk.Button(label="Devices")
+        info_btn.set_tooltip_text("Every scanner found, with its connection and capabilities")
         info_btn.connect("clicked", lambda *_: self.ctx.nav.navigate_to("devices"))
         row.pack_start(info_btn, False, False, 0)
         card.pack_start(row, False, False, 0)
@@ -68,6 +81,7 @@ class ScanPage(BasePage):
             [(k, v["label"]) for k, v in SHEET_MODES.items()],
             active=s.get("sheet_mode"),
             on_changed=lambda k: self.remember("sheet_mode", k),
+            button_width=OPTION_BUTTON_WIDTH,
         )
         self.sheets_row = self.form_row("Sheets", self.sheets)
         self.sheets_row.set_no_show_all(True)
@@ -77,6 +91,7 @@ class ScanPage(BasePage):
             [(k, v["label"]) for k, v in COLOR_MODES.items()],
             active=s.get("color_mode"),
             on_changed=lambda k: self.remember("color_mode", k),
+            button_width=OPTION_BUTTON_WIDTH,
         )
         card.pack_start(self.form_row("Color", self.color), False, False, 0)
 
@@ -84,8 +99,21 @@ class ScanPage(BasePage):
             [(k, v["label"]) for k, v in QUALITY_PRESETS.items()],
             active=s.get("quality"),
             on_changed=lambda k: self.remember("quality", k),
+            button_width=OPTION_BUTTON_WIDTH,
         )
         card.pack_start(self.form_row("Quality", self.quality), False, False, 0)
+
+        # Blank Pages: a shortcut for the Blank-page removal module (same switch as Settings → Features)
+        self.blank = SegmentedControl(
+            [("keep", "Keep"), ("remove", "Remove")],
+            active="remove" if self._blank_enabled() else "keep",
+            on_changed=self.on_blank_changed,
+            button_width=OPTION_BUTTON_WIDTH,
+        )
+        self.blank.set_tooltip_text("Remove blank pages (for example the empty backs of single-sided sheets)")
+        self.blank_row = self.form_row("Blank Pages", self.blank)
+        self.blank_row.set_no_show_all(self._blank_feature() is None)
+        card.pack_start(self.blank_row, False, False, 0)
 
         self.paper_combo = Gtk.ComboBoxText()
         group = None
@@ -101,7 +129,10 @@ class ScanPage(BasePage):
         if not self.paper_combo.set_active_id(s.get("paper")):
             self.paper_combo.set_active_id("auto_detect")
         self.paper_combo.connect("changed", lambda c: self.remember("paper", c.get_active_id()))
-        card.pack_start(self.form_row("Paper size", self.paper_combo), False, False, 0)
+        half = Gtk.Box(homogeneous=True)  # the list takes half the width
+        half.pack_start(self.paper_combo, True, True, 0)
+        half.pack_start(Gtk.Box(), True, True, 0)
+        card.pack_start(self.form_row("Document Size", half), False, False, 0)
 
         self.summary = self.label("", "muted", wrap=True)
         card.pack_start(self.summary, False, False, 0)
@@ -130,10 +161,31 @@ class ScanPage(BasePage):
         if self.ctx.features:
             self.ctx.features.extend("extend_scan_page", self)
         self.ctx.on("settings-changed", self.on_settings_changed)
+        self.ctx.on("features-changed", self.sync_blank)
         self.ctx.on("devices-changed", self.devices_loaded)
         self.ctx.on("request-device-refresh", self.refresh_devices)
         self.set_busy(True)
         GLib.idle_add(self.startup)  # after every page has subscribed
+
+    # -- blank pages ---------------------------------------------------------
+    def _blank_feature(self):
+        """The Blank-page removal module, or None if it was removed"""
+        return self.ctx.features.get("blank_removal") if getattr(self.ctx, "features", None) else None
+
+    def _blank_enabled(self):
+        """True if blank pages are removed"""
+        feature = self._blank_feature()
+        return bool(feature and self.ctx.features.is_enabled(feature))
+
+    def on_blank_changed(self, key):
+        """Keep / Remove: switch the Blank-page removal module (Settings → Features follows)"""
+        if self._blank_feature() is not None:
+            self.ctx.features.set_enabled("blank_removal", key == "remove")
+            self.ctx.emit("features-changed")
+
+    def sync_blank(self, *_):
+        """Follow the module's switch when it changes in Settings"""
+        self.blank.set_active("remove" if self._blank_enabled() else "keep")
 
     # -- helpers -----------------------------------------------------------
     def on_settings_changed(self, key):
@@ -170,6 +222,7 @@ class ScanPage(BasePage):
             self.paper_combo,
             self.sheets,
             self.done_btn,
+            self.blank,
         ):
             w.set_sensitive(not busy)
         self.cancel_btn.set_sensitive(scanning)
@@ -186,8 +239,13 @@ class ScanPage(BasePage):
         self.device_status.set_visible(bool(text))
 
     def looking(self, on):
-        """Spinner on while looking for the scanner"""
+        """Spinner on while looking for the scanner (the check mark hides)"""
         (self.spinner.start if on else self.spinner.stop)()
+        self.mark.set_visible_child_name("looking" if on else "none")
+
+    def connected(self, on=True):
+        """Green check mark after the scanner name when it answered"""
+        self.mark.set_visible_child_name("connected" if on else "none")
 
     def startup(self):
         """At start: reach the remembered scanner directly; otherwise do a full search"""
@@ -259,9 +317,7 @@ class ScanPage(BasePage):
             self.set_busy(False)
             self.looking(False)
             self.scan_btn.set_sensitive(False)
-            self.show_device_issue(
-                "This scanner is connected, but no driver can use it yet (see Device Info)."
-            )
+            self.show_device_issue("This scanner is connected, but no driver can use it yet (see Devices).")
             self.set_status(dev.hint, "status-error")
             return
         self.show_device_issue(None)
@@ -285,6 +341,7 @@ class ScanPage(BasePage):
         self.set_busy(False)
         self.looking(False)
         self.set_status("Scanner Found", "status-ok")
+        self.connected(True)
         dev = self.current_device()
         if dev and dev.methods:
             self.ctx.scan.remember_device(dev)  # reached directly at the next start
@@ -301,7 +358,9 @@ class ScanPage(BasePage):
         if not items:
             self.scan_type = None
             return
-        self.scan_type = SegmentedControl(items, on_changed=self.on_scan_type)
+        self.scan_type = SegmentedControl(
+            items, on_changed=self.on_scan_type, button_width=OPTION_BUTTON_WIDTH
+        )
         self.scan_type.set_tooltip_text("Front Page scans one side of each sheet; Front & Back scans both")
         self.scan_type_slot.pack_start(self.scan_type, False, False, 0)
         self.scan_type_slot.show_all()

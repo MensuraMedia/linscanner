@@ -39,7 +39,7 @@ report() {
 
 if [[ "${1:-}" == "--uninstall" ]]; then
     step "Uninstalling"
-    rm -f "$DESKTOP" && ok "Removed menu entry (dependencies and settings left in place)"
+    rm -f "$DESKTOP" "${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/512x512/apps/linscanner.png" && ok "Removed menu entry and icon (dependencies and settings left in place)"
     report
 fi
 
@@ -58,6 +58,17 @@ else
     fail "Could not install: ${MISSING[*]}"; report
 fi
 
+step "App icon (panel, Alt+Tab, menu)"
+ICON_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/512x512/apps"
+mkdir -p "$ICON_DIR"
+if cmp -s "$APP_DIR/resources/images/logo.png" "$ICON_DIR/linscanner.png"; then
+    ok "Icon installed ($ICON_DIR/linscanner.png)"
+else
+    cp "$APP_DIR/resources/images/logo.png" "$ICON_DIR/linscanner.png"
+    command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -q -t "${ICON_DIR%/512x512/apps}" 2>/dev/null
+    fixed "Installed icon ($ICON_DIR/linscanner.png)"
+fi
+
 step "Desktop menu entry"
 mkdir -p "$(dirname "$DESKTOP")"
 ENTRY="[Desktop Entry]
@@ -66,7 +77,8 @@ Name=linscanner
 GenericName=Document Scanner
 Comment=Scan documents in color or black & white and save as PDF or images
 Exec=$APP_DIR/run.sh
-Icon=$APP_DIR/resources/images/logo.png
+Icon=linscanner
+StartupWMClass=linscanner
 Terminal=false
 Categories=Graphics;Scanning;
 Keywords=scan;scanner;pdf;document;sane;"

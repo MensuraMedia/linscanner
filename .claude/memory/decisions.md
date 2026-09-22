@@ -6,6 +6,17 @@ type: project
 
 # Decisions
 
+### 2026-09-21: Phosphor Icons; freeware fonts only when no restriction is stated
+- Reason: the user preferred Phosphor, which is MIT (bundling is fine). User's font rule: bundle only fonts that are free with no ambiguity; exclude those that forbid or restrict use (a "bundle" in font terms means font collections, not apps).
+- Impact:
+  - 22 Phosphor icons are in resources; Heroicons were removed from the app.
+  - Fonts bundled: 9 OFL, plus Arkipelago, Julia Lauren, Paul Signature and Sandra Belhock.
+  - Not bundled:
+    - the Khurasan fonts (app use is a separately sold licence);
+    - Bailey (the store forbids sharing the files);
+    - Othere and Neumartha (personal use only).
+  - Follow-up #33: confirm with the authors and donate.
+
 ### 2026-09-21: Bundle SIL OFL signature fonts, not the 9 supplied fonts
 - Reason: the 9 fonts in assets/signatures are personal-use or demo licences, and some (Jareth, Rochester) explicitly forbid embedding in apps and redistribution. Bailey allows commercial use, but its publisher forbids sharing the files. The user said to use only permissible fonts.
 - Impact:

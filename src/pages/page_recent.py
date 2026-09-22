@@ -11,7 +11,7 @@ Documents saved with linscanner, as a table sorted by date (newest first):
 - trash icon: removes the entry from the list (the file is not touched)
 - Clear: All, or entries older than 5 / 10 / 20 / 30 / 60 / 90 days
 
-Icons are Heroicons. The list is stored on this computer only
+Icons are Phosphor Icons. The list is stored on this computer only
 (~/.local/share/linscanner/recent.json).
 """
 
@@ -152,7 +152,7 @@ class RecentPage(BasePage):
         return column
 
     def _add_icon_column(self, col, action, tooltip):
-        """Narrow column of clickable Heroicons"""
+        """Narrow column of clickable icons"""
         cell = Gtk.CellRendererPixbuf()
         column = Gtk.TreeViewColumn("", cell, pixbuf=col)
         column.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
@@ -176,7 +176,7 @@ class RecentPage(BasePage):
         self.store.clear()
         entries = recent_entries()
         folder = icon_pixbuf("folder-open", ICON_PX)
-        doc = icon_pixbuf("document-text", ICON_PX)
+        doc = icon_pixbuf("file-text", ICON_PX)
         trash = icon_pixbuf("trash", ICON_PX)
         for e in entries:
             try:
