@@ -244,7 +244,7 @@ Navigation Manager Handles page routing and navigation state
 
 Scan Manager Turns the user's choices (Color / Black & White, High / Medium / Low, paper) into a device-specific ScanRequest, and runs backend calls off the GTK thread.
 
-Constants: `AUTO_SIZE_OPTIONS`
+Constants: `MAIN_DOC`, `AUTO_SIZE_OPTIONS`
 
 | Symbol | Purpose |
 |---|---|
@@ -256,7 +256,8 @@ Constants: `AUTO_SIZE_OPTIONS`
 | `scan_types(sources)` | The user's Scan Type choices for a device's sources: {"front": src, "both": src, "flatbed": src}. |
 | `is_feeder(source)` | True if a source name means a document feeder (scan until empty) |
 | `is_duplex(source)` | True if a source scans both sides of each sheet |
-| `sheet_limits(source, sheet_mode)` | (multi_page, max_pages) for a source and sheet mode ("all" / "one") |
+| `sheet_limits(source, sheet_mode)` | (multi_page, max_pages) for a source and sheet mode ("all" = Multi-Page / "one" = Single Page). |
+| `separate_documents(source, sheet_mode)` | (separate, pages per sheet): Single Page makes each sheet (front + back for duplex) a document |
 | `filter_devices(devices, show_all=False)` | Hide SANE's test scanner and duplicate backends for the same model |
 | `_page_notes(page)` | What the page processors recorded on a page, for the log |
 | `equivalent_source(source, caps)` | The same kind of source (flatbed / feeder / duplex) in another method's names |
@@ -277,9 +278,14 @@ Constants: `AUTO_SIZE_OPTIONS`
 | &nbsp;&nbsp;`.rotate_page(self, index, degrees)` | Rotate a page clockwise by degrees (applied at display/export) |
 | &nbsp;&nbsp;`.delete_page(self, index)` | Remove a page from the session |
 | &nbsp;&nbsp;`.clear_pages(self)` | Remove all pages from the session (the next Save starts a new document) |
-| &nbsp;&nbsp;`._signature(self)` | What the pages look like now (files, versions, rotation, edits, order) |
-| &nbsp;&nbsp;`.mark_saved(self)` | The whole document was just saved |
-| &nbsp;&nbsp;`.is_saved(self)` | True if the pages haven't changed since the last full save |
+| &nbsp;&nbsp;`.document(self)` | The main document's file ({"path", "format"}) or None (single-document sessions) |
+| &nbsp;&nbsp;`.document(self, value)` |  |
+| &nbsp;&nbsp;`.doc_ids(self)` | The documents in page order |
+| &nbsp;&nbsp;`.doc_pages(self, doc)` | The pages of one document |
+| &nbsp;&nbsp;`._signature(self, doc=None)` | What the pages (of one document) look like now: files, versions, rotation, edits, order |
+| &nbsp;&nbsp;`.mark_saved(self, doc=None)` | A document (or, with doc=None, every document) was just saved |
+| &nbsp;&nbsp;`.doc_is_saved(self, doc)` | True if a document hasn't changed since it was saved |
+| &nbsp;&nbsp;`.is_saved(self)` | True if every document is saved (the next Scan then starts a new one) |
 | &nbsp;&nbsp;`.open_document(self, path)` | Replace the session's pages with a saved document's pages (ValueError if it can't be read) |
 | &nbsp;&nbsp;`.cleanup(self)` | Delete session temp files and backend temp config |
 | &nbsp;&nbsp;`.summary(request)` | One-line human description of a request (mode, dpi, size, source) |
@@ -334,7 +340,7 @@ Constants: `ZOOM_STEPS`, `THUMB_CACHE_MAX`, `LARGE_CACHE_MAX`
 |---|---|
 | `to_pixbuf(img)` | Pillow RGB image -> GdkPixbuf |
 | class `PagePreview(Gtk.Box)` | Selected-page view + thumbnail strip; on_select(index) when the page changes |
-| &nbsp;&nbsp;`.__init__(self, on_select=None, cache_dir=None, rows=1, on_zoom=None)` | Large view (scrolled, zoomable) plus the thumbnail strip (rows: 1 or 2) |
+| &nbsp;&nbsp;`.__init__(self, on_select=None, cache_dir=None, rows=1, on_zoom=None, label_for=None)` | Large view (scrolled, zoomable) plus the thumbnail strip (rows: 1 or 2) |
 | &nbsp;&nbsp;`.set_pages(self, pages, selected=None)` | Show a page list and select one (keeps selection if possible) |
 | &nbsp;&nbsp;`.refresh_selected(self)` | Re-render after the selected page changed (rotation, Quick Edit) |
 | &nbsp;&nbsp;`.select(self, index)` | Show another page (only the highlight moves; nothing is rebuilt) |
@@ -460,7 +466,7 @@ Constants: `HISTORY_MAX`, `TOOL_GROUPS`, `ADDABLE`
 | &nbsp;&nbsp;`.update_feature_buttons(self, *_)` | Show buttons of enabled features only; hide a group left empty |
 | &nbsp;&nbsp;`.on_shown(self)` | Reload pages when the page is opened |
 | &nbsp;&nbsp;`.set_status(self, text, error=False)` | Status line under the preview (errors in red) |
-| &nbsp;&nbsp;`._snapshot(self)` | The pages and document as they are now |
+| &nbsp;&nbsp;`._snapshot(self)` | The pages and documents as they are now |
 | &nbsp;&nbsp;`.checkpoint(self, snapshot=None)` | Remember the pages before a change (features call this too, with a snapshot taken earlier) |
 | &nbsp;&nbsp;`._restore(self, snap)` | Put a snapshot back |
 | &nbsp;&nbsp;`.undo(self)` | Undo the last change to the pages |
@@ -473,7 +479,9 @@ Constants: `HISTORY_MAX`, `TOOL_GROUPS`, `ADDABLE`
 | &nbsp;&nbsp;`.step(self, delta)` | Previous / next page |
 | &nbsp;&nbsp;`.on_key(self, _widget, event)` | Page keys, Home / End, zoom and undo / redo shortcuts |
 | &nbsp;&nbsp;`.reload(self, *_)` | Show the session's pages and enable/disable actions |
-| &nbsp;&nbsp;`.update_info(self)` | Show 'Page n of m · mode · dpi' (and the document's file) for the selected page |
+| &nbsp;&nbsp;`.current_doc(self)` | Document id of the selected page |
+| &nbsp;&nbsp;`.thumb_label(self, i, page)` | Thumbnail caption: 'Page n', or 'Doc d' (+ ✓ when saved) when there are several documents |
+| &nbsp;&nbsp;`.update_info(self)` | Show 'Page n of m · mode · dpi' (and the document and its file) for the selected page |
 | &nbsp;&nbsp;`.rotate(self, degrees)` | Rotate the selected page and re-render |
 | &nbsp;&nbsp;`.move(self, step)` | Move the selected page one place earlier (-1) or later (+1) |
 | &nbsp;&nbsp;`.reverse_pages(self)` | Reverse the page order |
@@ -485,9 +493,12 @@ Constants: `HISTORY_MAX`, `TOOL_GROUPS`, `ADDABLE`
 | &nbsp;&nbsp;`.extract_page(self)` | Save only the selected page to a file of its own (the document is unchanged) |
 | &nbsp;&nbsp;`._confirm(self, title, detail)` | Modal OK/Cancel question; True if OK |
 | &nbsp;&nbsp;`.open_document(self, path, quick_edit=False)` | Open a saved document (from Recent) as the current pages; optionally start Quick Edit |
-| &nbsp;&nbsp;`.on_save(self)` | Save to the document's file; a new document goes to the Save folder as a PDF |
-| &nbsp;&nbsp;`.on_save_as(self, _btn, pages=None, title='Save scanned document', remember=True)` | Save As dialog (PDF/PNG/JPEG/TIFF), export, remember the folder |
-| &nbsp;&nbsp;`._write(self, pages, path, fmt, remember=True)` | Export, remember the document (unless extracting a page) and the folder, report the result |
+| &nbsp;&nbsp;`._doc_to_save(self)` | (doc id, its pages): the selected page's document (all pages when there is only one) |
+| &nbsp;&nbsp;`._default_path(self, n=None)` | A new file name in the default save location (Settings) |
+| &nbsp;&nbsp;`.on_save(self)` | Save the document to its file; a new document goes to the default save location as a PDF |
+| &nbsp;&nbsp;`.on_save_all(self)` | Save every document (Single Page sheets) as its own PDF in the default save location |
+| &nbsp;&nbsp;`.on_save_as(self, _btn, pages=None, title='Save scanned document', remember=True)` | Save As dialog (PDF/PNG/JPEG/TIFF) for the document (or given pages), export, report |
+| &nbsp;&nbsp;`._write(self, pages, path, fmt, doc=None, report=True, remember=None)` | Export pages; with a doc id, remember its file and mark it saved; report the result |
 
 ### `src/pages/page_recent.py`
 

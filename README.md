@@ -12,7 +12,7 @@ Linux's standard scanning system (SANE) can drive.
 
 | | |
 |---|---|
-| Version | 0.3.3 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
+| Version | 0.3.4 (see [`VERSION`](VERSION), [`changelog.md`](changelog.md)) |
 | Platform | Linux desktop, GTK 3 |
 | Tested on | Linux Mint 22.3 (Ubuntu 24.04 base), kernel 7.0, amd64, with an Epson WorkForce ES-400 II |
 | Part of | [linux-peripherals](../README.md), which has offline installers and device references |
@@ -46,7 +46,7 @@ Linux's standard scanning system (SANE) can drive.
 |---|---|
 | **Scanning** | Any cable-connected (USB) SANE scanner, plus linscanner's own driverless eSCL client. **Scan Type**: *Front Page* or *Front & Back* (and *Flatbed* on scanners with both) |
 | **Remembers your scanner** | Reached directly at the next start (a second or two instead of a full search); a spinner while looking, then a green power icon when it's ready, or a red one with "Device may be off. Check power settings."; and plain words when something needs fixing ("Unable to detect scanner. Check that it's connected and powered on") |
-| **Sheet-fed modes** | **Multi-Page** (the whole stack in one go) or **Single Page** (one page per Scan, then Preview to save it; a saved document is complete, so the next Scan starts a new one) |
+| **Sheet-fed modes** | **Multi-Page** (the whole stack as one document) or **Single Page** (the whole stack, each sheet its own document: view each in Preview, **Save** one or **Save All**) |
 | **Connection fallback** | Tries every way to reach the scanner in order over the USB cable (open-source driver → vendor driver → driverless IPP-over-USB → own eSCL client), until one scans. Never retries when you need to act (feeder empty, jam, cover open) |
 | **Scan Devices Found** (sidebar: **Devices**) | Every detected scanner with identity, USB connection details, connection methods, permissions, capabilities, live status and firmware, plus **Check for devices again** |
 | **Color / Black & White** | Color, or Black & White. B&W is grayscale by default (keeps faint text); Settings can switch it to pure black-and-white |
@@ -183,11 +183,16 @@ rm -rf ~/.config/linscanner                # removes your settings (optional)
 3. **Scan Options:** the first row is the scan type. *Front Page* scans one
    side of each sheet; *Front & Back* scans both sides (shown when your
    scanner can). Scanners with a glass too also offer *Flatbed*.
-   - **Sheets** (feeder): *Multi-Page* scans the whole stack. *Single Page*
-     scans one page (one sheet), then stops and opens Preview so you can save
-     it; press **Scan** again for the next page. Once a document has been
-     saved, the next Scan starts a new document. If it hasn't been saved, the
-     new page is added to it, so nothing is lost.
+   - **Sheets** (feeder): *Multi-Page* scans the whole stack into one
+     document. *Single Page* also scans every sheet in the tray (document
+     feeders pull the whole stack through once a scan starts), but each sheet
+     becomes **its own document**; with *Front & Back*, a sheet's two sides
+     stay together.
+     - In Preview the thumbnails are labelled *Doc 1, Doc 2, …* (✓ once
+       saved). **Save** saves the selected document, and **Save All** saves
+       every document as its own PDF in your default save location.
+     - Once everything is saved, the next Scan starts afresh. Unsaved pages
+       are never thrown away.
 4. **Color:** *Color* or *Black & White*.
 5. **Quality:** *High* for small print, photos or archiving; *Medium* for
    everyday documents; *Low* for quick copies and small files.
@@ -470,6 +475,9 @@ do its seven dark themes:
 - Cameras (PTP) and document cameras are detected and explained, but not captured.
 - Settings stored inside the scanner (sleep timer, etc.) can't be changed from Linux.
 - OCR is English only.
+
+**Done in 0.3.4:**
+- Single Page scans the whole tray, with each sheet as its own document (Doc labels, per-document Save, Save All). Stopping after one page skipped the remaining sheets on the ES-400 II.
 
 **Done in 0.3.3:**
 - a power icon for the scanner (green: ready; red: "Device may be off. Check power settings.");

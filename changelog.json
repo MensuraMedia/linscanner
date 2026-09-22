@@ -337,6 +337,22 @@
     {
       "datetime": "2026-09-21T23:10:00",
       "description": "v0.3.3; 113 tests"
+    },
+    {
+      "datetime": "2026-09-22T00:30:00",
+      "description": "Fix: Single Page stopped after one page while the ES-400 II fed the rest of the stack out unscanned"
+    },
+    {
+      "datetime": "2026-09-22T00:30:00",
+      "description": "Single Page now scans the whole tray with each sheet as its own document (front + back together)"
+    },
+    {
+      "datetime": "2026-09-22T00:30:00",
+      "description": "Preview: Doc n labels with a saved mark, per-document Save / Save As, Save All (one PDF per document)"
+    },
+    {
+      "datetime": "2026-09-22T00:30:00",
+      "description": "Auto-save writes one file per document; undo remembers documents; v0.3.4; 114 tests"
     }
   ]
 }

@@ -44,13 +44,14 @@ def to_pixbuf(img):
 class PagePreview(Gtk.Box):
     """Selected-page view + thumbnail strip; on_select(index) when the page changes"""
 
-    def __init__(self, on_select=None, cache_dir=None, rows=1, on_zoom=None):
+    def __init__(self, on_select=None, cache_dir=None, rows=1, on_zoom=None, label_for=None):
         """Large view (scrolled, zoomable) plus the thumbnail strip (rows: 1 or 2)"""
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=Layout.spacing.MEDIUM)
         import tempfile
 
         self.on_select = on_select
         self.on_zoom = on_zoom
+        self.label_for = label_for  # label_for(index, page) -> thumbnail caption (default "Page n")
         self.cache = DisplayCache(cache_dir or tempfile.mkdtemp(prefix="linscanner-preview-"))
         self.pages = []
         self.selected = -1
@@ -202,7 +203,7 @@ class PagePreview(Gtk.Box):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         box.image = Gtk.Image()
         box.pack_start(box.image, False, False, 0)
-        lbl = Gtk.Label(label=f"Page {i + 1}")
+        lbl = Gtk.Label(label=self.label_for(i, page) if self.label_for else f"Page {i + 1}")
         lbl.get_style_context().add_class("thumb-label")
         box.pack_start(lbl, False, False, 0)
         btn.add(box)

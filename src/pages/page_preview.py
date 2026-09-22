@@ -37,6 +37,7 @@ from pages.page_base import BasePage  # noqa: E402
 from ui.components.component_preview import PagePreview  # noqa: E402
 from ui.components.component_segmented import SegmentedControl  # noqa: E402
 from utils.util_icons import icon_button  # noqa: E402
+from modules.manager_scan import MAIN_DOC  # noqa: E402
 from utils.util_logging import get_logger  # noqa: E402
 
 log = get_logger("ui")
@@ -119,9 +120,15 @@ class PreviewPage(BasePage):
             "Save to this document's file. A new document is saved as a PDF in your Save folder."
         )
         self.quick_save_btn.connect("clicked", lambda *_: self.on_save())
+        self.save_all_btn = Gtk.Button(label="Save All")
+        self.save_all_btn.set_tooltip_text(
+            "Save every document as its own PDF in your default save location (Single Page scans)"
+        )
+        self.save_all_btn.connect("clicked", lambda *_: self.on_save_all())
+        self.save_all_btn.set_no_show_all(True)
         self.save_btn = Gtk.Button(label="Save As…")
         self.save_btn.connect("clicked", self.on_save_as)
-        for b in (self.quick_save_btn, self.save_btn):
+        for b in (self.quick_save_btn, self.save_all_btn, self.save_btn):
             b.set_halign(Gtk.Align.END)  # each button as wide as its label
             saves.pack_start(b, False, False, 0)
         top.pack_end(saves, False, False, 0)
@@ -181,6 +188,7 @@ class PreviewPage(BasePage):
             cache_dir=os.path.join(self.ctx.scan.session_dir, "display"),
             rows=rows,
             on_zoom=self.on_zoom,
+            label_for=self.thumb_label,
         )
         self.pack_start(self.preview, True, True, 0)
         self.status = self.label("", "muted", wrap=True, selectable=True)
@@ -248,10 +256,11 @@ class PreviewPage(BasePage):
 
     # -- undo / redo ---------------------------------------------------------------
     def _snapshot(self):
-        """The pages and document as they are now"""
+        """The pages and documents as they are now"""
+        scan = self.ctx.scan
         return (
-            copy.deepcopy(self.ctx.scan.pages),
-            copy.deepcopy(self.ctx.scan.document),
+            copy.deepcopy(scan.pages),
+            (copy.deepcopy(scan.documents), copy.deepcopy(scan._saved), scan.next_doc),
             self.preview.selected,
         )
 
@@ -264,9 +273,9 @@ class PreviewPage(BasePage):
 
     def _restore(self, snap):
         """Put a snapshot back"""
-        pages, document, selected = snap
+        pages, (documents, saved, next_doc), selected = snap
         self.ctx.scan.pages[:] = pages
-        self.ctx.scan.document = document
+        self.ctx.scan.documents, self.ctx.scan._saved, self.ctx.scan.next_doc = documents, saved, next_doc
         self.preview.set_pages(self.ctx.scan.pages, selected=min(max(selected, 0), len(pages) - 1))
         self.reload()
 
@@ -382,24 +391,55 @@ class PreviewPage(BasePage):
             self.btn_fit_width,
         ):
             b.set_sensitive(has)
+        several = len(self.ctx.scan.doc_ids()) > 1
+        self.save_all_btn.set_no_show_all(not several)
+        self.save_all_btn.show() if several else self.save_all_btn.hide()
+        self.quick_save_btn.set_tooltip_text(
+            "Save the selected document (each Single Page sheet is its own document)"
+            if several
+            else "Save to this document's file. A new document is saved as a PDF in your default save location."
+        )
         for buttons in self.feature_buttons.values():
             for b in buttons:
                 b.set_sensitive(has or getattr(b, "works_without_pages", False))
         self._update_history_buttons()
         self.update_info()
 
-    def update_info(self):
-        """Show 'Page n of m · mode · dpi' (and the document's file) for the selected page"""
+    def current_doc(self):
+        """Document id of the selected page"""
         pages = self.ctx.scan.pages
+        i = self.preview.selected
+        return pages[i].get("doc", MAIN_DOC) if 0 <= i < len(pages) else MAIN_DOC
+
+    def thumb_label(self, i, page):
+        """Thumbnail caption: 'Page n', or 'Doc d' (+ ✓ when saved) when there are several documents"""
+        scan = self.ctx.scan
+        docs = scan.doc_ids()
+        if len(docs) <= 1:
+            return f"Page {i + 1}"
+        doc = page.get("doc", MAIN_DOC)
+        pages = scan.doc_pages(doc)
+        part = f" · p{pages.index(page) + 1}" if len(pages) > 1 and page in pages else ""
+        return f"Doc {docs.index(doc) + 1}{part}" + ("  ✓" if scan.doc_is_saved(doc) else "")
+
+    def update_info(self):
+        """Show 'Page n of m · mode · dpi' (and the document and its file) for the selected page"""
+        scan = self.ctx.scan
+        pages = scan.pages
         if not pages:
             self.info.set_text("")
             return
         p = pages[self.preview.selected]
-        doc = self.ctx.scan.document
-        name = f" · {os.path.basename(doc['path'])}" if doc else ""
-        self.info.set_text(
-            f"Page {self.preview.selected + 1} of {len(pages)} · {p['mode']} · {p['dpi']} dpi{name}"
-        )
+        docs = scan.doc_ids()
+        doc = p.get("doc", MAIN_DOC)
+        file = scan.documents.get(doc)
+        name = f" · {os.path.basename(file['path'])}" if file else ""
+        if len(docs) > 1:
+            saved = " (saved)" if scan.doc_is_saved(doc) else " (not saved)"
+            where = f"Document {docs.index(doc) + 1} of {len(docs)}{saved}"
+        else:
+            where = f"Page {self.preview.selected + 1} of {len(pages)}"
+        self.info.set_text(f"{where} · {p['mode']} · {p['dpi']} dpi{name}")
 
     # -- actions -----------------------------------------------------------
     def rotate(self, degrees):
@@ -474,6 +514,9 @@ class PreviewPage(BasePage):
         if not added:
             return 0
         self.checkpoint()
+        doc = self.current_doc() if self.ctx.scan.pages else MAIN_DOC
+        for page in added:
+            page["doc"] = doc  # added pages join the document they're inserted into
         at = self.preview.selected + 1 if self.ctx.scan.pages else 0
         self.ctx.scan.pages[at:at] = added
         self.preview.set_pages(self.ctx.scan.pages, selected=at)
@@ -548,24 +591,56 @@ class PreviewPage(BasePage):
         return True
 
     # -- saving --------------------------------------------------------------
+    def _doc_to_save(self):
+        """(doc id, its pages): the selected page's document (all pages when there is only one)"""
+        scan = self.ctx.scan
+        docs = scan.doc_ids()
+        if len(docs) <= 1:
+            return (docs[0] if docs else MAIN_DOC), scan.pages
+        doc = self.current_doc()
+        return doc, scan.doc_pages(doc)
+
+    def _default_path(self, n=None):
+        """A new file name in the default save location (Settings)"""
+        folder = self.ctx.settings.get("save_folder")
+        if not os.path.isdir(folder):
+            folder = os.path.expanduser("~")
+        part = f"-{n:03d}" if n is not None else ""
+        return os.path.join(folder, f"scan-{datetime.now():%Y%m%d-%H%M%S}{part}.pdf")
+
     def on_save(self):
-        """Save to the document's file; a new document goes to the Save folder as a PDF"""
-        pages = self.ctx.scan.pages
-        if not pages:
+        """Save the document to its file; a new document goes to the default save location as a PDF"""
+        if not self.ctx.scan.pages:
             return
-        doc = self.ctx.scan.document
-        if doc:
-            path, fmt = doc["path"], doc["format"]
+        doc, pages = self._doc_to_save()
+        file = self.ctx.scan.documents.get(doc)
+        if file:
+            path, fmt = file["path"], file["format"]
         else:
-            folder = self.ctx.settings.get("save_folder")
-            if not os.path.isdir(folder):
-                folder = os.path.expanduser("~")
-            path, fmt = os.path.join(folder, f"scan-{datetime.now():%Y%m%d-%H%M%S}.pdf"), "pdf"
-        self._write(pages, path, fmt)
+            several = len(self.ctx.scan.doc_ids()) > 1
+            n = self.ctx.scan.doc_ids().index(doc) + 1 if several else None
+            path, fmt = self._default_path(n), "pdf"
+        self._write(pages, path, fmt, doc=doc)
+
+    def on_save_all(self):
+        """Save every document (Single Page sheets) as its own PDF in the default save location"""
+        scan = self.ctx.scan
+        saved = 0
+        for n, doc in enumerate(scan.doc_ids(), start=1):
+            file = scan.documents.get(doc)
+            path, fmt = (file["path"], file["format"]) if file else (self._default_path(n), "pdf")
+            if self._write(scan.doc_pages(doc), path, fmt, doc=doc, report=False):
+                saved += 1
+        folder = self.ctx.settings.get("save_folder")
+        self.set_status(f"Saved {saved} document(s) in {folder}.")
+        self.preview.set_pages(scan.pages)  # the ✓ marks
+        self.update_info()
 
     def on_save_as(self, _btn, pages=None, title="Save scanned document", remember=True):
-        """Save As dialog (PDF/PNG/JPEG/TIFF), export, remember the folder"""
-        pages = pages or self.ctx.scan.pages
+        """Save As dialog (PDF/PNG/JPEG/TIFF) for the document (or given pages), export, report"""
+        doc = None
+        if pages is None:
+            doc, pages = self._doc_to_save()
         if not pages:
             return
         dlg = Gtk.FileChooserDialog(
@@ -573,14 +648,14 @@ class PreviewPage(BasePage):
         )
         dlg.add_buttons("_Cancel", Gtk.ResponseType.CANCEL, "_Save", Gtk.ResponseType.ACCEPT)
         dlg.set_do_overwrite_confirmation(True)
-        doc = self.ctx.scan.document
-        folder = os.path.dirname(doc["path"]) if doc else self.ctx.settings.get("save_folder")
+        file = self.ctx.scan.documents.get(doc) if doc is not None else None
+        folder = os.path.dirname(file["path"]) if file else self.ctx.settings.get("save_folder")
         if not os.path.isdir(folder):
             folder = self.ctx.settings.get("save_folder")  # the default save location (Settings)
         if os.path.isdir(folder):
             dlg.set_current_folder(folder)
-        if remember and doc:
-            dlg.set_current_name(os.path.basename(doc["path"]))
+        if remember and file:
+            dlg.set_current_name(os.path.basename(file["path"]))
         else:
             dlg.set_current_name(f"{'page' if not remember else 'scan'}-{datetime.now():%Y%m%d-%H%M%S}.pdf")
         filters = {}
@@ -604,21 +679,29 @@ class PreviewPage(BasePage):
         dlg.destroy()
         if response != Gtk.ResponseType.ACCEPT or not path:
             return
-        self._write(pages, path, format_for_path(path) or chosen or "pdf", remember=remember)
+        self._write(pages, path, format_for_path(path) or chosen or "pdf", doc=doc if remember else None)
 
-    def _write(self, pages, path, fmt, remember=True):
-        """Export, remember the document (unless extracting a page) and the folder, report the result"""
+    def _write(self, pages, path, fmt, doc=None, report=True, remember=None):
+        """Export pages; with a doc id, remember its file and mark it saved; report the result"""
+        if remember is False:
+            doc = None
         try:
             written = export_pages(pages, path, fmt, registry=self.ctx.features)
         except (OSError, ValueError, RuntimeError) as e:
             log.warning("save %s failed: %s", fmt, e)
             self.set_status(f"Could not save: {e}", error=True)
             return None
-        if remember:
-            self.ctx.scan.document = {"path": written[0], "format": fmt}
-            self.ctx.scan.mark_saved()  # the next scan starts a new document
-        more = f" (+{len(written) - 1} more)" if len(written) > 1 else ""
-        self.set_status(f"Saved {len(pages)} page(s) to {written[0]}{more}")
-        self.update_info()
+        if doc is not None:
+            self.ctx.scan.documents[doc] = {"path": written[0], "format": fmt}
+            self.ctx.scan.mark_saved(doc)  # once every document is saved, the next scan starts afresh
+        if report:
+            more = f" (+{len(written) - 1} more)" if len(written) > 1 else ""
+            docs = self.ctx.scan.doc_ids()
+            which = (
+                f"Document {docs.index(doc) + 1} of {len(docs)}: " if doc in docs and len(docs) > 1 else ""
+            )
+            self.set_status(f"{which}saved {len(pages)} page(s) to {written[0]}{more}")
+            self.preview.set_pages(self.ctx.scan.pages)  # the ✓ marks
+            self.update_info()
         self.ctx.emit("documents-changed")
         return written

@@ -1,4 +1,4 @@
-# linscanner features and functions (v0.3.3)
+# linscanner features and functions (v0.3.4)
 
 Every user-facing feature, page by page, plus command-line options, files and
 limits.
@@ -34,7 +34,7 @@ Verified hardware: Epson ES-400 II (USB `04b8:0181`), reached via epsonds
 | Power icon (after the scanner list) | Green `power` when the scanner answered; red, with "Device may be off. Check power settings." under the list, when it can't be found or reached (the details go in its tooltip and the log). The status line at the bottom is only for scanning. Previously: "Unable to detect scanner. Check that it's connected and powered on, then press Refresh."; the technical detail goes to the log |
 | **Profile** (feature) | One-click presets and "Save as profile…" |
 | **Scan Type** | **Front Page** (one side), **Front & Back** (duplex, when the scanner can), **Flatbed** (only on scanners with both a glass and a feeder). Mapped to the driver's sources by `scan_types()`; remembered |
-| **Sheets** (feeder) | **Multi-Page** (until the feeder is empty) or **Single Page** (one page, then Preview to save it; after a save the next Scan starts a new document; unsaved pages are kept and added to). Before 0.3.3: **One sheet at a time** (1 page, or 2 for Front & Back, per press; same document) |
+| **Sheets** (feeder) | **Multi-Page**: every sheet into one document. **Single Page**: every sheet too (feeders pull the whole stack through), but each sheet becomes its own document (front + back together); Preview labels them Doc 1, Doc 2, … with ✓ when saved. After everything is saved the next Scan starts afresh; unsaved pages are kept (1 page, or 2 for Front & Back, per press; same document) |
 | **Color** / **Black & White** | Color, or B&W: grayscale by default, pure lineart via Settings |
 | **High / Medium / Low** | 600 / 300 / 150 dpi, snapped to the nearest supported resolution |
 | **Blank Pages** | **Keep** / **Remove**: switches the Blank-page removal module (kept in sync with Settings → Features) |
@@ -60,7 +60,8 @@ Verified hardware: Epson ES-400 II (USB `04b8:0181`), reached via epsonds
 | View bar: first / previous / next / last (`caret-double-left`, `caret-left`, `caret-right`, `caret-double-right`) | Home, Page Up, Page Down, End |
 | View bar: zoom out / in, fit page (`arrows-in`), fit width (`arrows-out-line-horizontal`) | 25–800 % of fit; Ctrl + wheel; drag to pan. Pages are drawn from display copies, so switching takes about 25 ms |
 | Thumbnails | Left-aligned, scroll bar always shown, **1 row / 2 rows** (remembered) |
-| **Save** / **Save As…** | Save writes to the document's file (a new document goes to the Save folder as a PDF); Save As chooses the name and format (PDF, TIFF, PNG, JPEG) |
+| **Save All** (only with several documents) | Saves each document as its own PDF in the default save location (`scan-<date>-<time>-001.pdf`, …) |
+| **Save** / **Save As…** | With several documents they act on the selected one. Save writes to the document's file (a new document goes to the Save folder as a PDF); Save As chooses the name and format (PDF, TIFF, PNG, JPEG) |
 
 The groups wrap onto a second row in narrow windows, and the page scrolls when
 the window is smaller than it. The window can be snapped to half or a quarter
@@ -159,7 +160,7 @@ Populates automatically; **Check for devices again** re-runs discovery.
 |---|---|---|
 | Build | `python3 -m compileall -q src` | passes |
 | Lint | `python3 -m black --check src tests && python3 -m pyflakes src tests` | clean |
-| Test | `python3 -m pytest -q` | 113 passed |
+| Test | `python3 -m pytest -q` | 114 passed |
 | Offline | `../bin/test-offline linscanner` | 304 packages install; feature pipeline verified offline |
 | Docs | `python3 tools/gen_api_docs.py` | every symbol documented |
 

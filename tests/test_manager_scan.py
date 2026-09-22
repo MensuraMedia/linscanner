@@ -48,5 +48,5 @@ def test_sheet_modes():
 
     assert sheet_limits("Flatbed", "all") == (False, 1)
     assert sheet_limits("ADF Front", "all") == (True, 0)  # whole stack
-    assert sheet_limits("ADF Front", "one") == (False, 1)  # one sheet, one side
-    assert sheet_limits("ADF Duplex", "one") == (False, 2)  # one sheet, front + back
+    assert sheet_limits("ADF Front", "one") == (True, 0)  # Single Page still feeds every sheet...
+    assert sheet_limits("ADF Duplex", "one") == (True, 0)  # ...each sheet becomes its own document

@@ -50,6 +50,8 @@ class ScanRequest:
     height_mm: float = 0.0
     multi_page: bool = False  # feeder: keep scanning until it is empty
     max_pages: int = 0  # >0 caps the pages per job (1 = one side, 2 = one duplex sheet)
+    separate: bool = False  # Single Page: every sheet becomes its own document
+    sheet_pages: int = 1  # pages per sheet (2 for Front & Back)
     auto_detect: bool = False  # crop each page to the paper afterwards (Auto-Detect, receipts, cards)
     nominal_mm: tuple = ()  # size used by Auto-Detect when the paper's edges can't be seen
     extra_args: list = field(default_factory=list)  # driver options, e.g. ["--adf-crp=yes"]

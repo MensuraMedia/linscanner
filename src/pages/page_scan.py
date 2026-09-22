@@ -12,7 +12,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk  # noqa: E402
 
 from config.config_scan import COLOR_MODES, PAPER_SIZES, QUALITY_PRESETS, SHEET_MODES  # noqa: E402
-from modules.manager_scan import ScanManager, is_duplex, is_feeder, scan_types  # noqa: E402
+from modules.manager_scan import ScanManager, is_feeder, scan_types  # noqa: E402
 from pages.page_base import BasePage  # noqa: E402
 from ui.components.component_segmented import SegmentedControl  # noqa: E402
 from utils.util_icons import icon_image  # noqa: E402
@@ -402,11 +402,11 @@ class ScanPage(BasePage):
             self.summary.set_text("")
             return
         req = self.build_request(dry_run=True)
-        if req.multi_page:
-            how = "Multi-Page: scans every loaded sheet."
-        elif is_feeder(req.source):
-            side = "front and back" if is_duplex(req.source) else "one side"
-            how = f"Single Page: one sheet ({side}), then stops so you can save it."
+        if req.multi_page and req.separate:
+            side = " (front and back together)" if req.sheet_pages == 2 else ""
+            how = f"Single Page: scans every loaded sheet, each as its own document{side}."
+        elif req.multi_page:
+            how = "Multi-Page: scans every loaded sheet into one document."
         else:
             how = "Single page."
         self.summary.set_text(f"Will scan: {ScanManager.summary(req)}. {how}")
@@ -440,10 +440,10 @@ class ScanPage(BasePage):
         self.set_busy(True, scanning=True)
         self.progress.set_fraction(0)
         self.pages_this_scan = 0
-        if self.request.multi_page:
+        if self.request.multi_page and self.request.separate:
+            what = "every sheet, each as its own document"
+        elif self.request.multi_page:
             what = "all sheets from the feeder"
-        elif is_feeder(self.request.source):
-            what = "one sheet"
         else:
             what = "page"
         new = " New document (the last one is saved)." if started_new else ""
@@ -471,8 +471,18 @@ class ScanPage(BasePage):
             self.set_status(f"Cancelled. {n} page(s) kept.", "muted")
         else:
             total = len(self.ctx.scan.pages)
-            added = f"; the document has {total} page(s)" if total > n else ""
-            self.set_status(f"Done: {n} page(s) scanned{removed}{added}. Save it in Preview.", "status-ok")
+            docs = len(self.ctx.scan.doc_ids())
+            if self.request and self.request.separate and docs > 1:
+                self.set_status(
+                    f"Done: {n} page(s) scanned{removed} as {docs} separate documents. In Preview, Save saves "
+                    "the selected document and Save All saves each one.",
+                    "status-ok",
+                )
+            else:
+                added = f"; the document has {total} page(s)" if total > n else ""
+                self.set_status(
+                    f"Done: {n} page(s) scanned{removed}{added}. Save it in Preview.", "status-ok"
+                )
             self.after_scan(final=True)
         if n:
             self.ctx.nav.navigate_to("preview")  # check and save; press Scan again for the next page

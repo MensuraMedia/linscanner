@@ -136,3 +136,42 @@ def test_default_save_location_is_kept(tmp_path):
     src = open(page_preview.__file__).read()
     assert 'settings.set("save_folder"' not in src
     assert SettingsManager(str(tmp_path / "s.json")).get("save_folder") == str(tmp_path / "default")
+
+
+def test_single_page_duplex_keeps_each_sheets_sides_together(tmp_path):
+    """Front & Back + Single Page: pages 1-2 are document A, 3-4 document B, ..."""
+    import time
+
+    from gi.repository import GLib
+
+    from backends.backend_base import ScanRequest
+    from modules.manager_scan import MAIN_DOC, ScanManager
+    from modules.manager_settings import SettingsManager
+
+    class FakeFeeder:
+        name = "fake"
+
+        def scan(self, request, on_page, on_progress, cancel):
+            paths = []
+            for n in range(6):  # 3 sheets, front + back
+                path = str(tmp_path / f"p{n}.png")
+                Image.new("RGB", (100, 140), "white").save(path)
+                on_page(path)
+                paths.append(path)
+            return paths
+
+    scan = ScanManager(SettingsManager(str(tmp_path / "s.json")), backend=FakeFeeder())
+    done = []
+    req = ScanRequest("fake:0", str(tmp_path), "ADF Duplex", multi_page=True, separate=True, sheet_pages=2)
+    scan.start_scan(
+        req, lambda p: None, lambda p: None, lambda r, c: done.append(r), lambda e: done.append(e)
+    )
+    ctx = GLib.MainContext.default()
+    end = time.monotonic() + 10
+    while not done and time.monotonic() < end:
+        ctx.iteration(False)
+    docs = [p["doc"] for p in scan.pages]
+    assert len(docs) == 6 and docs[0] == docs[1] != docs[2] == docs[3] != docs[4] == docs[5]
+    assert MAIN_DOC not in docs and len(scan.doc_ids()) == 3
+    assert scan.next_doc == docs[-1] + 1  # the next job continues after these sheets
+    scan.cleanup()

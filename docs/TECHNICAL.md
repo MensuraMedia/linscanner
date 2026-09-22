@@ -1,4 +1,4 @@
-# linscanner technical document (v0.3.3)
+# linscanner technical document (v0.3.4)
 
 How linscanner detects, connects to and drives scanners on Linux, what every
 part does, and how the optional feature modules plug in. The user guide is
@@ -548,6 +548,31 @@ Design notes, and how each idea can be reused, are in
   `save_folder`. Settings shows it with **Choose…** (a SELECT_FOLDER dialog).
 - **Fonts.** Two are bundled: Great Vibes and Sacramento (OFL). The About
   page no longer lists fonts; the credits are in `docs/FOLLOW-UP.md` #33.
+
+### 0.3.4 Single Page as separate documents
+- **Cause.** With `--batch-count=1`, the ES-400 II (epsonds) still pulls the
+  whole stack through once the job starts. scanimage keeps one page and the
+  rest are fed out unscanned.
+- **Fix.** `sheet_limits(feeder, "one")` now scans until the feeder is
+  empty, like Multi-Page. `separate_documents()` sets
+  `ScanRequest.separate` and `sheet_pages` (2 for duplex).
+- **Documents.**
+  - Every page has a `doc` id. `MAIN_DOC = 1` holds Multi-Page scans,
+    opened files and added pages. A Single Page job numbers its sheets from
+    `ScanManager.next_doc`, from the pages received (blank-removed pages
+    still count, so a sheet's sides stay together).
+  - `documents` (doc → file) and `_saved` (doc → signature) are kept per
+    document. `document` is a property for the main document;
+    `doc_ids()`, `doc_pages()`, `mark_saved(doc)`, `doc_is_saved(doc)` and
+    `is_saved()` (all documents saved) work on them.
+- **Preview.**
+  - Thumbnails show `Doc n` (✓ once saved) and the info bar "Document n of
+    m (saved / not saved)".
+  - **Save** / **Save As** act on the selected page's document. **Save All**
+    writes each one to the default save location (`scan-<ts>-NNN.pdf`).
+  - Undo snapshots include the documents and their saved state.
+  - Add Page puts the new pages into the current document.
+- **Auto-save** writes one file per document.
 
 ### Robustness
 - `ScanManager._in_thread` wraps callbacks so an idle handler never repeats.

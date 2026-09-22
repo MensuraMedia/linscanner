@@ -92,7 +92,7 @@ SHEET_MODES = {
     "all": {"label": "Multi-Page", "help": "Scans every sheet in the feeder in one go"},
     "one": {
         "label": "Single Page",
-        "help": "Scans one page (one sheet), then stops so it can be saved; press Scan for the next",
+        "help": "Scans every sheet, each as its own document (viewable and saveable one by one)",
     },
 }
 DEFAULT_SHEET_MODE = "all"

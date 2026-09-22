@@ -45,8 +45,21 @@ class Feature(BaseFeature):
 
         folder = self.option("folder", ctx.settings.get("save_folder"))
         os.makedirs(folder, exist_ok=True)
-        path = os.path.join(folder, render_name(self.option("template", DEFAULT_TEMPLATE), pages))
-        written = export_pages(pages, path, "pdf", registry=getattr(ctx, "features", None))
+        scan = getattr(ctx, "scan", None)
+        docs = scan.doc_ids() if scan is not None and hasattr(scan, "doc_ids") else [None]
+        written = []
+        for n, doc in enumerate(docs, start=1):  # Single Page: one file per document
+            doc_pages = scan.doc_pages(doc) if doc is not None else pages
+            name = render_name(self.option("template", DEFAULT_TEMPLATE), doc_pages, n=n)
+            if len(docs) > 1 and "{n}" not in self.option("template", DEFAULT_TEMPLATE):
+                name = name[:-4] + f"-{n:03d}.pdf"
+            files = export_pages(
+                doc_pages, os.path.join(folder, name), "pdf", registry=getattr(ctx, "features", None)
+            )
+            written += files
+            if doc is not None:
+                scan.documents[doc] = {"path": files[0], "format": "pdf"}
+                scan.mark_saved(doc)
         ctx.emit("autosaved", written)
 
     def settings_widget(self, ctx):

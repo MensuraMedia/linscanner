@@ -88,3 +88,7 @@
 | 2026-09-21T23:10:00 | Signature fonts reduced to Great Vibes and Sacramento (OFL); About no longer lists fonts; backlog #33 has the credits |
 | 2026-09-21T23:10:00 | Settings: Default save location with Choose...; saving elsewhere no longer overwrites it |
 | 2026-09-21T23:10:00 | v0.3.3; 113 tests |
+| 2026-09-22T00:30:00 | Fix: Single Page stopped after one page while the ES-400 II fed the rest of the stack out unscanned |
+| 2026-09-22T00:30:00 | Single Page now scans the whole tray with each sheet as its own document (front + back together) |
+| 2026-09-22T00:30:00 | Preview: Doc n labels with a saved mark, per-document Save / Save As, Save All (one PDF per document) |
+| 2026-09-22T00:30:00 | Auto-save writes one file per document; undo remembers documents; v0.3.4; 114 tests |

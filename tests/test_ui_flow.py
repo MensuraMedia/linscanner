@@ -108,8 +108,10 @@ def build_app(with_features=False):
     return ctx, window, scan
 
 
-def test_single_page_scans_one_page_then_waits_for_save(tmp_path):
-    """Single Page: one page per Scan, then Preview; after Save the next Scan starts a new document"""
+def test_single_page_makes_each_sheet_its_own_document(tmp_path):
+    """Single Page: every sheet in the feeder becomes its own document; each can be saved on its own"""
+    import os
+
     ctx, window, scan = build_app()
     ctx.settings.override("save_folder", str(tmp_path))
     page = ctx.nav.get_page_widget("scan")
@@ -121,15 +123,26 @@ def test_single_page_scans_one_page_then_waits_for_save(tmp_path):
     page.sheets.set_active("one")
     page.on_scan(None)
     assert wait_for(lambda: not scan.busy and ctx.nav.get_current_page() == "preview")
-    assert len(scan.pages) == 1  # exactly one page, then it stops
+    docs = scan.doc_ids()
+    assert len(scan.pages) == 10 and len(docs) == 10  # the whole tray, one document per sheet
     preview = ctx.nav.get_page_widget("preview")
-    page.on_scan(None)  # not saved yet: the next page joins the same document
-    assert wait_for(lambda: not scan.busy and len(scan.pages) == 2)
-    preview.on_save()
-    assert scan.is_saved()
-    page.on_scan(None)  # saved: the next Scan starts a new document
+    assert preview.save_all_btn.get_visible()
+    assert preview.preview._buttons[3].get_child().get_children()[1].get_label() == "Doc 4"
+    preview.preview.select(3)
+    preview.on_save()  # Save: only the selected document
+    assert scan.doc_is_saved(docs[3]) and not scan.doc_is_saved(docs[0]) and not scan.is_saved()
+    assert "✓" in preview.thumb_label(3, scan.pages[3])
+    preview.on_save_all()  # Save All: one PDF per document
+    assert scan.is_saved() and len({scan.documents[d]["path"] for d in docs}) == 10
+    assert all(os.path.exists(scan.documents[d]["path"]) for d in docs)
+    page.on_scan(None)  # everything saved: the next Scan starts afresh
     assert wait_for(lambda: not scan.busy and ctx.nav.get_current_page() == "preview")
-    assert len(scan.pages) == 1 and scan.document is None
+    assert len(scan.doc_ids()) == 10 and not scan.is_saved()
+    page.sheets.set_active("all")
+    preview.on_save_all()
+    page.on_scan(None)  # Multi-Page: one document
+    assert wait_for(lambda: not scan.busy and len(scan.pages) == 10)
+    assert len(scan.doc_ids()) == 1 and not preview.save_all_btn.get_visible()
     window.destroy()
     scan.cleanup()
 

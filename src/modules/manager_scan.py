@@ -16,6 +16,8 @@ from modules.manager_connection import ConnectionEngine
 from utils.util_logging import get_logger
 
 log = get_logger("scan")
+
+MAIN_DOC = 1  # the document of Multi-Page scans, opened files and added pages
 from backends.parser_sane import model_key
 from config.config_scan import (
     DEFAULT_PAPER,
@@ -119,12 +121,20 @@ def is_duplex(source):
 
 
 def sheet_limits(source, sheet_mode):
-    """(multi_page, max_pages) for a source and sheet mode ("all" / "one")"""
+    """(multi_page, max_pages) for a source and sheet mode ("all" = Multi-Page / "one" = Single Page).
+
+    A feeder always scans every sheet loaded: document feeders such as the
+    ES-400 II pull the whole stack through once a job starts, so stopping after
+    one page would skip the rest. Single Page instead makes every sheet its
+    own document (see ScanRequest.separate)."""
     if not is_feeder(source):
         return False, 1  # flatbed: always one page
-    if sheet_mode == "one":
-        return False, 2 if is_duplex(source) else 1  # one sheet: front (+ back)
-    return True, 0  # feeder, all sheets: until empty
+    return True, 0  # feeder: until empty
+
+
+def separate_documents(source, sheet_mode):
+    """(separate, pages per sheet): Single Page makes each sheet (front + back for duplex) a document"""
+    return sheet_mode == "one", 2 if is_duplex(source) else 1
 
 
 def filter_devices(devices, show_all=False):
@@ -184,8 +194,11 @@ class ScanManager:
         self.pages = []  # [{"path", "rotation", "dpi", "mode", optional "overlays", "separator"}]
         self.features = None  # FeatureRegistry: page processors (crop, deskew, blank removal, …)
         self.dropped_pages = 0  # pages removed by processors during the last scan
-        self.document = None  # {"path", "format"} once saved or opened: what Save writes to
-        self._saved = None  # page signature at the last full save (see is_saved)
+        # Documents: each page has a "doc" id. Multi-Page scans, opened files and
+        # added pages share MAIN_DOC; Single Page gives every sheet its own id.
+        self.documents = {}  # doc id -> {"path", "format"}: the file Save writes to
+        self._saved = {}  # doc id -> page signature at its last save (see is_saved)
+        self.next_doc = MAIN_DOC + 1
         self._cancel = threading.Event()
         self.busy = False
 
@@ -340,9 +353,12 @@ class ScanManager:
         spec = paper_spec(paper)
         source = equivalent_source(source, caps)
         multi_page, max_pages = sheet_limits(source, sheet_mode)
+        separate, sheet_pages = separate_documents(source, sheet_mode)
         out_dir = tempfile.mkdtemp(prefix="scan-", dir=self.session_dir) if create_dir else ""
         detect = bool(spec.get("detect"))
         return ScanRequest(
+            separate=separate,
+            sheet_pages=sheet_pages,
             auto_detect=detect,
             nominal_mm=tuple(spec["mm"] or ()) if detect else (),
             extra_args=auto_size_args(caps) if detect else [],
@@ -364,10 +380,17 @@ class ScanManager:
         active = {"request": request}  # the request of the method currently scanning
 
         self.dropped_pages = 0
+        received = [0]  # pages delivered by the scanner in this job (including blanks removed)
+        first_doc = self.next_doc
+        if request.separate:  # reserve ids for this job's sheets as they arrive
+            self.next_doc += 10000
 
         def page_added(path):
             r = active["request"]
+            sheet = received[0] // max(1, r.sheet_pages)
+            received[0] += 1
             page = {"path": path, "rotation": 0, "dpi": r.resolution, "mode": r.mode}
+            page["doc"] = first_doc + sheet if r.separate else MAIN_DOC
             if r.auto_detect:
                 self.detect_page(page, r.nominal_mm)
             if self.features is not None and not self.process_page(page):
@@ -402,10 +425,15 @@ class ScanManager:
 
         def finished(result):
             self.busy = False
+            if request.separate:  # the next job's documents follow this job's sheets
+                sheets = -(-received[0] // max(1, request.sheet_pages))
+                self.next_doc = first_doc + sheets
             on_done(result, self._cancel.is_set())
 
         def failed(message):
             self.busy = False
+            if request.separate:
+                self.next_doc = first_doc + -(-received[0] // max(1, request.sheet_pages))
             on_error(message)
 
         self._in_thread(work, finished, failed)
@@ -477,22 +505,55 @@ class ScanManager:
     def clear_pages(self):
         """Remove all pages from the session (the next Save starts a new document)"""
         self.pages = []
-        self.document = None
-        self._saved = None
+        self.documents = {}
+        self._saved = {}
+        self.next_doc = MAIN_DOC + 1
 
-    def _signature(self):
-        """What the pages look like now (files, versions, rotation, edits, order)"""
+    # -- documents ---------------------------------------------------------
+    @property
+    def document(self):
+        """The main document's file ({"path", "format"}) or None (single-document sessions)"""
+        return self.documents.get(MAIN_DOC)
+
+    @document.setter
+    def document(self, value):
+        if value is None:
+            self.documents.pop(MAIN_DOC, None)
+        else:
+            self.documents[MAIN_DOC] = value
+
+    def doc_ids(self):
+        """The documents in page order"""
+        seen = []
+        for p in self.pages:
+            d = p.get("doc", MAIN_DOC)
+            if d not in seen:
+                seen.append(d)
+        return seen
+
+    def doc_pages(self, doc):
+        """The pages of one document"""
+        return [p for p in self.pages if p.get("doc", MAIN_DOC) == doc]
+
+    def _signature(self, doc=None):
+        """What the pages (of one document) look like now: files, versions, rotation, edits, order"""
         from utils.util_display import page_key
 
-        return [page_key(p) for p in self.pages]
+        pages = self.pages if doc is None else self.doc_pages(doc)
+        return [page_key(p) for p in pages]
 
-    def mark_saved(self):
-        """The whole document was just saved"""
-        self._saved = self._signature()
+    def mark_saved(self, doc=None):
+        """A document (or, with doc=None, every document) was just saved"""
+        for d in [doc] if doc is not None else self.doc_ids():
+            self._saved[d] = self._signature(d)
+
+    def doc_is_saved(self, doc):
+        """True if a document hasn't changed since it was saved"""
+        return bool(self.doc_pages(doc)) and self._saved.get(doc) == self._signature(doc)
 
     def is_saved(self):
-        """True if the pages haven't changed since the last full save"""
-        return bool(self.pages) and self._saved == self._signature()
+        """True if every document is saved (the next Scan then starts a new one)"""
+        return bool(self.pages) and all(self.doc_is_saved(d) for d in self.doc_ids())
 
     def open_document(self, path):
         """Replace the session's pages with a saved document's pages (ValueError if it can't be read)"""
@@ -500,6 +561,9 @@ class ScanManager:
         from modules.manager_export import format_for_path
 
         pages = open_document(path, self.session_dir)
+        self.clear_pages()
+        for p in pages:
+            p["doc"] = MAIN_DOC
         self.pages = pages
         self.document = {"path": path, "format": format_for_path(path) or "pdf"}
         return pages
