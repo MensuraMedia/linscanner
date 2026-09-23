@@ -54,7 +54,7 @@ Linux's standard scanning system (SANE) can drive.
 | **Document Size** | **Auto-Detect** (fits each page to the paper, when its edges can be seen); documents (Letter, Legal, Executive, Half Letter, A4, A5, A6, B5); receipts (80 / 58 mm); cards (business, ID / credit, index); photos (4×6, 5×7); checks; full scan area |
 | **Clear feedback** | A summary line shows exactly what will be scanned; per-page progress; page count; plain-language errors (feeder empty, paper jam, scanner busy, not responding) |
 | **Cancel** | Stops the scan and keeps the pages already scanned |
-| **Preview** | Fast page switching; **zoom** (buttons, Ctrl + wheel, drag to pan); a scrollable, left-aligned thumbnail strip with **1 or 2 rows**; opens automatically after scanning |
+| **Preview** | Fast page switching; **zoom up to 16×** (buttons, Ctrl + wheel, drag to pan), right into the grain of a scan; a scrollable, left-aligned thumbnail strip with **1 or 2 rows**; opens automatically after scanning |
 | **Page tools** | A PDF-editor style toolbar of icons with captions on hover: undo / redo; add pages from a PDF or images, duplicate, extract a page, delete, clear; rotate, move, reverse order; add text, signature; page navigation, zoom, fit page, fit width |
 | **Window** | Resizable, and small enough to snap to half or a quarter of the screen (the pages scroll when needed); its own icon in the panel and Alt+Tab |
 | **Blank Pages** | *Keep* or *Remove* right on the Scan page (the same switch as the Blank-page removal module) |

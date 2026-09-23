@@ -377,6 +377,10 @@
     {
       "datetime": "2026-09-23T15:37:07",
       "description": "0.3.6: Open with LinScanner - run.sh FILE... opens PDFs/images as pages in Preview; desktop entry gains Exec %F and MimeType so the file manager's Open With lists LinScanner"
+    },
+    {
+      "datetime": "2026-09-23T18:40:07",
+      "description": "0.3.7: zoom up to 16x; deep zoom enlarges past the page's own resolution (capped at 40 Mpx)"
     }
   ]
 }

@@ -98,3 +98,4 @@
 | 2026-09-22T01:40:00 | Own repository: MensuraMedia/linscanner (history kept; test serial replaced by a placeholder); linux-peripherals includes it as a submodule |
 | 2026-09-22T01:40:00 | Fix: installer start check accepts the name LinScanner |
 | 2026-09-23T15:36:50 | 0.3.6: Open with LinScanner. `run.sh FILE…` (and the menu entry's `Exec=… %F` + `MimeType=` for PDF/PNG/JPEG/TIFF/BMP) opens documents as pages in Preview, so the file manager's Open With lists LinScanner. Verified: right-click handler registration (`gio mime`), a 2-page PDF opened from the command line. |
+| 2026-09-23T18:40:07 | 0.3.7: Zoom further into pages - maximum 8x to 16x (same steps), and zooming past a page's own resolution now keeps enlarging the view (Image.thumbnail never enlarged, so zoom used to stop silently). One zoomed page is capped at 40 megapixels. |
