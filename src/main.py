@@ -49,6 +49,12 @@ def parse_args(argv):
         "--quit-after", type=int, default=0, metavar="SECONDS", help="close automatically (for UI tests)"
     )
     p.add_argument("--debug", action="store_true", help="verbose log (+ terminal) and SANE driver debugging")
+    p.add_argument(
+        "files",
+        nargs="*",
+        metavar="FILE",
+        help="document to open as pages (PDF, PNG, JPEG, TIFF) - used by 'Open with LinScanner'",
+    )
     return p.parse_args(argv)
 
 
@@ -100,7 +106,12 @@ def main(argv=None):
     window = AppWindow(ctx)
     window.connect("destroy", Gtk.main_quit)
     window.show_all()
-    ctx.nav.navigate_to(args.page)
+    ctx.nav.navigate_to("preview" if args.files else args.page)
+    if args.files:
+        # "Open with LinScanner": add the files as pages once the window is up
+        paths = [os.path.abspath(f) for f in args.files]
+        log.info("opening %d file(s) from the command line: %s", len(paths), ", ".join(paths))
+        GLib.idle_add(lambda: ctx.nav.get_page_widget("preview").add_pages(paths) and False)
     if args.quit_after:
         GLib.timeout_add_seconds(args.quit_after, Gtk.main_quit)
     try:

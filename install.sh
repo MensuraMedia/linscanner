@@ -77,11 +77,12 @@ Type=Application
 Name=LinScanner
 GenericName=Document Scanner
 Comment=Scan documents in color or black & white and save as PDF or images
-Exec=$APP_DIR/run.sh
+Exec=$APP_DIR/run.sh %F
 Icon=linscanner
 StartupWMClass=linscanner
 Terminal=false
 Categories=Graphics;Scanning;
+MimeType=application/pdf;image/png;image/jpeg;image/tiff;image/bmp;
 Keywords=scan;scanner;pdf;document;sane;"
 if [[ -f "$DESKTOP" ]] && [[ "$(cat "$DESKTOP")" == "$ENTRY" ]]; then
     ok "Menu entry present ($DESKTOP)"

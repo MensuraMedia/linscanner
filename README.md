@@ -189,7 +189,9 @@ rm -rf ~/.config/linscanner                # removes your settings (optional)
 ## 4. Using LinScanner
 
 ### Scan a document
-1. Open **LinScanner** from the menu (or run `linscanner/run.sh`).
+1. Open **LinScanner** from the menu (or run `linscanner/run.sh`). You can also **right-click a PDF or
+   image in your file manager and choose Open With → LinScanner**: its pages open in Preview, ready to
+   rotate, edit, sign and save.
 2. **Scanner:** it's found automatically. Finding scanners takes about 10
    seconds; press **Find** (before the scanner list, under **Detect Scanner**) after plugging one in.
    A spinner turns while it looks. A **green power icon** after the
@@ -325,6 +327,7 @@ to see its name. The tools are grouped from left to right:
 | `run.sh` | Start LinScanner |
 | `run.sh --test-scanner` | Use only SANE's virtual scanner, with separate throwaway settings (no hardware needed) |
 | `run.sh --page devices` | Open on a page: `scan`, `preview`, `devices`, `settings`, `about` |
+| `run.sh FILE…` | Open PDFs or images as pages in Preview (what **Open with LinScanner** in the file manager does) |
 | `run.sh --version` | Show the version |
 | `run.sh --quit-after N` | Close after N seconds (automated tests) |
 | `run.sh --debug` | Verbose log (also printed to the terminal) plus SANE driver-loading details |

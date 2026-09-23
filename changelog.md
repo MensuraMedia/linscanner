@@ -97,3 +97,4 @@
 | 2026-09-22T01:10:00 | v0.3.5 |
 | 2026-09-22T01:40:00 | Own repository: MensuraMedia/linscanner (history kept; test serial replaced by a placeholder); linux-peripherals includes it as a submodule |
 | 2026-09-22T01:40:00 | Fix: installer start check accepts the name LinScanner |
+| 2026-09-23T15:36:50 | 0.3.6: Open with LinScanner. `run.sh FILE…` (and the menu entry's `Exec=… %F` + `MimeType=` for PDF/PNG/JPEG/TIFF/BMP) opens documents as pages in Preview, so the file manager's Open With lists LinScanner. Verified: right-click handler registration (`gio mime`), a 2-page PDF opened from the command line. |
