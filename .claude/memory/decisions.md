@@ -122,3 +122,21 @@ type: project
 ### 2026-09-21: Build on gtk-python-dashboard-starter structure
 - Reason: user requirement; gives modular config/ui/pages/modules layout.
 - Impact: pages get an AppContext (settings, scan manager, event hub) because they share state, which the template's pages don't need.
+
+## 2026-09-24 — Licence: CC BY-NC 4.0, with the full legal code
+The user replaced the bespoke "LinScanner Community License (Noncommercial) 1.0" with Creative Commons
+Attribution-NonCommercial 4.0 International. `LICENSE` carries a plain-language summary (the user's
+wording) followed by the **full official legal code**: Creative Commons states the deed summary is not
+a substitute for the licence, so shipping the summary alone would have been weak. `tests/test_licence.py`
+guards it. The change is **not retroactive** — copies released earlier keep the terms they came with.
+
+## 2026-09-24 — Pages renamed, route ids kept
+Preview became **Document** and Recent became **Saved**, but the navigation route ids stayed `preview`
+and `recent`. Renaming them would break saved settings, `--page` and the test suite for no user-visible
+gain. Anyone "tidying" this later should know it was deliberate.
+
+## 2026-09-24 — A crop is a new page, and a file name is only suggested when unambiguous
+`apply_crop` inserts a new page after the source page *and its existing crops* rather than replacing
+the source, so thirty crops of one page give thirty pages. `suggested_name()` returns a name only when
+the pages agree on one — otherwise the automatic `scan-<date>-<time>` name stands. Without that guard a
+four-page document was nearly saved as "crop 2.pdf", because one page had been renamed.

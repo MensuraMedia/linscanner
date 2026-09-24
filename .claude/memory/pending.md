@@ -34,3 +34,13 @@ type: project
 - [x] 0.3.1 polish built (docs/design/0.3.1-ui-polish.md)
 - [ ] Restart linscanner and check the icon in Alt+Tab and the panel (Cinnamon)
 - [x] Moved to its own repository, MensuraMedia/linscanner (2026-09-22); commit here, then bump the submodule in linux-peripherals
+
+## Open after 0.4.1 (2026-09-24)
+
+- **The user has not yet used the new Document and Saved pages on real scans.** They are covered by
+  146 tests and headless screenshots, but not by use: crop-as-new-page, thumbnail renaming feeding the
+  file name, the Saved search, the preview pane and renaming a saved file all want a real session.
+- Watch for it: the Epson ES-400 II took a `device descriptor read/64, error -71` on 2026-09-24 and
+  re-enumerated several times before settling. If it recurs it is host evidence, not a scanner
+  annoyance — see `docs/HOST-USB.md` and linux-peripherals #57.
+- Route ids stay `preview` / `recent` on purpose although the pages are called Document / Saved.
