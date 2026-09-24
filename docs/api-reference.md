@@ -177,9 +177,11 @@ Constants: `METHOD_ORDER`, `METHOD_LABELS`, `VENDOR_SANE_BACKENDS`, `VENDOR_SANE
 | &nbsp;&nbsp;`.kind(self)` | Device type text from the preferred method |
 | &nbsp;&nbsp;`.label(self)` | Display name with the driver in brackets |
 | `_usb_for(device, usb_devices)` | UsbDevice matching a SANE libusb:BBB:DDD device name, if any |
+| `_escl_scanner_on_usb()` | True when some device on ipp-usb really offers eSCL scanning (an MFP, not a printer) |
 | class `ConnectionEngine()` | Discovers physical scanners and scans with fallback across methods |
 | &nbsp;&nbsp;`.__init__(self, backends, use_usb_probe=True)` | backends: ScannerBackend instances (e.g. SaneBackend(), EsclBackend()) |
 | &nbsp;&nbsp;`.discover(self)` | List physical scanners (grouped), with ranked methods |
+| &nbsp;&nbsp;`._printer_without_scanner(u)` | True for a plain printer: it speaks IPP-USB (like scanner-capable MFPs) but offers no |
 | &nbsp;&nbsp;`._hint(u)` | Why a USB scanner-like device has no working method, and what to do |
 | &nbsp;&nbsp;`.scan(self, physical, build_request, on_page=None, on_progress=None, cancel_event=None)` | Try each method in order until one scans. |
 
@@ -192,6 +194,7 @@ Constants: `STATUS_TEXT`
 | Symbol | Purpose |
 |---|---|
 | `sections(physical, caps=None)` | [(section title, [(label, value), ...])] describing a physical scanner |
+| `_capability_rows(caps)` | [(label, value)] describing what a scanner can do |
 | `check_status(physical)` | (level, text) for the scanner's current state: ok / warn / busy / error |
 | `firmware(physical)` | Firmware / version string if a driver reports one, else a short explanation |
 | `usb_node_hint(physical)` | Extra advice when the USB device node isn't accessible |
@@ -207,9 +210,12 @@ Constants: `RECENT_MAX`, `OPEN_DPI`, `OPENABLE`
 | `recent_path()` | The recent-documents list file |
 | `recent_entries(existing_only=True)` | Recent documents, newest first: [{path, saved_at, pages, format}] |
 | `add_recent(paths, pages, fmt)` | Remember saved files (the newest go first; a re-saved file moves to the top) |
+| `rename_recent(old_path, new_path)` | Follow a renamed file in the list (the entry keeps its date and page count) |
 | `forget_recent(path)` | Remove one file from the recent list (the file itself is not touched) |
 | `clear_recent(older_than_days=None)` | Empty the recent list, or drop entries saved more than N days ago; returns how many were removed. |
 | `_saved_ts(entry)` | When an entry was saved (epoch seconds; 0 if unknown) |
+| `safe_name(name, limit=60)` | A page or file name a user typed, made safe for a file system (empty if nothing is left) |
+| `crop_name(pages, source_name)` | The next free 'crop n' for that source page ('crop 1', 'crop 2', ...) |
 | `open_document(path, out_dir)` | Pages for a saved document: [{"path", "rotation", "dpi", "mode"}]. |
 | `_open_pdf(path, target)` | Render every PDF page to PNG with Ghostscript |
 | `_open_image(path, target)` | Copy each frame of an image file to PNG |
@@ -340,10 +346,16 @@ Constants: `ZOOM_STEPS`, `THUMB_CACHE_MAX`, `LARGE_CACHE_MAX`
 |---|---|
 | `to_pixbuf(img)` | Pillow RGB image -> GdkPixbuf |
 | class `PagePreview(Gtk.Box)` | Selected-page view + thumbnail strip; on_select(index) when the page changes |
-| &nbsp;&nbsp;`.__init__(self, on_select=None, cache_dir=None, rows=1, on_zoom=None, label_for=None)` | Large view (scrolled, zoomable) plus the thumbnail strip (rows: 1 or 2) |
+| &nbsp;&nbsp;`.__init__(self, on_select=None, cache_dir=None, rows=1, on_zoom=None, label_for=None, on_rename=None)` | Large view (scrolled, zoomable) plus the thumbnail strip (rows: 1 or 2) |
 | &nbsp;&nbsp;`.set_pages(self, pages, selected=None)` | Show a page list and select one (keeps selection if possible) |
 | &nbsp;&nbsp;`.refresh_selected(self)` | Re-render after the selected page changed (rotation, Quick Edit) |
 | &nbsp;&nbsp;`.select(self, index)` | Show another page (only the highlight moves; nothing is rebuilt) |
+| &nbsp;&nbsp;`.begin_crop(self, on_done)` | Next drag over the page draws a crop rectangle; on_done(left, top, right, bottom) in 0..1 |
+| &nbsp;&nbsp;`.cancel_crop(self)` | Leave crop mode without cropping |
+| &nbsp;&nbsp;`.cropping(self)` |  |
+| &nbsp;&nbsp;`._image_area(self)` | The picture's rectangle inside the event box (it is centred when smaller) |
+| &nbsp;&nbsp;`._crop_fractions(self)` | The drawn rectangle as fractions of the picture, or None if it is too small |
+| &nbsp;&nbsp;`._draw_crop(self, _widget, cr)` | Dim everything outside the rectangle being dragged |
 | &nbsp;&nbsp;`.set_rows(self, rows)` | 1 or 2 rows of thumbnails |
 | &nbsp;&nbsp;`.set_zoom(self, zoom)` | Zoom relative to fit-to-window (1.0 = fit) |
 | &nbsp;&nbsp;`.zoom_in(self)` | Next zoom step |
@@ -353,15 +365,19 @@ Constants: `ZOOM_STEPS`, `THUMB_CACHE_MAX`, `LARGE_CACHE_MAX`
 | &nbsp;&nbsp;`._apply_strip_height(self)` | Strip tall enough for 1 or 2 rows, plus the scroll bar |
 | &nbsp;&nbsp;`._thumb_pixbuf(self, page)` | Cached thumbnail for a page (redrawn only when the page changed) |
 | &nbsp;&nbsp;`._thumb_button(self, i, page)` | Button with a page thumbnail and its number |
+| &nbsp;&nbsp;`._thumb_clicked(self, index, event)` | Double-click a thumbnail caption to rename it |
+| &nbsp;&nbsp;`.begin_rename(self, index=None)` | Edit a thumbnail's caption in place (F2 or a double-click) |
+| &nbsp;&nbsp;`._rename_key(self, entry, event)` | Esc leaves the caption unchanged |
+| &nbsp;&nbsp;`._finish_rename(self, index, text)` | Store the typed caption (empty text restores the automatic one) |
 | &nbsp;&nbsp;`._set_thumb(self, i)` | Draw (or redraw) thumbnail i |
 | &nbsp;&nbsp;`._rebuild_strip(self)` | Lay out the thumbnails column by column (1 or 2 rows), from the left |
 | &nbsp;&nbsp;`._scroll_to_thumb(self, index)` | Keep the selected thumbnail visible |
 | &nbsp;&nbsp;`._on_resize(self, _widget, alloc)` | Re-render the large view after resizing (debounced) |
 | &nbsp;&nbsp;`._render_large(self)` | Render the selected page at fit x zoom (one-shot timeout) |
 | &nbsp;&nbsp;`._on_scroll(self, _widget, event)` | Ctrl + wheel zooms; the plain wheel scrolls as usual |
-| &nbsp;&nbsp;`._pan_start(self, _widget, event)` | Start dragging the zoomed page |
-| &nbsp;&nbsp;`._pan_move(self, _widget, event)` | Pan while dragging |
-| &nbsp;&nbsp;`._pan_end(self, *_)` | Stop panning |
+| &nbsp;&nbsp;`._pan_start(self, _widget, event)` | Start dragging the zoomed page (or the crop rectangle) |
+| &nbsp;&nbsp;`._pan_move(self, _widget, event)` | Pan while dragging (or resize the crop rectangle) |
+| &nbsp;&nbsp;`._pan_end(self, *_)` | Stop panning, or finish the crop rectangle |
 
 ### `src/ui/components/component_segmented.py`
 
@@ -445,14 +461,14 @@ Constants: `LEVEL_CSS`
 | &nbsp;&nbsp;`.on_refreshing(self)` | Show that detection is running |
 | &nbsp;&nbsp;`._summary(self, text, css)` | Set the summary line text and colour |
 | &nbsp;&nbsp;`.show_devices(self, _visible=None)` | Rebuild one section per physical scanner |
-| &nbsp;&nbsp;`.device_section(self, d)` | Section for one scanner: status row, then an info grid |
+| &nbsp;&nbsp;`.device_section(self, d)` | One scanner: a status card, then a card per section (Identity, Capabilities, …) |
 | &nbsp;&nbsp;`._firmware_done(self, d, fw, label)` | Store and show a firmware string read in the background |
 | &nbsp;&nbsp;`.check_status(self, d, label, button)` | Probe the scanner in the background and show a plain-language status |
 | &nbsp;&nbsp;`.on_shown(self)` | Refresh the sections when the page is opened; a remembered scanner gets a full check |
 
 ### `src/pages/page_preview.py`
 
-Preview Page Shows scanned (or opened) pages with a PDF-editor style toolbar (Phosphor icons, captions on hover), grouped left to right:    History   undo, redo   Pages     add page (PDF / images), add image, duplicate, save page as,             delete page, clear all   Arrange   rotate left / right / 180°, move left / right, reverse order   Content   add text, signature (Quick Edit feature)                                                               Save / Save As…   View bar  first / previous / next / last page, zoom out / in, fit page,             fit width, thumbnails in 1 or 2 rows  The groups wrap onto a second row in narrow windows. Every change to the pages can be undone (Ctrl+Z) and redone (Ctrl+Shift+Z / Ctrl+Y).  - Save: writes to the document's file (the last Save / Save As, or the file   opened from Recent). A new document is saved as a PDF in the Save folder   with an automatic name, without a dialog. - Save As…: choose the name, folder and format.
+Document Page Shows scanned (or opened) pages with a PDF-editor style toolbar (Phosphor icons, captions on hover), grouped by what the tools do:    History   undo, redo   Pages     add page (PDF / images), add image, duplicate, delete page,             clear all   Arrange   rotate left / right / 180°, move left / right, reverse order   Edit      crop, add text, signature (Quick Edit feature)   Export    save this page as…, Save, Save All, Save As…   View bar  first / previous / next / last page, zoom out / in, fit page,             fit width, thumbnails in 1 or 2 rows  The groups wrap onto a second row in narrow windows. Every change to the pages can be undone (Ctrl+Z) and redone (Ctrl+Shift+Z / Ctrl+Y).  - Crop: drag a rectangle over the page. What is kept becomes a new page named   "crop 1", "crop 2", … after the page it came from, which is left as it is. - Names: double-click a thumbnail's caption (or F2) to name a page. That name   is the file name Save uses and Save As offers. - Save: writes to the document's file (the last Save / Save As, or the file   opened from Saved). A new document is saved as a PDF in the Save folder,   named after its pages when they agree on one name, automatically otherwise. - Save As…: choose the name, folder and format.
 
 Constants: `HISTORY_MAX`, `TOOL_GROUPS`, `ADDABLE`
 
@@ -476,11 +492,14 @@ Constants: `HISTORY_MAX`, `TOOL_GROUPS`, `ADDABLE`
 | &nbsp;&nbsp;`.changed(self)` | Tell other pages this page changed the pages (history is kept) |
 | &nbsp;&nbsp;`.on_zoom(self, zoom)` | Show the zoom level ('Fit' or a percentage of fit) |
 | &nbsp;&nbsp;`.on_rows_changed(self, key)` | 1 or 2 rows of thumbnails; remembered |
+| &nbsp;&nbsp;`.rename_page(self, index, name)` | A thumbnail caption was edited: that name is also the suggested file name |
+| &nbsp;&nbsp;`.start_crop(self)` | Arm the crop tool: the next drag over the page chooses what to keep |
+| &nbsp;&nbsp;`.apply_crop(self, left, top, right, bottom)` | Keep the chosen part of the page (rotation and any text or signature are baked in) |
 | &nbsp;&nbsp;`.step(self, delta)` | Previous / next page |
 | &nbsp;&nbsp;`.on_key(self, _widget, event)` | Page keys, Home / End, zoom and undo / redo shortcuts |
 | &nbsp;&nbsp;`.reload(self, *_)` | Show the session's pages and enable/disable actions |
 | &nbsp;&nbsp;`.current_doc(self)` | Document id of the selected page |
-| &nbsp;&nbsp;`.thumb_label(self, i, page)` | Thumbnail caption: 'Page n', or 'Doc d' (+ ✓ when saved) when there are several documents |
+| &nbsp;&nbsp;`.thumb_label(self, i, page)` | Thumbnail caption: the page's name if it has one, else 'Page n' / 'Doc d' |
 | &nbsp;&nbsp;`.update_info(self)` | Show 'Page n of m · mode · dpi' (and the document and its file) for the selected page |
 | &nbsp;&nbsp;`.rotate(self, degrees)` | Rotate the selected page and re-render |
 | &nbsp;&nbsp;`.move(self, step)` | Move the selected page one place earlier (-1) or later (+1) |
@@ -492,17 +511,18 @@ Constants: `HISTORY_MAX`, `TOOL_GROUPS`, `ADDABLE`
 | &nbsp;&nbsp;`._choose_files(self, title)` | File dialog for PDFs and images (several at once) |
 | &nbsp;&nbsp;`.extract_page(self)` | Save only the selected page to a file of its own (the document is unchanged) |
 | &nbsp;&nbsp;`._confirm(self, title, detail)` | Modal OK/Cancel question; True if OK |
-| &nbsp;&nbsp;`.open_document(self, path, quick_edit=False)` | Open a saved document (from Recent) as the current pages; optionally start Quick Edit |
+| &nbsp;&nbsp;`.open_document(self, path, quick_edit=False)` | Open a saved document (from Saved) as the current pages; optionally start Quick Edit |
 | &nbsp;&nbsp;`._doc_to_save(self)` | (doc id, its pages): the selected page's document (all pages when there is only one) |
 | &nbsp;&nbsp;`._default_path(self, n=None)` | A new file name in the default save location (Settings) |
+| &nbsp;&nbsp;`.suggested_name(self, pages, ext='.pdf')` | File name for these pages: a name typed on a thumbnail, when it is unambiguous. |
 | &nbsp;&nbsp;`.on_save(self)` | Save the document to its file; a new document goes to the default save location as a PDF |
 | &nbsp;&nbsp;`.on_save_all(self)` | Save every document (Single Page sheets) as its own PDF in the default save location |
-| &nbsp;&nbsp;`.on_save_as(self, _btn, pages=None, title='Save scanned document', remember=True)` | Save As dialog (PDF/PNG/JPEG/TIFF) for the document (or given pages), export, report |
+| &nbsp;&nbsp;`.on_save_as(self, _btn=None, pages=None, title='Save scanned document', remember=True)` | Save As dialog (PDF/PNG/JPEG/TIFF) for the document (or given pages), export, report |
 | &nbsp;&nbsp;`._write(self, pages, path, fmt, doc=None, report=True, remember=None)` | Export pages; with a doc id, remember its file and mark it saved; report the result |
 
 ### `src/pages/page_recent.py`
 
-Recent Page Documents saved with LinScanner, as a table sorted by date (newest first):    Date saved | [folder] Folder | File name [document] | Pages | Format | [trash]  - folder icon: opens the system file manager at that folder (the file is   highlighted when the file manager supports it) - document icon (or double-click / Enter on a row): opens the document in   LinScanner (Preview + Quick Edit) - trash icon: removes the entry from the list (the file is not touched) - Clear: All, or entries older than 5 / 10 / 20 / 30 / 60 / 90 days  Icons are Phosphor Icons. The list is stored on this computer only (~/.local/share/linscanner/recent.json).
+Saved Page Documents saved with LinScanner, as a table sorted by date (newest first), with a preview of the selected document underneath:    Date saved | [folder] Folder | File name [document] | Pages | Format | [trash]  - search box: filters the list on the file name and folder as you type - folder icon: opens the system file manager at that folder (the file is   highlighted when the file manager supports it) - one click on a row: previews the document in the pane below (collapsible;   drag the divider to resize it) - document icon (or double-click / Enter on a row): opens the document on the   Document page (with Quick Edit) - the file name cell is editable: typing a new name renames the file on disk - trash icon: removes the entry from the list (the file is not touched) - Clear: All, or entries older than 5 / 10 / 20 / 30 / 60 / 90 days  Icons are Phosphor Icons. The list is stored on this computer only (~/.local/share/linscanner/recent.json).
 
 Constants: `CLEAR_CHOICES`, `ICON_PX`
 
@@ -510,8 +530,22 @@ Constants: `CLEAR_CHOICES`, `ICON_PX`
 |---|---|
 | `short_path(path)` | Folder part of a path with the home folder shown as ~ |
 | `show_in_file_manager(path, window=None)` | Open the file manager at the file's folder, highlighting the file if possible |
-| class `RecentPage(BasePage)` | Recently saved documents, as a table |
+| class `RecentPage(BasePage)` | Saved documents, as a table with a preview pane |
 | &nbsp;&nbsp;`.build_content(self)` | Title, Clear controls and the scrollable table |
+| &nbsp;&nbsp;`.build_preview(self)` | Collapsible preview of the selected document, under the list |
+| &nbsp;&nbsp;`.setting(self, key, default=None)` | A setting, tolerating a context without settings (used by lightweight tests) |
+| &nbsp;&nbsp;`.on_paned_allocated(self, _paned, allocation)` | Give the preview the lower half the first time the page is shown |
+| &nbsp;&nbsp;`.place_divider(self)` | Half and half while the preview is open; all list while it is collapsed |
+| &nbsp;&nbsp;`.on_preview_toggled(self)` | Remember whether the preview pane is open, and fill it when it opens |
+| &nbsp;&nbsp;`.on_selection_changed(self)` | A single click selects a row: show it in the preview pane |
+| &nbsp;&nbsp;`.selected_path(self)` | Path of the selected row ('' if none) |
+| &nbsp;&nbsp;`.show_preview(self)` | Render the first page of the selected document (only while the pane is open) |
+| &nbsp;&nbsp;`.preview_dir(self)` | Where preview images are written (this session's folder) |
+| &nbsp;&nbsp;`.preview_step(self, delta)` | Previous / next page of the previewed document |
+| &nbsp;&nbsp;`.render_preview(self)` | Draw the current preview page and update the header |
+| &nbsp;&nbsp;`._preview_cache(self)` | One display cache for the preview pane |
+| &nbsp;&nbsp;`.on_rename(self, _cell, path_str, new_text)` | Rename the file on disk (same folder, same extension) and in the list |
+| &nbsp;&nbsp;`.set_message(self, text, error=False)` | Short feedback under the search row |
 | &nbsp;&nbsp;`._add_text_column(self, title, col, width, sort=None, expand=False, xalign=0.0, ellipsize=None)` | Fixed-width text column |
 | &nbsp;&nbsp;`._add_icon_column(self, col, action, tooltip)` | Narrow column of clickable icons |
 | &nbsp;&nbsp;`._column_at(self, x, y)` | (row path, column) under a point of the table, or (None, None) |
@@ -521,13 +555,13 @@ Constants: `CLEAR_CHOICES`, `ICON_PX`
 | &nbsp;&nbsp;`.on_motion(self, view, event)` | Hand pointer over the icon cells |
 | &nbsp;&nbsp;`.on_tooltip(self, view, x, y, keyboard, tooltip)` | Tooltips for the icon cells |
 | &nbsp;&nbsp;`.open_folder(self, path)` | Folder icon: the system file manager at the file's folder |
-| &nbsp;&nbsp;`.open_document(self, path)` | Document icon: open the file in Preview and start Quick Edit |
+| &nbsp;&nbsp;`.open_document(self, path)` | Document icon: open the file on the Document page and start Quick Edit |
 | &nbsp;&nbsp;`.forget(self, path)` | Trash icon: remove one entry (the file is not touched) |
 | &nbsp;&nbsp;`.clear(self)` | Clear all entries, or those older than the chosen number of days (after confirming) |
 
 ### `src/pages/page_scan.py`
 
-Scan Page Choose scanner, source, colour, quality and paper; scan with live progress. Pages go to the Preview page as they arrive.
+Scan Page Choose scanner, source, colour, quality and paper; scan with live progress. Pages go to the Document page as they arrive.
 
 Constants: `OPTION_BUTTON_WIDTH`
 
@@ -561,9 +595,9 @@ Constants: `OPTION_BUTTON_WIDTH`
 | &nbsp;&nbsp;`.update_summary(self)` | Show exactly what will be sent to the scanner |
 | &nbsp;&nbsp;`.build_request(self, dry_run=False)` | Build a ScanRequest from the controls (dry_run: no temp folder) |
 | &nbsp;&nbsp;`.on_scan(self, _btn)` | Start scanning with the current options |
-| &nbsp;&nbsp;`.on_page(self, _page)` | Count a finished page and notify the Preview page |
+| &nbsp;&nbsp;`.on_page(self, _page)` | Count a finished page and notify the Document page |
 | &nbsp;&nbsp;`.on_progress(self, pct)` | Update the progress bar for the page in progress |
-| &nbsp;&nbsp;`.on_done(self, pages, cancelled)` | Report the result; open Preview, or wait for the next sheet in one-sheet mode |
+| &nbsp;&nbsp;`.on_done(self, pages, cancelled)` | Report the result; open the Document page, or wait for the next sheet in one-sheet mode |
 | &nbsp;&nbsp;`.after_scan(self, final)` | Tell feature modules a scan ended (final = the document is complete) |
 | &nbsp;&nbsp;`.on_error(self, message)` | Show a scan error |
 
@@ -602,12 +636,13 @@ Constants: `ANALYSIS_SIDE`, `DIFF`, `MARGIN_MM`, `LINE_SHARE`, `PAPER_SHARE`
 
 ### `src/utils/util_display.py`
 
-Display images for the Preview A 600 dpi colour page is ~100 MB once decoded, so showing it straight from the scan is slow. Each page gets a small display copy ("proxy", at most PROXY_MAX_SIDE pixels, JPEG) made once, in the background as pages arrive. The large view and the thumbnails are drawn from it; only a deep zoom goes back to the original scan. Quick Edit layers and rotation are applied at display time, so the proxy never goes stale.
+Display images for the Document page A 600 dpi colour page is ~100 MB once decoded, so showing it straight from the scan is slow. Each page gets a small display copy ("proxy", at most PROXY_MAX_SIDE pixels, JPEG) made once, in the background as pages arrive. The large view and the thumbnails are drawn from it; only a deep zoom goes back to the original scan. Quick Edit layers and rotation are applied at display time, so the proxy never goes stale.
 
-Constants: `PROXY_MAX_SIDE`
+Constants: `PROXY_MAX_SIDE`, `MAX_RENDER_PIXELS`
 
 | Symbol | Purpose |
 |---|---|
+| `_fit_within(size, max_w, max_h)` | The size that fits max_w x max_h keeping the aspect ratio, capped by MAX_RENDER_PIXELS. |
 | class `DisplayCache()` | Proxy files for pages (thread-safe), kept in a cache folder |
 | &nbsp;&nbsp;`.__init__(self, folder)` | folder: where proxies are written (the session's temp folder) |
 | &nbsp;&nbsp;`.proxy(self, path)` | (proxy path, factor) for a page image, creating it if needed. |
@@ -687,6 +722,7 @@ Imaging helpers shared by the core and feature modules (Pillow + numpy). Kept in
 | `is_blank(img, threshold=0.002)` | True if the page has (almost) no ink |
 | `overlay_pixels(page, size)` | Overlay position helper: fractions of the page -> pixels for an image of `size` |
 | `composite_at(base, layer, x, y)` | Alpha-composite an RGBA layer onto base at (x, y); parts outside the page are cut off |
+| `crop_box(size, left, top, right, bottom, minimum=8)` | Pixel box (l, t, r, b) for fractions of an image, or None when it would be too small |
 | `flatten(page, img=None)` | Page image with rotation and Quick Edit overlays applied |
 
 ### `src/utils/util_logging.py`
@@ -873,7 +909,7 @@ Constants: `EXTENSIONS`
 |---|---|
 | `import_files(ctx, paths)` | Append image files to the session as pages; returns the number of pages added |
 | class `Feature(BaseFeature)` | Add image files as pages |
-| &nbsp;&nbsp;`.extend_preview(self, page)` | Add an 'Add Image' button to the Preview toolbar's pages group |
+| &nbsp;&nbsp;`.extend_preview(self, page)` | Add an 'Add Image' button to the Document toolbar's pages group |
 | &nbsp;&nbsp;`.choose(self, page)` | File dialog, then import |
 
 ### `src/features/feature_ocr.py`
@@ -926,7 +962,7 @@ Constants: `HANDLE`, `SNAP_PX`, `DEFAULT_SIGNATURE_WIDTH`, `SIGNATURE_INK`
 | `on_paper(img, pad=10)` | A transparent signature on a white "paper" tile, so dark ink shows on the dark theme |
 | `_pixbuf(img)` | Pillow image -> GdkPixbuf (RGBA kept) |
 | class `Feature(BaseFeature)` | Text and signatures on scanned pages |
-| &nbsp;&nbsp;`.extend_preview(self, page)` | Add Text and Signature buttons to the Preview toolbar's content group |
+| &nbsp;&nbsp;`.extend_preview(self, page)` | Add Text and Signature buttons to the Document toolbar's edit group |
 | &nbsp;&nbsp;`.open_editor(self, preview_page, start=None)` | Open the editor for the selected page (start: "text" or "signature"); store overlays on Apply |
 | class `QuickEditor()` | Modal editor window: canvas + tools. run() returns True if changes were applied. |
 | &nbsp;&nbsp;`.__init__(self, ctx, pages, index)` | Build the dialog for pages[index] (overlays are edited on a copy) |

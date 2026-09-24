@@ -100,7 +100,7 @@ class Feature(BaseFeature):
     order = 85
 
     def extend_preview(self, page):
-        """Add Text and Signature buttons to the Preview toolbar's content group"""
+        """Add Text and Signature buttons to the Document toolbar's edit group"""
         page.add_tool(
             "content",
             icon_button(

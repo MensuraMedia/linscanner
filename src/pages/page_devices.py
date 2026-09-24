@@ -87,8 +87,10 @@ class DevicesPage(BasePage):
         self.list_box.show_all()
 
     def device_section(self, d):
-        """Section for one scanner: status row, then an info grid"""
+        """One scanner: a status card, then a card per section (Identity, Capabilities, …)"""
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         box, inner = self.make_card(f"{d.vendor} {d.model}".strip())
+        outer.pack_start(box, False, False, 0)
         status_row = Gtk.Box(spacing=10)
         status_btn = Gtk.Button(label="Check status")
         status_lbl = self.label("", "muted", wrap=True)
@@ -102,23 +104,20 @@ class DevicesPage(BasePage):
             status_lbl.set_text(d.hint)
 
         caps = self.ctx.scan.capabilities.get(d.id)
-        grid = Gtk.Grid(column_spacing=18, row_spacing=3)
-        row = 0
+        fw_val = self.label(self.firmware_cache.get(d.id, "reading…"), "info-value", selectable=True)
         for title, rows in info.sections(d, caps):
-            head = self.label(title, "secondary")
-            head.set_margin_top(8)
-            grid.attach(head, 0, row, 2, 1)
-            row += 1
-            for key, value in rows:
-                grid.attach(self.label(key, "info-key"), 0, row, 1, 1)
+            section_box, section = self.make_card(title)
+            grid = Gtk.Grid(column_spacing=18, row_spacing=3)
+            for n, (key, value) in enumerate(rows):
+                grid.attach(self.label(key, "info-key"), 0, n, 1, 1)
                 val = self.label(value, "info-value", wrap=True, selectable=True)
                 val.set_hexpand(True)
-                grid.attach(val, 1, row, 1, 1)
-                row += 1
-        fw_val = self.label(self.firmware_cache.get(d.id, "reading…"), "info-value", selectable=True)
-        grid.attach(self.label("Firmware", "info-key"), 0, row, 1, 1)
-        grid.attach(fw_val, 1, row, 1, 1)
-        inner.pack_start(grid, False, False, 0)
+                grid.attach(val, 1, n, 1, 1)
+            if title == "Identity":  # firmware is read in the background and filled in later
+                grid.attach(self.label("Firmware", "info-key"), 0, len(rows), 1, 1)
+                grid.attach(fw_val, 1, len(rows), 1, 1)
+            section.pack_start(grid, False, False, 0)
+            outer.pack_start(section_box, False, False, 0)
 
         if d.methods and caps is None and not self.ctx.scan.busy:  # load, then redraw
             self.ctx.scan.load_capabilities(d.id, lambda *_: self.show_devices(), lambda *_: None)
@@ -129,7 +128,7 @@ class DevicesPage(BasePage):
                 lambda fw: self._firmware_done(d, fw, fw_val),
                 lambda err: self._firmware_done(d, f"unavailable ({err})", fw_val),
             )
-        return box
+        return outer
 
     def _firmware_done(self, d, fw, label):
         """Store and show a firmware string read in the background"""

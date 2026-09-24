@@ -43,37 +43,43 @@ Verified hardware: Epson ES-400 II (USB `04b8:0181`), reached via epsonds
 | **Scan**, **Cancel** | Start, or stop (keeping the pages scanned) |
 | Progress + status | Per-page progress, page count, blank pages removed, plain-language errors |
 
-## 3. Preview and Recent pages
+## 3. Document and Saved pages
 
-**Preview** (toolbar groups; every tool is a Phosphor icon with a caption on hover)
+**Document** (toolbar groups, by what the tools do; every tool is a Phosphor icon with a caption on hover)
 
 | Group / control | Function |
 |---|---|
 | History: Undo (`arrow-u-up-left`), Redo (`arrow-u-up-right`) | Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y; up to 30 steps; a new scan or opened document starts a fresh history |
 | Pages: Add Page (`file-plus`) | Insert the pages of PDFs (rendered at 300 dpi) or images after the current page |
 | Pages: Add Image (`arrow-square-in`, feature) | Add PNG / JPEG / TIFF files as new pages |
-| Pages: Duplicate (`copy`), Save page as… (`export`) | Copy the page (with its rotation and edits) after itself; save only this page to its own file |
+| Pages: Duplicate (`copy`) | Copy the page (with its rotation and edits) after itself |
 | Pages: Delete page (`file-x`), Clear all (`trash-simple`) | Remove one page, or all (after confirming; Undo brings them back) |
 | Arrange: rotate left / right / 180° (`arrow-counter-clockwise`, `arrow-clockwise`, `arrows-clockwise`) | Per page, non-destructive |
 | Arrange: move left / right (`arrow-left`, `arrow-right`), reverse order (`arrows-left-right`) | Reorder pages |
-| Content: Add Text (`text-t`), Signature (`user-list`) (Quick Edit feature) | Open the editor with Add Text active, or with Apply Signature armed (§6) |
+| Edit: Crop (`crop`) | Drag a rectangle over the page; what falls outside dims while you drag. Esc cancels, Ctrl+Z undoes. The kept part becomes a **new page** named *crop 1*, *crop 2*, … inserted after the source page and its earlier crops; the source page is never replaced |
+| Edit: Add Text (`text-t`), Signature (`user-list`) (Quick Edit feature) | Open the editor with Add Text active, or with Apply Signature armed (§6) |
+| Export: Save page as… (`export`) | Save only this page to its own file |
+| Thumbnail captions | Double-click a caption (or F2) to name a page. The name replaces *Page n*, and is what Save calls the file and Save As offers. Empty restores *Page n*; Ctrl+Z undoes a rename |
 | View bar: first / previous / next / last (`caret-double-left`, `caret-left`, `caret-right`, `caret-double-right`) | Home, Page Up, Page Down, End |
-| View bar: zoom out / in, fit page (`arrows-in`), fit width (`arrows-out-line-horizontal`) | 25–800 % of fit; Ctrl + wheel; drag to pan. Pages are drawn from display copies, so switching takes about 25 ms |
+| View bar: zoom out / in, fit page (`arrows-in`), fit width (`arrows-out-line-horizontal`) | 25–1600 % of fit; Ctrl + wheel; drag to pan. Pages are drawn from display copies, so switching takes about 25 ms |
 | Thumbnails | Left-aligned, scroll bar always shown, **1 row / 2 rows** (remembered) |
 | **Save All** (only with several documents) | Saves each document as its own PDF in the default save location (`scan-<date>-<time>-001.pdf`, …) |
-| **Save** / **Save As…** | With several documents they act on the selected one. Save writes to the document's file (a new document goes to the Save folder as a PDF); Save As chooses the name and format (PDF, TIFF, PNG, JPEG) |
+| **Save** / **Save As…** | With several documents they act on the selected one. Save writes to the document's file; a new document goes to the Save folder as a PDF, named after its thumbnails when they agree on one name and automatically otherwise. Save As chooses the name (pre-filled the same way) and format (PDF, TIFF, PNG, JPEG) |
 
 The groups wrap onto a second row in narrow windows, and the page scrolls when
 the window is smaller than it. The window can be snapped to half or a quarter
 of the screen.
 
-**Recent** (sidebar)
+**Saved** (sidebar)
 
 | Part | Function |
 |---|---|
 | Table | Date saved · 📂 · Folder · File name · 📄 · Pages · Format · 🗑; uniform rows, fixed columns, newest first, scrollable |
+| Search box | Filters the list as you type, over the file name and the folder |
+| File name cell | Editable: click it and type to **rename the file on disk** (same folder, extension kept). A name already taken is refused with a message, and the list entry follows the file |
+| Preview pane | Under the list, in a `Gtk.Paned` (drag the divider) inside a collapsible expander (remembered as `saved_preview_open`). One click on a row renders the selected document's first page, with ← → for the other pages |
 | 📂 folder icon (Phosphor `folder-open`) | Opens the system file manager at the folder, highlighting the file (freedesktop FileManager1), else just the folder |
-| 📄 document icon (`file-text`), double-click, Enter | Opens the document (PDF rendered at 300 dpi with Ghostscript; images frame by frame) in Preview and starts Quick Edit; **Save** then writes back to it |
+| 📄 document icon (`file-text`), double-click, Enter | Opens the document (PDF rendered at 300 dpi with Ghostscript; images frame by frame) in Document and starts Quick Edit; **Save** then writes back to it |
 | 🗑 trash icon | Removes the entry from the list (the file is never touched) |
 | **Clear** + *All / Older than 5, 10, 20, 30, 60, 90 days* | Clears entries after confirming (files untouched) |
 

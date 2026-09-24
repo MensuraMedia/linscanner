@@ -57,6 +57,20 @@ def add_recent(paths, pages, fmt):
     os.replace(tmp, recent_path())
 
 
+def rename_recent(old_path, new_path):
+    """Follow a renamed file in the list (the entry keeps its date and page count)"""
+    entries = recent_entries(existing_only=False)
+    changed = False
+    for entry in entries:
+        if entry.get("path") == old_path:
+            entry["path"] = new_path
+            changed = True
+    if changed:
+        with open(recent_path(), "w") as f:
+            json.dump(entries, f, indent=2)
+    return changed
+
+
 def forget_recent(path):
     """Remove one file from the recent list (the file itself is not touched)"""
     entries = [e for e in recent_entries(existing_only=False) if e["path"] != path]
@@ -88,6 +102,30 @@ def _saved_ts(entry):
 
 
 # -- opening ------------------------------------------------------------------------
+def safe_name(name, limit=60):
+    """A page or file name a user typed, made safe for a file system (empty if nothing is left)"""
+    name = (name or "").strip().strip(".")
+    for bad in ("/", "\\", "\0", "\n", "\r", "\t"):
+        name = name.replace(bad, " ")
+    name = " ".join(name.split())  # collapse runs of spaces
+    return name[:limit].strip()
+
+
+def crop_name(pages, source_name):
+    """The next free 'crop n' for that source page ('crop 1', 'crop 2', ...)"""
+    taken = set()
+    for p in pages:
+        name = p.get("name") or ""
+        if p.get("crop_of") == source_name and name.lower().startswith("crop "):
+            tail = name[5:].strip()
+            if tail.isdigit():
+                taken.add(int(tail))
+    n = 1
+    while n in taken:
+        n += 1
+    return f"crop {n}"
+
+
 def open_document(path, out_dir):
     """Pages for a saved document: [{"path", "rotation", "dpi", "mode"}].
 

@@ -43,7 +43,7 @@ class Feature(BaseFeature):
     order = 90
 
     def extend_preview(self, page):
-        """Add an 'Add Image' button to the Preview toolbar's pages group"""
+        """Add an 'Add Image' button to the Document toolbar's pages group"""
         from utils.util_icons import icon_button
 
         btn = icon_button(

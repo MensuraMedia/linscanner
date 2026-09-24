@@ -40,6 +40,8 @@ def sections(physical, caps=None):
         if u.vendor_db:
             ident.append(("Vendor (USB database)", u.vendor_db))
     out.append(("Identity", ident))
+    if caps:
+        out.append(("Capabilities", _capability_rows(caps)))
 
     conn = []
     if u:
@@ -73,35 +75,38 @@ def sections(physical, caps=None):
         methods.append((f"Last scan · {label}", "worked" if result == "ok" else result))
     out.append(("Connection methods (tried in this order)", methods))
 
-    if caps:
-        res = (
-            f"{caps.resolutions[0]}–{caps.resolutions[-1]} dpi ({len(caps.resolutions)} steps)"
-            if caps.resolutions
-            else "?"
-        )
-        cap = [
-            ("Sources", ", ".join(caps.sources) or "default"),
-            ("Color modes", ", ".join(caps.modes) or "?"),
-            ("Resolutions", res),
-            (
-                "Maximum scan area",
-                f"{caps.max_width_mm:g} × {caps.max_height_mm:g} mm" if caps.max_width_mm else "?",
-            ),
-            ("Duplex", "yes" if any("duplex" in s.lower() for s in caps.sources) else "no"),
-        ]
-        feats = device_features(caps.options) if caps.options and "escl" not in caps.options else []
-        escl = caps.options.get("escl") if caps.options else None
-        if escl:
-            if escl.get("feeder_capacity"):
-                cap.append(("Feeder capacity", f"{escl['feeder_capacity']} sheets"))
-            if escl.get("adjustments"):
-                feats += [f"{a} adjustment" for a in escl["adjustments"]]
-            if escl.get("blank_page_detection"):
-                feats.append("Blank-page detection")
-            cap.append(("File formats", ", ".join(escl.get("formats", [])) or "?"))
-        cap.append(("Device features", ", ".join(feats) or "none reported"))
-        out.append(("Capabilities", cap))
     return out
+
+
+def _capability_rows(caps):
+    """[(label, value)] describing what a scanner can do"""
+    res = (
+        f"{caps.resolutions[0]}–{caps.resolutions[-1]} dpi ({len(caps.resolutions)} steps)"
+        if caps.resolutions
+        else "?"
+    )
+    cap = [
+        ("Sources", ", ".join(caps.sources) or "default"),
+        ("Color modes", ", ".join(caps.modes) or "?"),
+        ("Resolutions", res),
+        (
+            "Maximum scan area",
+            f"{caps.max_width_mm:g} × {caps.max_height_mm:g} mm" if caps.max_width_mm else "?",
+        ),
+        ("Duplex", "yes" if any("duplex" in s.lower() for s in caps.sources) else "no"),
+    ]
+    feats = device_features(caps.options) if caps.options and "escl" not in caps.options else []
+    escl = caps.options.get("escl") if caps.options else None
+    if escl:
+        if escl.get("feeder_capacity"):
+            cap.append(("Feeder capacity", f"{escl['feeder_capacity']} sheets"))
+        if escl.get("adjustments"):
+            feats += [f"{a} adjustment" for a in escl["adjustments"]]
+        if escl.get("blank_page_detection"):
+            feats.append("Blank-page detection")
+        cap.append(("File formats", ", ".join(escl.get("formats", [])) or "?"))
+    cap.append(("Device features", ", ".join(feats) or "none reported"))
+    return cap
 
 
 def check_status(physical):

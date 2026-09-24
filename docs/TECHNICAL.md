@@ -12,7 +12,7 @@ The research behind the connection design is in [`research/`](research/).
 
 ```
                  ┌────────────────────────────── GTK 3 UI (framework layout) ──────────────────────────────┐
-                 │  Scan   Preview   Recent   Scan Devices Found   Settings   About                  │
+                 │  Scan   Document   Saved   Scan Devices Found   Settings   About                  │
                  └───────┬───────────┬──────────────────┬──────────────────────────┬────────────────────────┘
                          │           │                  │                          │
                  modules/manager_scan (ScanManager) ── modules/manager_device_info  features/FeatureRegistry
@@ -403,18 +403,43 @@ Design notes, and how each idea can be reused, are in
   rebuilding every thumbnail.
 - The strip is a `Gtk.Grid`, filled column by column for 2 rows.
 
-### Save, Recent, opening documents (`modules/manager_documents.py`)
+### Save, Saved, opening documents (`modules/manager_documents.py`)
 - `export_pages` records every saved file in `recent.json` (newest first,
   at most 30, deduplicated). `ScanManager.document` holds
   `{path, format}` for **Save**.
 - `open_document` turns a PDF into pages with Ghostscript (`png16m`,
   300 dpi, `-dSAFER`); images are taken frame by frame (Pillow).
-- The Recent page is a `Gtk.TreeView` (fixed columns, fixed-height rows):
+- The Saved page is a `Gtk.TreeView` (fixed columns, fixed-height rows) in the
+  top half of a `Gtk.Paned`:
   - icon cells use `CellRendererPixbuf`, and their clicks are resolved with
     `get_path_at_pos`;
   - `clear_recent(older_than_days)` does the age-based clearing;
   - the folder icon calls `org.freedesktop.FileManager1.ShowItems` over
-    D-Bus, falling back to `Gtk.show_uri_on_window`.
+    D-Bus, falling back to `Gtk.show_uri_on_window`;
+  - the search box re-runs `refresh()`, which filters `recent_entries()` on
+    the file name and folder before filling the store;
+  - the File name cell is `editable`: `on_rename` renames within the folder
+    with `os.rename` (refusing an existing target) and `rename_recent`
+    follows the entry, keeping its date and page count;
+  - the lower half is an expander holding the preview: `open_document` into
+    the session folder, rendered page by page through one `DisplayCache`,
+    only while the pane is open. Selection previews, `row-activated` opens
+    the document on the Document page.
+
+### Page names and crops (`page_preview.py`, `manager_documents.py`)
+- A page may carry `name` (what the thumbnail shows, and the file name Save
+  uses), `crop_of` (the name of the page it was cropped from) and keeps its
+  `path` in the session folder. Nothing is written outside it until a save.
+- `apply_crop` flattens the source page (rotation and overlays baked in),
+  writes the cropped PNG to the session folder and **inserts a new page**
+  after the source page and any crops it already has, named by
+  `crop_name(pages, source_name)` (`crop 1`, `crop 2`, … per source page,
+  filling gaps left by deleted crops). The source page is untouched.
+- `rename_page` cleans the typed name with `safe_name` (no separators, single
+  spaces, 60 characters) and takes a checkpoint, so Ctrl+Z undoes a rename.
+- `suggested_name(pages)` returns a file name only when it is unambiguous:
+  one page, or several that share one name. A document whose pages carry
+  different names keeps the automatic `scan-<date>-<time>` name.
 
 ### Quick Edit (`features/feature_quick_edit.py`)
 - **Tools.** Select / Add Text (radio buttons with Phosphor icons), a guides

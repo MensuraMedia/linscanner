@@ -127,7 +127,7 @@ def test_single_page_makes_each_sheet_its_own_document(tmp_path):
     assert len(scan.pages) == 10 and len(docs) == 10  # the whole tray, one document per sheet
     preview = ctx.nav.get_page_widget("preview")
     assert preview.save_all_btn.get_visible()
-    assert preview.preview._buttons[3].get_child().get_children()[1].get_label() == "Doc 4"
+    assert preview.preview._buttons[3].get_child().label.get_label() == "Doc 4"
     preview.preview.select(3)
     preview.on_save()  # Save: only the selected document
     assert scan.doc_is_saved(docs[3]) and not scan.doc_is_saved(docs[0]) and not scan.is_saved()
@@ -244,10 +244,16 @@ def test_preview_document_tools_and_undo(tmp_path):
     assert len(scan.pages) == 3
     names = [b.get_tooltip_text().split(":")[0] for b in preview.groups["pages"].get_children()]
     assert names[:2] == ["Add Page", "Add Image"]
+    # editing tools sit together: crop first, then the feature modules
     assert [b.get_tooltip_text().split(":")[0] for b in preview.groups["content"].get_children()] == [
+        "Crop",
         "Add Text",
         "Signature",
     ]
+    # exporting sits together too: this page, then Save / Save All / Save As
+    exports = [b.get_tooltip_text() for b in preview.groups["export"].get_children()]
+    assert len(exports) == 4 and exports[0].startswith("Save this page as")
+    assert exports[1].startswith("Save to this document") and exports[3].startswith("Save As")
     for pid in ("scan", "preview", "recent", "devices", "settings", "about"):
         ctx.nav.navigate_to(pid)
         wait_for(lambda: True, 0.3)

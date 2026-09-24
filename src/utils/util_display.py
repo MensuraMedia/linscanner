@@ -1,5 +1,5 @@
 """
-Display images for the Preview
+Display images for the Document page
 A 600 dpi colour page is ~100 MB once decoded, so showing it straight from the
 scan is slow. Each page gets a small display copy ("proxy", at most
 PROXY_MAX_SIDE pixels, JPEG) made once, in the background as pages arrive.

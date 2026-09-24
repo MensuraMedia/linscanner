@@ -158,14 +158,15 @@ class AboutPage(BasePage):
             card,
             [
                 (
-                    "Preview",
+                    "Document",
                     "Ctrl + mouse wheel or Ctrl + / Ctrl − to zoom, Ctrl 0 to fit; drag to move around",
                 ),
-                ("Preview", "Page Up / Page Down for the next or previous page"),
+                ("Document", "Page Up / Page Down for the next or previous page"),
+                ("Document", "Double-click a thumbnail’s caption (or F2) to name a page"),
                 ("Quick Edit", "Add Text, then click anywhere and type; Enter starts a line below"),
                 ("Quick Edit", "Guides line text up with earlier text; hold Alt to place freely"),
                 ("Quick Edit", "Double-click text to edit it; Delete removes; arrow keys nudge"),
-                ("Recent", "Folder icon: open in the file manager · document icon: open in Quick Edit"),
+                ("Saved", "Click a row to preview it · double-click to open it · click its name to rename"),
             ],
         )
 

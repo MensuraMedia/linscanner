@@ -126,6 +126,16 @@ def _usb_for(device, usb_devices):
     return None
 
 
+def _escl_scanner_on_usb():
+    """True when some device on ipp-usb really offers eSCL scanning (an MFP, not a printer)"""
+    from backends.backend_escl import EsclBackend
+
+    try:
+        return any("127.0.0.1" in d.id for d in EsclBackend(network=False).list_devices())
+    except Exception:  # discovery problems never hide a device
+        return True
+
+
 class ConnectionEngine:
     """Discovers physical scanners and scans with fallback across methods"""
 
@@ -179,6 +189,9 @@ class ConnectionEngine:
         for u in likely_scanners(usb):
             if (u.bus, u.dev) in claimed:
                 continue
+            if self._printer_without_scanner(u):
+                log.info("ignoring %s %s: IPP-USB printer with no scanner service", u.manufacturer, u.product)
+                continue
             hint = self._hint(u)
             if not hint:
                 continue
@@ -208,6 +221,17 @@ class ConnectionEngine:
             if g.hint:
                 log.warning("  %s %s has no working method: %s", g.vendor, g.model, g.hint)
         return groups
+
+    @staticmethod
+    def _printer_without_scanner(u):
+        """True for a plain printer: it speaks IPP-USB (like scanner-capable MFPs) but offers no
+        scanner service, and nothing else about it suggests a scanner. LinScanner lists scanners,
+        so a printer has no place on the Devices page."""
+        if not any(cls == 0x07 for cls, _sub, _proto, _drv in u.interfaces):
+            return False  # no printer interface at all
+        if set(u.kinds) - {"ipp-usb", "vendor-protocol"}:
+            return False  # SANE knows it, or it is a PTP device: keep it
+        return not _escl_scanner_on_usb()  # an MFP answers eSCL; a plain printer does not
 
     @staticmethod
     def _hint(u):

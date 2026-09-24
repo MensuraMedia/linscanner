@@ -1,23 +1,27 @@
 """
-Preview Page
+Document Page
 Shows scanned (or opened) pages with a PDF-editor style toolbar (Phosphor icons,
-captions on hover), grouped left to right:
+captions on hover), grouped by what the tools do:
 
   History   undo, redo
-  Pages     add page (PDF / images), add image, duplicate, save page as,
-            delete page, clear all
+  Pages     add page (PDF / images), add image, duplicate, delete page,
+            clear all
   Arrange   rotate left / right / 180°, move left / right, reverse order
-  Content   add text, signature (Quick Edit feature)
-                                                              Save / Save As…
+  Edit      crop, add text, signature (Quick Edit feature)
+  Export    save this page as…, Save, Save All, Save As…
   View bar  first / previous / next / last page, zoom out / in, fit page,
             fit width, thumbnails in 1 or 2 rows
 
 The groups wrap onto a second row in narrow windows. Every change to the pages
 can be undone (Ctrl+Z) and redone (Ctrl+Shift+Z / Ctrl+Y).
 
+- Crop: drag a rectangle over the page. What is kept becomes a new page named
+  "crop 1", "crop 2", … after the page it came from, which is left as it is.
+- Names: double-click a thumbnail's caption (or F2) to name a page. That name
+  is the file name Save uses and Save As offers.
 - Save: writes to the document's file (the last Save / Save As, or the file
-  opened from Recent). A new document is saved as a PDF in the Save folder
-  with an automatic name, without a dialog.
+  opened from Saved). A new document is saved as a PDF in the Save folder,
+  named after its pages when they agree on one name, automatically otherwise.
 - Save As…: choose the name, folder and format.
 """
 
@@ -32,10 +36,10 @@ gi.require_version("Pango", "1.0")
 from gi.repository import Gtk, Pango  # noqa: E402
 
 from config.config_scan import EXPORT_FORMATS  # noqa: E402
+from modules.manager_documents import crop_name, safe_name  # noqa: E402
 from modules.manager_export import export_pages, format_for_path  # noqa: E402
 from pages.page_base import BasePage  # noqa: E402
 from ui.components.component_preview import PagePreview  # noqa: E402
-from ui.components.component_segmented import SegmentedControl  # noqa: E402
 from utils.util_icons import icon_button  # noqa: E402
 from modules.manager_scan import MAIN_DOC  # noqa: E402
 from utils.util_logging import get_logger  # noqa: E402
@@ -43,7 +47,8 @@ from utils.util_logging import get_logger  # noqa: E402
 log = get_logger("ui")
 
 HISTORY_MAX = 30  # undo steps kept
-TOOL_GROUPS = ("history", "pages", "arrange", "content")
+# toolbar groups, left to right: each is a boxed set of buttons with one job
+TOOL_GROUPS = ("history", "pages", "arrange", "content", "export")
 ADDABLE = (".pdf", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp")
 
 
@@ -52,12 +57,26 @@ class PreviewPage(BasePage):
 
     def build_content(self):
         """Toolbar groups, Save / Save As, view bar, preview and status"""
-        self.add_title("Preview", "Check your pages, fix their orientation, then save.")
         self.undo_stack, self.redo_stack = [], []
         self._own_change = False
         self.feature_buttons = {}
 
         top = Gtk.Box(spacing=12)
+        # page navigation sits where the page title used to be (the sidebar already says "Preview")
+        nav = Gtk.Box(spacing=4)
+        nav.get_style_context().add_class("toolbar-group")
+        self.btn_first = self._icon(
+            nav, "caret-double-left", "First page (Home)", lambda: self.preview.select(0)
+        )
+        self.btn_prev = self._icon(nav, "caret-left", "Previous page (Page Up)", lambda: self.step(-1))
+        self.btn_next = self._icon(nav, "caret-right", "Next page (Page Down)", lambda: self.step(1))
+        self.btn_last = self._icon(
+            nav,
+            "caret-double-right",
+            "Last page (End)",
+            lambda: self.preview.select(len(self.ctx.scan.pages) - 1),
+        )
+        top.pack_start(nav, False, False, 0)
         # tool groups wrap onto a second row when the window is narrow
         self.tools = Gtk.FlowBox()
         self.tools.set_selection_mode(Gtk.SelectionMode.NONE)
@@ -87,9 +106,6 @@ class PreviewPage(BasePage):
         )
         self.btn_add_page.works_without_pages = True
         self.btn_duplicate = self.tool("pages", "copy", "Duplicate page", self.duplicate_page)
-        self.btn_extract = self.tool(
-            "pages", "export", "Save this page as… (extract it to its own file)", self.extract_page
-        )
         self.btn_delete = self.tool("pages", "file-x", "Delete page", self.delete_page)
         self.btn_clear = self.tool("pages", "trash-simple", "Clear all pages", self.clear_pages)
         self.btn_left = self.tool(
@@ -109,47 +125,39 @@ class PreviewPage(BasePage):
             "Reverse page order (e.g. a stack fed last page first)",
             self.reverse_pages,
         )
-        # the "content" group is filled by feature modules (Add Text, Signature)
-        self.groups["content"].get_parent().set_no_show_all(True)
+        # editing: crop first, then the feature modules (Add Text, Signature) attach here
+        self.btn_crop = self.tool(
+            "content",
+            "crop",
+            "Crop: drag a rectangle over the page; the crop is added as a new thumbnail (Esc cancels)",
+            self.start_crop,
+        )
 
-        # Save above Save As
-        saves = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        self.quick_save_btn = Gtk.Button(label="Save")
-        self.quick_save_btn.get_style_context().add_class("primary-pill")
-        self.quick_save_btn.set_tooltip_text(
-            "Save to this document's file. A new document is saved as a PDF in your Save folder."
+        # exporting: this page, then Save / Save All / Save As for the whole document
+        saves = self.groups["export"]
+        self.btn_extract = self.tool(
+            "export", "export", "Save this page as… (extract it to its own file)", self.extract_page
         )
-        self.quick_save_btn.connect("clicked", lambda *_: self.on_save())
-        self.save_all_btn = Gtk.Button(label="Save All")
-        self.save_all_btn.set_tooltip_text(
-            "Save every document as its own PDF in your default save location (Single Page scans)"
+        self.quick_save_btn = self._icon(
+            saves,
+            "floppy-disk",
+            "Save to this document's file. A new document is saved as a PDF in your Save folder.",
+            lambda: self.on_save(),
         )
-        self.save_all_btn.connect("clicked", lambda *_: self.on_save_all())
+        self.save_all_btn = self._icon(
+            saves,
+            "copy",
+            "Save All: every document as its own PDF in your save folder (Single Page scans)",
+            lambda: self.on_save_all(),
+        )
         self.save_all_btn.set_no_show_all(True)
-        self.save_btn = Gtk.Button(label="Save As…")
-        self.save_btn.connect("clicked", self.on_save_as)
-        for b in (self.quick_save_btn, self.save_all_btn, self.save_btn):
-            b.set_halign(Gtk.Align.END)  # each button as wide as its label
-            saves.pack_start(b, False, False, 0)
-        top.pack_end(saves, False, False, 0)
+        self.save_btn = self._icon(
+            saves, "floppy-disk-back", "Save As…: choose the name, folder and format", self.on_save_as
+        )
         self.pack_start(top, False, False, 0)
 
-        # view bar: page navigation, zoom, page info, thumbnail rows
+        # view bar: zoom and page info
         view_bar = Gtk.Box(spacing=4)
-        nav = Gtk.Box(spacing=4)
-        nav.get_style_context().add_class("toolbar-group")
-        self.btn_first = self._icon(
-            nav, "caret-double-left", "First page (Home)", lambda: self.preview.select(0)
-        )
-        self.btn_prev = self._icon(nav, "caret-left", "Previous page (Page Up)", lambda: self.step(-1))
-        self.btn_next = self._icon(nav, "caret-right", "Next page (Page Down)", lambda: self.step(1))
-        self.btn_last = self._icon(
-            nav,
-            "caret-double-right",
-            "Last page (End)",
-            lambda: self.preview.select(len(self.ctx.scan.pages) - 1),
-        )
-        view_bar.pack_start(nav, False, False, 0)
         zoom = Gtk.Box(spacing=4)
         zoom.get_style_context().add_class("toolbar-group")
         self.btn_zoom_out = self._icon(
@@ -174,16 +182,11 @@ class PreviewPage(BasePage):
         self.info = self.label("", "muted")
         self.info.set_ellipsize(Pango.EllipsizeMode.END)  # narrow windows shorten the page info
         view_bar.pack_start(self.info, True, True, 6)
-        rows = self.ctx.settings.get("thumbnail_rows")
-        self.rows = SegmentedControl(
-            [("1", "1 row"), ("2", "2 rows")], active=str(rows), on_changed=self.on_rows_changed
-        )
-        self.rows.set_tooltip_text("Thumbnails below the page: one row, or two rows")
-        view_bar.pack_end(self.rows, False, False, 0)
-        view_bar.pack_end(self.label("Thumbnails", "muted"), False, False, 4)
         self.pack_start(view_bar, False, False, 0)
+        rows = self.ctx.settings.get("thumbnail_rows")
 
         self.preview = PagePreview(
+            on_rename=self.rename_page,
             on_select=lambda i: self.update_info(),
             cache_dir=os.path.join(self.ctx.scan.session_dir, "display"),
             rows=rows,
@@ -191,8 +194,17 @@ class PreviewPage(BasePage):
             label_for=self.thumb_label,
         )
         self.pack_start(self.preview, True, True, 0)
+
+        # below the page, next to the thumbnails: one or two rows
+        bottom = Gtk.Box(spacing=6)
+        self.rows_btn = icon_button(
+            "rows", "Thumbnails: one row or two", lambda: self.on_rows_changed("2" if self.rows == 1 else "1")
+        )
+        self.rows = rows
+        bottom.pack_start(self.rows_btn, False, False, 0)
         self.status = self.label("", "muted", wrap=True, selectable=True)
-        self.pack_start(self.status, False, False, 0)
+        bottom.pack_start(self.status, True, True, 0)
+        self.pack_start(bottom, False, False, 0)
 
         self.connect("realize", lambda *_: self.get_toplevel().connect("key-press-event", self.on_key))
         self.ctx.on("pages-changed", self.on_pages_changed)
@@ -320,8 +332,82 @@ class PreviewPage(BasePage):
 
     def on_rows_changed(self, key):
         """1 or 2 rows of thumbnails; remembered"""
-        self.ctx.settings.set("thumbnail_rows", int(key))
-        self.preview.set_rows(int(key))
+        self.rows = int(key)
+        self.ctx.settings.set("thumbnail_rows", self.rows)
+        self.preview.set_rows(self.rows)
+        self.rows_btn.set_tooltip_text("Thumbnails: two rows" if self.rows == 1 else "Thumbnails: one row")
+
+    def rename_page(self, index, name):
+        """A thumbnail caption was edited: that name is also the suggested file name"""
+        if not 0 <= index < len(self.ctx.scan.pages):
+            return
+        page = self.ctx.scan.pages[index]
+        clean = safe_name(name)
+        if clean == (page.get("name") or ""):
+            return
+        self.checkpoint()
+        if clean:
+            page["name"] = clean
+        else:
+            page.pop("name", None)  # an empty name restores "Page n"
+        self.preview.set_pages(self.ctx.scan.pages, selected=index)
+        self.reload()
+        self.changed()
+        self.set_status(
+            f"Renamed to “{clean}”. Save uses this name; Save As offers it." if clean else "Name cleared."
+        )
+
+    # -- crop ------------------------------------------------------------------
+    def start_crop(self):
+        """Arm the crop tool: the next drag over the page chooses what to keep"""
+        if not self.ctx.scan.pages:
+            return
+        if self.preview.cropping:
+            self.preview.cancel_crop()
+            self.set_status("Crop cancelled.")
+            return
+        if self.preview.begin_crop(self.apply_crop):
+            self.set_status("Crop: drag a rectangle over the page to keep that part. Esc cancels.")
+
+    def apply_crop(self, left, top, right, bottom):
+        """Keep the chosen part of the page (rotation and any text or signature are baked in)"""
+        from PIL import Image
+
+        from utils.util_imaging import crop_box, flatten
+
+        index = self.preview.selected
+        if not 0 <= index < len(self.ctx.scan.pages):
+            return
+        page = self.ctx.scan.pages[index]
+        try:
+            img = flatten(page)
+            box = crop_box(img.size, left, top, right, bottom)
+            if box is None:
+                self.set_status("That crop would be too small.", error=True)
+                return
+            out = os.path.join(self.ctx.scan.session_dir, f"crop-{datetime.now():%H%M%S%f}.png")
+            dpi = page.get("dpi") or 300
+            img.crop(box).convert("RGB").save(out, dpi=(dpi, dpi))
+        except (OSError, ValueError, Image.DecompressionBombError) as e:
+            self.set_status(f"Could not crop this page: {e}", error=True)
+            return
+        self.checkpoint()
+        source_name = page.get("name") or f"Page {index + 1}"
+        cropped = dict(page, path=out, rotation=0, name=crop_name(self.ctx.scan.pages, source_name))
+        cropped.pop("overlays", None)  # the text and signatures are part of the picture now
+        cropped["crop_of"] = source_name
+        at = index + 1
+        while at < len(self.ctx.scan.pages) and self.ctx.scan.pages[at].get("crop_of") == source_name:
+            at += 1  # keep a page's crops in the order they were made
+        self.ctx.scan.pages.insert(at, cropped)  # the page it came from stays as it is
+        self.preview.set_pages(self.ctx.scan.pages, selected=at)
+        self.reload()
+        self.changed()
+        kept = round((right - left) * (bottom - top) * 100)
+        self.set_status(
+            f"{cropped['name']} added from {source_name} (kept about {kept} % of it). "
+            "Double-click its caption to rename it; Ctrl+Z undoes it."
+        )
 
     def step(self, delta):
         """Previous / next page"""
@@ -337,6 +423,10 @@ class PreviewPage(BasePage):
         if isinstance(focus, Gtk.Entry):
             return False  # typing in a text field
         key = event.keyval
+        if key == Gdk.KEY_Escape and self.preview.cropping:
+            self.preview.cancel_crop()
+            self.set_status("Crop cancelled.")
+            return True
         ctrl = bool(event.state & Gdk.ModifierType.CONTROL_MASK)
         shift = bool(event.state & Gdk.ModifierType.SHIFT_MASK)
         if key in (Gdk.KEY_Page_Down, Gdk.KEY_Page_Up):
@@ -393,7 +483,7 @@ class PreviewPage(BasePage):
             b.set_sensitive(has)
         several = len(self.ctx.scan.doc_ids()) > 1
         self.save_all_btn.set_no_show_all(not several)
-        self.save_all_btn.show() if several else self.save_all_btn.hide()
+        self.save_all_btn.show_all() if several else self.save_all_btn.hide()  # show_all: the icon too
         self.quick_save_btn.set_tooltip_text(
             "Save the selected document (each Single Page sheet is its own document)"
             if several
@@ -412,7 +502,9 @@ class PreviewPage(BasePage):
         return pages[i].get("doc", MAIN_DOC) if 0 <= i < len(pages) else MAIN_DOC
 
     def thumb_label(self, i, page):
-        """Thumbnail caption: 'Page n', or 'Doc d' (+ ✓ when saved) when there are several documents"""
+        """Thumbnail caption: the page's name if it has one, else 'Page n' / 'Doc d'"""
+        if page.get("name"):
+            return page["name"]
         scan = self.ctx.scan
         docs = scan.doc_ids()
         if len(docs) <= 1:
@@ -567,7 +659,7 @@ class PreviewPage(BasePage):
         return ok
 
     def open_document(self, path, quick_edit=False):
-        """Open a saved document (from Recent) as the current pages; optionally start Quick Edit"""
+        """Open a saved document (from Saved) as the current pages; optionally start Quick Edit"""
         if self.ctx.scan.pages and not self._confirm(
             "Open this document?", "The pages shown now will be replaced. Save them first if you need them."
         ):
@@ -608,6 +700,17 @@ class PreviewPage(BasePage):
         part = f"-{n:03d}" if n is not None else ""
         return os.path.join(folder, f"scan-{datetime.now():%Y%m%d-%H%M%S}{part}.pdf")
 
+    def suggested_name(self, pages, ext=".pdf"):
+        """File name for these pages: a name typed on a thumbnail, when it is unambiguous.
+
+        One page (or several that share a name) means that name. A document whose pages carry
+        different names has no obvious file name, so the automatic one is kept."""
+        names = {p.get("name") for p in pages}
+        if len(pages) == 1 or len(names) == 1:
+            only = next(iter(names))
+            return safe_name(only) + ext if only else ""
+        return ""
+
     def on_save(self):
         """Save the document to its file; a new document goes to the default save location as a PDF"""
         if not self.ctx.scan.pages:
@@ -620,6 +723,9 @@ class PreviewPage(BasePage):
             several = len(self.ctx.scan.doc_ids()) > 1
             n = self.ctx.scan.doc_ids().index(doc) + 1 if several else None
             path, fmt = self._default_path(n), "pdf"
+            named = self.suggested_name(pages)
+            if named:  # the name typed on a thumbnail is the file name
+                path = os.path.join(os.path.dirname(path), named)
         self._write(pages, path, fmt, doc=doc)
 
     def on_save_all(self):
@@ -636,7 +742,7 @@ class PreviewPage(BasePage):
         self.preview.set_pages(scan.pages)  # the ✓ marks
         self.update_info()
 
-    def on_save_as(self, _btn, pages=None, title="Save scanned document", remember=True):
+    def on_save_as(self, _btn=None, pages=None, title="Save scanned document", remember=True):
         """Save As dialog (PDF/PNG/JPEG/TIFF) for the document (or given pages), export, report"""
         doc = None
         if pages is None:
@@ -654,7 +760,10 @@ class PreviewPage(BasePage):
             folder = self.ctx.settings.get("save_folder")  # the default save location (Settings)
         if os.path.isdir(folder):
             dlg.set_current_folder(folder)
-        if remember and file:
+        named = self.suggested_name(pages)
+        if named:  # offer the thumbnail's name, still editable in the dialog
+            dlg.set_current_name(named)
+        elif remember and file:
             dlg.set_current_name(os.path.basename(file["path"]))
         else:
             dlg.set_current_name(f"{'page' if not remember else 'scan'}-{datetime.now():%Y%m%d-%H%M%S}.pdf")

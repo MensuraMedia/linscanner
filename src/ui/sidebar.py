@@ -17,8 +17,8 @@ from utils.util_paths import resource  # noqa: E402
 
 NAV_ITEMS = [
     ("Scan", "scan"),
-    ("Preview", "preview"),
-    ("Recent", "recent"),
+    ("Document", "preview"),
+    ("Saved", "recent"),
     ("Devices", "devices"),
     ("About", "about"),
 ]

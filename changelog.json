@@ -1,6 +1,6 @@
 {
   "project": "linscanner",
-  "description": "Local change log \u2014 independent of git. Every change gets an entry.",
+  "description": "Local change log — independent of git. Every change gets an entry.",
   "changes": [
     {
       "datetime": "2026-09-21T15:20:00",
@@ -160,7 +160,7 @@
     },
     {
       "datetime": "2026-09-21T20:10:00",
-      "description": "Docs: README privacy section updated (linscanner doesn't use your network), FEATURES, TECHNICAL \u00a73.0"
+      "description": "Docs: README privacy section updated (linscanner doesn't use your network), FEATURES, TECHNICAL §3.0"
     },
     {
       "datetime": "2026-09-21T21:00:00",
@@ -381,6 +381,42 @@
     {
       "datetime": "2026-09-23T18:40:07",
       "description": "0.3.7: zoom up to 16x; deep zoom enlarges past the page's own resolution (capped at 40 Mpx)"
+    },
+    {
+      "datetime": "2026-09-23T21:51:16",
+      "description": "0.3.8: Preview crop tool, navigation at top, icon Save buttons, rows toggle by the thumbnails; Devices sections as cards (Capabilities after Identity); printers no longer listed as scanners"
+    },
+    {
+      "datetime": "2026-09-23T23:00:46",
+      "description": "0.4.0: Preview is now **Document** and Recent is now **Saved** (routes unchanged)."
+    },
+    {
+      "datetime": "2026-09-23T23:00:46",
+      "description": "0.4.0: Crops become new pages - a crop is inserted after the page it came from, named “crop 1”, “crop 2”, … per source page; the original page is never replaced, and nothing is written outside the session folder until you save."
+    },
+    {
+      "datetime": "2026-09-23T23:00:46",
+      "description": "0.4.0: Name a page by double-clicking its thumbnail caption (F2 also works). The name replaces “Page n”, is what Save calls the file, and is offered by Save As. Undo restores the old name."
+    },
+    {
+      "datetime": "2026-09-23T23:00:46",
+      "description": "0.4.0: Document toolbar regrouped by function: History, Pages, Arrange, Edit (crop, text, signature), Export (save this page as…, Save, Save All, Save As)."
+    },
+    {
+      "datetime": "2026-09-23T23:00:46",
+      "description": "0.4.0: Saved page: search box (file name and folder), a preview of the selected document in the lower half (collapsible, draggable divider, page by page), click a row to preview it and double-click to open it in Document, and the file name cell renames the file on disk (an existing name is refused; the list entry follows the file)."
+    },
+    {
+      "datetime": "2026-09-23T23:00:46",
+      "description": "0.4.0: Fix: Save As did nothing - the icon button calls its action without arguments, so every click raised TypeError before the dialog opened."
+    },
+    {
+      "datetime": "2026-09-23T23:00:46",
+      "description": "0.4.0: Fix: Save All had no icon - the hidden button was revealed with show(), which never showed its child image."
+    },
+    {
+      "datetime": "2026-09-23T23:00:46",
+      "description": "0.4.0: 142 tests (6 new for names, crops, search, rename and the preview pane); README, FEATURES, TECHNICAL, api-reference and the screenshots updated; docs/design/0.4.0-document-and-saved.md records the concept."
     }
   ]
 }

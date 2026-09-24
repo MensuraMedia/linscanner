@@ -46,7 +46,7 @@ Linux's standard scanning system (SANE) can drive.
 |---|---|
 | **Scanning** | Any cable-connected (USB) SANE scanner, plus LinScanner's own driverless eSCL client. **Scan Type**: *Front Page* or *Front & Back* (and *Flatbed* on scanners with both) |
 | **Remembers your scanner** | Reached directly at the next start (a second or two instead of a full search); a spinner while looking, then a green power icon when it's ready, or a red one with "Device may be off. Check power settings."; and plain words when something needs fixing ("Unable to detect scanner. Check that it's connected and powered on") |
-| **Sheet-fed modes** | **Multi-Page** (the whole stack as one document) or **Single Page** (the whole stack, each sheet its own document: view each in Preview, **Save** one or **Save All**) |
+| **Sheet-fed modes** | **Multi-Page** (the whole stack as one document) or **Single Page** (the whole stack, each sheet its own document: view each in Document, **Save** one or **Save All**) |
 | **Connection fallback** | Tries every way to reach the scanner in order over the USB cable (open-source driver → vendor driver → driverless IPP-over-USB → own eSCL client), until one scans. Never retries when you need to act (feeder empty, jam, cover open) |
 | **Scan Devices Found** (sidebar: **Devices**) | Every detected scanner with identity, USB connection details, connection methods, permissions, capabilities, live status and firmware, plus **Check for devices again** |
 | **Color / Black & White** | Color, or Black & White. B&W is grayscale by default (keeps faint text); Settings can switch it to pure black-and-white |
@@ -54,12 +54,14 @@ Linux's standard scanning system (SANE) can drive.
 | **Document Size** | **Auto-Detect** (fits each page to the paper, when its edges can be seen); documents (Letter, Legal, Executive, Half Letter, A4, A5, A6, B5); receipts (80 / 58 mm); cards (business, ID / credit, index); photos (4×6, 5×7); checks; full scan area |
 | **Clear feedback** | A summary line shows exactly what will be scanned; per-page progress; page count; plain-language errors (feeder empty, paper jam, scanner busy, not responding) |
 | **Cancel** | Stops the scan and keeps the pages already scanned |
-| **Preview** | Fast page switching; **zoom up to 16×** (buttons, Ctrl + wheel, drag to pan), right into the grain of a scan; a scrollable, left-aligned thumbnail strip with **1 or 2 rows**; opens automatically after scanning |
-| **Page tools** | A PDF-editor style toolbar of icons with captions on hover: undo / redo; add pages from a PDF or images, duplicate, extract a page, delete, clear; rotate, move, reverse order; add text, signature; page navigation, zoom, fit page, fit width |
+| **Document** | Page navigation at the top, where a title would only repeat the sidebar; **zoom up to 16×** (buttons, Ctrl + wheel, drag to pan), right into the grain of a scan; a scrollable, left-aligned thumbnail strip with **1 or 2 rows**; opens automatically after scanning |
+| **Page tools** | A PDF-editor style toolbar of icons with captions on hover, grouped by what they do: history, pages, arrange, edit (**crop**, text, signature) and export (extract, Save, Save All, Save As) |
 | **Window** | Resizable, and small enough to snap to half or a quarter of the screen (the pages scroll when needed); its own icon in the panel and Alt+Tab |
 | **Blank Pages** | *Keep* or *Remove* right on the Scan page (the same switch as the Blank-page removal module) |
 | **Quick Edit** | **Add Text**: click anywhere on the page and type, with alignment guides that line text up with earlier text. **Apply Signature** places your signature; the edit icon beside it chooses or creates one (up to 4 saved, typed in one of 9 signature fonts or uploaded as a PNG). Hand pointer to move, text pointer to edit, corner to resize. Non-destructive until you save |
-| **Recent** | A table of saved documents (date, folder, file name), newest first: the folder icon opens the file manager, the document icon opens the file for Quick Edit, the trash icon removes the entry; clear all or entries older than 5–90 days |
+| **Crop** | Drag a rectangle to keep part of a page. The crop becomes a **new page** named *crop 1*, *crop 2*, … next to the one it came from, which is left untouched: crop the same page thirty times and you get thirty pages, none of them written to disk until you save |
+| **Name a page** | Double-click a thumbnail's caption and type. That name is what **Save** calls the file, and what **Save As** offers you to change |
+| **Saved** | A table of saved documents (date, folder, file name), newest first, with a **search box** and a **preview pane** underneath (collapsible, draggable). Click a row to preview it, double-click to open it in Document, click its **file name to rename the file**; the folder icon opens the file manager, the trash icon removes the entry; clear all or entries older than 5–90 days |
 | **Automatic clean-up** | Auto-crop (feeder overrun), deskew and blank-page removal, on by default |
 | **More modules** | Searchable PDF (OCR), auto-rotate, image enhancement, scan profiles, auto-save with file-name templates, batch splitting, PDF/A and smaller PDFs, import images. Each can be switched on or off in Settings |
 | **Save / Save As** | **Save** writes to the document's file (a new document goes to your Save folder as a PDF). **Save As** chooses the name and format: PDF (all pages in one file), TIFF (multi-page), PNG or JPEG (one file per page) |
@@ -190,7 +192,7 @@ rm -rf ~/.config/linscanner                # removes your settings (optional)
 
 ### Scan a document
 1. Open **LinScanner** from the menu (or run `linscanner/run.sh`). You can also **right-click a PDF or
-   image in your file manager and choose Open With → LinScanner**: its pages open in Preview, ready to
+   image in your file manager and choose Open With → LinScanner**: its pages open in Document, ready to
    rotate, edit, sign and save.
 2. **Scanner:** it's found automatically. Finding scanners takes about 10
    seconds; press **Find** (before the scanner list, under **Detect Scanner**) after plugging one in.
@@ -206,7 +208,7 @@ rm -rf ~/.config/linscanner                # removes your settings (optional)
      feeders pull the whole stack through once a scan starts), but each sheet
      becomes **its own document**; with *Front & Back*, a sheet's two sides
      stay together.
-     - In Preview the thumbnails are labelled *Doc 1, Doc 2, …* (✓ once
+     - In Document the thumbnails are labelled *Doc 1, Doc 2, …* (✓ once
        saved). **Save** saves the selected document, and **Save All** saves
        every document as its own PDF in your default save location.
      - Once everything is saved, the next Scan starts afresh. Unsaved pages
@@ -221,15 +223,25 @@ rm -rf ~/.config/linscanner                # removes your settings (optional)
    the page is kept whole (or the chosen card / receipt size is used).
 7. Check the grey **"Will scan: …"** line, then press **Scan**.
 
-Pages appear as they are scanned, and **Preview** opens when the scan finishes.
+Pages appear as they are scanned, and **Document** opens when the scan finishes.
 
-![Preview page](docs/images/screenshot-preview.png)
+![Document page](docs/images/screenshot-preview.png)
+
+**Crop**: press the crop button, drag a rectangle over the page, and that part is kept. Whatever is
+outside dims while you drag; Esc cancels and Ctrl+Z undoes it. The crop arrives as a **new page**
+called *crop 1* (then *crop 2*, …) right after the page it came from — the original is never
+replaced, so you can take as many crops of one page as you like and delete the ones you don't want.
+
+**Name a page**: double-click a thumbnail's caption (or select it and press F2) and type. Save then
+writes the file under that name, and Save As offers it in the dialog.
+
+![Crop](docs/images/screenshot-crop.png)
 
 ![Quick Edit with the signature chooser](docs/images/screenshot-quick-edit.png)
 
 ![Create Signature](docs/images/screenshot-create-signature.png)
 
-![Recent](docs/images/screenshot-recent.png)
+![Saved](docs/images/screenshot-recent.png)
 
 ### Fix and save
 The toolbar works like a PDF editor's. Every tool is an icon; hover over one
@@ -238,9 +250,10 @@ to see its name. The tools are grouped from left to right:
 | Group | Tools |
 |---|---|
 | **History** | **Undo** (Ctrl+Z), **Redo** (Ctrl+Shift+Z / Ctrl+Y). Every change to the pages can be undone until you close LinScanner |
-| **Pages** | **Add Page** (insert the pages of a PDF, or images, after the current page) · **Add Image** (add image files as new pages) · **Duplicate page** · **Save this page as…** (extract one page to its own file) · **Delete page** · **Clear all** |
+| **Pages** | **Add Page** (insert the pages of a PDF, or images, after the current page) · **Add Image** (add image files as new pages) · **Duplicate page** · **Delete page** · **Clear all** |
 | **Arrange** | **Rotate left / right / 180°** · **Move page left / right** · **Reverse page order** (for a stack fed last page first) |
-| **Content** | **Add Text** (T icon) · **Signature** |
+| **Edit** | **Crop** · **Add Text** (T icon) · **Signature** |
+| **Export** | **Save this page as…** (extract one page to its own file) · **Save** · **Save All** · **Save As…** |
 | View bar | **First / Previous / Next / Last page** (Home, Page Up, Page Down, End) · **Zoom out / in** (Ctrl − / +, Ctrl + wheel) · **Fit page** (Ctrl 0) · **Fit width** · thumbnails in **1 row** or **2 rows** |
 
 - Click a thumbnail to view that page. The strip scrolls sideways. Drag a
@@ -273,9 +286,10 @@ to see its name. The tools are grouped from left to right:
   - Edits show in the preview and are added to the file when you save.
 - **Import images…** adds PNG/JPEG/TIFF files as pages (e.g. scans your
   scanner saved to a USB stick).
-- **Save** (above Save As) writes to the document's file: the one you last
-  saved, or the one you opened from Recent. A new document is saved as a PDF
-  in your Save folder with an automatic name.
+- **Save** writes to the document's file: the one you last saved, or the one
+  you opened from Saved. A new document is saved as a PDF in your Save folder,
+  under the name you typed on its thumbnails when they agree on one, and an
+  automatic name otherwise.
 - **Save As…** asks for a file name and format:
 
 | Format | Best for | Pages |
@@ -315,7 +329,7 @@ to see its name. The tools are grouped from left to right:
 | `~/.config/linscanner/settings.json` | Your settings (including feature on/off and options) |
 | `~/.local/share/linscanner/signatures/` | Your saved signatures (up to 4) |
 | `~/.local/share/linscanner/fonts/` | Signature fonts you added (kept on this computer) |
-| `~/.local/share/linscanner/recent.json` | The Recent list (paths, dates, page counts) |
+| `~/.local/share/linscanner/recent.json` | The Saved list (paths, dates, page counts) |
 | `~/.local/state/linscanner/logs/` | Daily logs (14 days), redacted |
 | `/tmp/linscanner-*/` | This session's scans (deleted when you close LinScanner, so save first) |
 | `~/.local/share/applications/linscanner.desktop` | Menu entry |
@@ -326,8 +340,8 @@ to see its name. The tools are grouped from left to right:
 |---|---|
 | `run.sh` | Start LinScanner |
 | `run.sh --test-scanner` | Use only SANE's virtual scanner, with separate throwaway settings (no hardware needed) |
-| `run.sh --page devices` | Open on a page: `scan`, `preview`, `devices`, `settings`, `about` |
-| `run.sh FILE…` | Open PDFs or images as pages in Preview (what **Open with LinScanner** in the file manager does) |
+| `run.sh --page devices` | Open on a page: `scan`, `preview` (Document), `recent` (Saved), `devices`, `settings`, `about` |
+| `run.sh FILE…` | Open PDFs or images as pages in Document (what **Open with LinScanner** in the file manager does) |
 | `run.sh --version` | Show the version |
 | `run.sh --quit-after N` | Close after N seconds (automated tests) |
 | `run.sh --debug` | Verbose log (also printed to the terminal) plus SANE driver-loading details |
@@ -401,7 +415,7 @@ any other second or third party.
 | Settings and profiles | `~/.config/linscanner/settings.json` | Until you delete them |
 | Signatures | `~/.local/share/linscanner/signatures/` | Until you delete them (Quick Edit → edit icon → trash) |
 | Fonts you added | `~/.local/share/linscanner/fonts/` | Until you delete them |
-| Recent list | `~/.local/share/linscanner/recent.json` (paths and dates only) | Until you clear it (Recent → Clear) |
+| Saved list | `~/.local/share/linscanner/recent.json` (paths and dates only) | Until you clear it (Saved → Clear) |
 | Logs | `~/.local/state/linscanner/logs/` | 14 days, then deleted automatically |
 
 - **Logs don't contain your content.** They record technical events only: no
@@ -507,7 +521,7 @@ do its seven dark themes:
 - font credits moved from About to the backlog.
 
 **Done in 0.3.2:**
-- the PDF-editor style Preview toolbar (Add Page, Add Image, Add Text, Signature, duplicate, extract, reverse, undo / redo, page navigation, fit width);
+- the PDF-editor style Document toolbar (Add Page, Add Image, Add Text, Signature, duplicate, extract, reverse, undo / redo, page navigation, fit width);
 - the window resizes and snaps to half or a quarter of the screen.
 
 **Done in 0.3.1:**
@@ -524,8 +538,8 @@ do its seven dark themes:
 See [`docs/design/0.3.1-ui-polish.md`](docs/design/0.3.1-ui-polish.md).
 
 **Done in 0.3.0:**
-- faster Preview with zoom and 1- or 2-row thumbnails;
-- Save and Recent;
+- faster Document page with zoom and 1- or 2-row thumbnails;
+- Save and Saved;
 - Scan Type, more paper sizes and Auto-Detect;
 - the remembered scanner;
 - Quick Edit Add Text with alignment guides, Apply Signature with 4 saved

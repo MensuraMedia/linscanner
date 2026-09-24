@@ -15,7 +15,8 @@ import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
-from gi.repository import Gdk, GdkPixbuf, GLib, Gtk  # noqa: E402
+gi.require_version("Pango", "1.0")
+from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, Pango  # noqa: E402
 
 from config.config_layout import Layout  # noqa: E402
 from utils.util_display import DisplayCache, page_key  # noqa: E402
@@ -44,7 +45,7 @@ def to_pixbuf(img):
 class PagePreview(Gtk.Box):
     """Selected-page view + thumbnail strip; on_select(index) when the page changes"""
 
-    def __init__(self, on_select=None, cache_dir=None, rows=1, on_zoom=None, label_for=None):
+    def __init__(self, on_select=None, cache_dir=None, rows=1, on_zoom=None, label_for=None, on_rename=None):
         """Large view (scrolled, zoomable) plus the thumbnail strip (rows: 1 or 2)"""
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=Layout.spacing.MEDIUM)
         import tempfile
@@ -52,6 +53,7 @@ class PagePreview(Gtk.Box):
         self.on_select = on_select
         self.on_zoom = on_zoom
         self.label_for = label_for  # label_for(index, page) -> thumbnail caption (default "Page n")
+        self.on_rename = on_rename  # on_rename(index, new name) when a caption is edited
         self.cache = DisplayCache(cache_dir or tempfile.mkdtemp(prefix="linscanner-preview-"))
         self.pages = []
         self.selected = -1
@@ -63,6 +65,7 @@ class PagePreview(Gtk.Box):
         self._large = {}  # (page_key, w, h) -> pixbuf
         self._buttons = []
         self._pan = None
+        self._crop = None  # (on_done, start_x, start_y, x, y) while a crop rectangle is being drawn
 
         # large view
         self.view = Gtk.ScrolledWindow()
@@ -79,6 +82,7 @@ class PagePreview(Gtk.Box):
             | Gdk.EventMask.SCROLL_MASK
             | Gdk.EventMask.SMOOTH_SCROLL_MASK
         )
+        self.image_box.connect_after("draw", self._draw_crop)
         self.image_box.connect("button-press-event", self._pan_start)
         self.image_box.connect("button-release-event", self._pan_end)
         self.image_box.connect("motion-notify-event", self._pan_move)
@@ -134,6 +138,77 @@ class PagePreview(Gtk.Box):
         self._render_large()
         if self.on_select:
             self.on_select(index)
+
+    # -- crop --------------------------------------------------------------
+    def begin_crop(self, on_done):
+        """Next drag over the page draws a crop rectangle; on_done(left, top, right, bottom) in 0..1"""
+        if self.selected < 0 or not self.pages:
+            return False
+        self._crop = (on_done, None, None, None, None)
+        win = self.image_box.get_window()
+        if win:
+            win.set_cursor(Gdk.Cursor.new_from_name(win.get_display(), "crosshair"))
+        return True
+
+    def cancel_crop(self):
+        """Leave crop mode without cropping"""
+        if not self._crop:
+            return False
+        self._crop = None
+        win = self.image_box.get_window()
+        if win:
+            win.set_cursor(None)
+        self.image_box.queue_draw()
+        return True
+
+    @property
+    def cropping(self):
+        return self._crop is not None
+
+    def _image_area(self):
+        """The picture's rectangle inside the event box (it is centred when smaller)"""
+        pix = self.image.get_pixbuf()
+        alloc = self.image_box.get_allocation()
+        if pix is None:
+            return 0, 0, alloc.width, alloc.height
+        w, h = pix.get_width(), pix.get_height()
+        return max(0, (alloc.width - w) // 2), max(0, (alloc.height - h) // 2), w, h
+
+    def _crop_fractions(self):
+        """The drawn rectangle as fractions of the picture, or None if it is too small"""
+        _on_done, x0, y0, x1, y1 = self._crop
+        if None in (x0, y0, x1, y1):
+            return None
+        ix, iy, iw, ih = self._image_area()
+        left, right = sorted((x0 - ix, x1 - ix))
+        top, bottom = sorted((y0 - iy, y1 - iy))
+        left, right = max(0, min(left, iw)) / iw, max(0, min(right, iw)) / iw
+        top, bottom = max(0, min(top, ih)) / ih, max(0, min(bottom, ih)) / ih
+        if right - left < 0.02 or bottom - top < 0.02:  # a click or a sliver: not a crop
+            return None
+        return left, top, right, bottom
+
+    def _draw_crop(self, _widget, cr):
+        """Dim everything outside the rectangle being dragged"""
+        if not self._crop:
+            return False
+        rect = self._crop[1:]
+        if None in rect:
+            return False
+        x0, y0, x1, y1 = rect
+        left, right = sorted((x0, x1))
+        top, bottom = sorted((y0, y1))
+        alloc = self.image_box.get_allocation()
+        cr.set_source_rgba(0, 0, 0, 0.45)
+        cr.rectangle(0, 0, alloc.width, alloc.height)
+        cr.rectangle(left, top, right - left, bottom - top)
+        cr.set_fill_rule(1)  # EVEN_ODD: the hole is the part being kept
+        cr.fill()
+        cr.set_source_rgba(1, 1, 1, 0.95)
+        cr.set_line_width(1)
+        cr.rectangle(left + 0.5, top + 0.5, right - left - 1, bottom - top - 1)
+        cr.stroke()
+        return False
 
     def set_rows(self, rows):
         """1 or 2 rows of thumbnails"""
@@ -203,12 +278,68 @@ class PagePreview(Gtk.Box):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         box.image = Gtk.Image()
         box.pack_start(box.image, False, False, 0)
-        lbl = Gtk.Label(label=self.label_for(i, page) if self.label_for else f"Page {i + 1}")
+        caption = self.label_for(i, page) if self.label_for else f"Page {i + 1}"
+        box.stack = Gtk.Stack()  # the caption, or the entry while it is being renamed
+        lbl = Gtk.Label(label=caption)
         lbl.get_style_context().add_class("thumb-label")
-        box.pack_start(lbl, False, False, 0)
+        lbl.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+        lbl.set_max_width_chars(14)
+        box.label = lbl
+        entry = Gtk.Entry()
+        entry.set_width_chars(12)
+        entry.set_has_frame(False)
+        entry.get_style_context().add_class("thumb-label")
+        entry.connect("activate", lambda e, i=i: self._finish_rename(i, e.get_text()))
+        entry.connect("focus-out-event", lambda e, _ev, i=i: self._finish_rename(i, e.get_text()))
+        entry.connect("key-press-event", self._rename_key)
+        box.entry = entry
+        box.stack.add_named(lbl, "label")
+        box.stack.add_named(entry, "entry")
+        box.pack_start(box.stack, False, False, 0)
         btn.add(box)
         btn.connect("clicked", lambda *_: self.select(i))
+        btn.connect("button-press-event", lambda _w, ev, i=i: self._thumb_clicked(i, ev))
         return btn
+
+    def _thumb_clicked(self, index, event):
+        """Double-click a thumbnail caption to rename it"""
+        if event.type == Gdk.EventType._2BUTTON_PRESS and self.on_rename:
+            self.begin_rename(index)
+            return True
+        return False
+
+    def begin_rename(self, index=None):
+        """Edit a thumbnail's caption in place (F2 or a double-click)"""
+        index = self.selected if index is None else index
+        if not self.on_rename or not 0 <= index < len(self._buttons):
+            return False
+        box = self._buttons[index].get_child()
+        box.entry.set_text(self.pages[index].get("name") or box.label.get_text())
+        box.stack.set_visible_child_name("entry")
+        box.entry.grab_focus()
+        box.entry.select_region(0, -1)
+        return True
+
+    def _rename_key(self, entry, event):
+        """Esc leaves the caption unchanged"""
+        if event.keyval == Gdk.KEY_Escape:
+            for i, btn in enumerate(self._buttons):
+                if btn.get_child().entry is entry:
+                    btn.get_child().stack.set_visible_child_name("label")
+                    return True
+        return False
+
+    def _finish_rename(self, index, text):
+        """Store the typed caption (empty text restores the automatic one)"""
+        if not 0 <= index < len(self._buttons):
+            return False
+        box = self._buttons[index].get_child()
+        if box.stack.get_visible_child_name() != "entry":
+            return False
+        box.stack.set_visible_child_name("label")
+        if self.on_rename:
+            self.on_rename(index, text.strip())
+        return False
 
     def _set_thumb(self, i):
         """Draw (or redraw) thumbnail i"""
@@ -292,7 +423,10 @@ class PagePreview(Gtk.Box):
         return True
 
     def _pan_start(self, _widget, event):
-        """Start dragging the zoomed page"""
+        """Start dragging the zoomed page (or the crop rectangle)"""
+        if self._crop and event.button == 1:
+            self._crop = (self._crop[0], event.x, event.y, event.x, event.y)
+            return True
         if event.button == 1 and self.zoom > 1:
             h, v = self.view.get_hadjustment(), self.view.get_vadjustment()
             self._pan = (event.x_root, event.y_root, h.get_value(), v.get_value())
@@ -302,7 +436,11 @@ class PagePreview(Gtk.Box):
         return False
 
     def _pan_move(self, _widget, event):
-        """Pan while dragging"""
+        """Pan while dragging (or resize the crop rectangle)"""
+        if self._crop and self._crop[1] is not None:
+            self._crop = (self._crop[0], self._crop[1], self._crop[2], event.x, event.y)
+            self.image_box.queue_draw()
+            return True
         if self._pan:
             x0, y0, h0, v0 = self._pan
             self.view.get_hadjustment().set_value(h0 - (event.x_root - x0))
@@ -310,7 +448,13 @@ class PagePreview(Gtk.Box):
         return False
 
     def _pan_end(self, *_):
-        """Stop panning"""
+        """Stop panning, or finish the crop rectangle"""
+        if self._crop:
+            on_done, fractions = self._crop[0], self._crop_fractions()
+            self.cancel_crop()
+            if fractions:
+                on_done(*fractions)
+            return True
         self._pan = None
         win = self.image_box.get_window()
         if win:

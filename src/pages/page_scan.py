@@ -1,7 +1,7 @@
 """
 Scan Page
 Choose scanner, source, colour, quality and paper; scan with live progress.
-Pages go to the Preview page as they arrive.
+Pages go to the Document page as they arrive.
 """
 
 import logging
@@ -457,7 +457,7 @@ class ScanPage(BasePage):
         self.ctx.scan.start_scan(self.request, self.on_page, self.on_progress, self.on_done, self.on_error)
 
     def on_page(self, _page):
-        """Count a finished page and notify the Preview page"""
+        """Count a finished page and notify the Document page"""
         self.pages_this_scan += 1
         self.set_status(f"Scanned page {self.pages_this_scan}…", "status-busy")
         self.ctx.emit("pages-changed")
@@ -467,7 +467,7 @@ class ScanPage(BasePage):
         self.progress.set_fraction(min(pct, 100) / 100)
 
     def on_done(self, pages, cancelled):
-        """Report the result; open Preview, or wait for the next sheet in one-sheet mode"""
+        """Report the result; open the Document page, or wait for the next sheet in one-sheet mode"""
         self.set_busy(False)
         self.progress.set_fraction(1 if pages else 0)
         dropped = self.ctx.scan.dropped_pages
@@ -480,14 +480,14 @@ class ScanPage(BasePage):
             docs = len(self.ctx.scan.doc_ids())
             if self.request and self.request.separate and docs > 1:
                 self.set_status(
-                    f"Done: {n} page(s) scanned{removed} as {docs} separate documents. In Preview, Save saves "
+                    f"Done: {n} page(s) scanned{removed} as {docs} separate documents. In Document, Save saves "
                     "the selected document and Save All saves each one.",
                     "status-ok",
                 )
             else:
                 added = f"; the document has {total} page(s)" if total > n else ""
                 self.set_status(
-                    f"Done: {n} page(s) scanned{removed}{added}. Save it in Preview.", "status-ok"
+                    f"Done: {n} page(s) scanned{removed}{added}. Save it in Document.", "status-ok"
                 )
             self.after_scan(final=True)
         if n:

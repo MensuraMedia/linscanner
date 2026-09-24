@@ -61,6 +61,18 @@ def composite_at(base, layer, x, y):
         base.alpha_composite(layer.crop((left, top, right, bottom)), (x + left, y + top))
 
 
+def crop_box(size, left, top, right, bottom, minimum=8):
+    """Pixel box (l, t, r, b) for fractions of an image, or None when it would be too small"""
+    w, h = size
+    box = (round(left * w), round(top * h), round(right * w), round(bottom * h))
+    l, t, r, b = box
+    l, t = max(0, min(l, w)), max(0, min(t, h))
+    r, b = max(0, min(r, w)), max(0, min(b, h))
+    if r - l < minimum or b - t < minimum:
+        return None
+    return l, t, r, b
+
+
 def flatten(page, img=None):
     """Page image with rotation and Quick Edit overlays applied"""
     if img is None:
