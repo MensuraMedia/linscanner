@@ -17,7 +17,7 @@ Linux's standard scanning system (SANE) can drive.
 | Tested on | Linux Mint 22.3 (Ubuntu 24.04 base), kernel 7.0, amd64, with an Epson WorkForce ES-400 II |
 | Repository | [MensuraMedia/linscanner](https://github.com/MensuraMedia/linscanner); also part of [linux-peripherals](https://github.com/MensuraMedia/linux-peripherals) (offline installers, device references) |
 | Connection | USB cable only (Wi-Fi / network scanning not supported at this time) |
-| License | [LinScanner Community License (Noncommercial)](LICENSE): free to use, copy, modify and share; commercial use by permission |
+| License | [CC BY-NC 4.0](LICENSE): free to use, share and adapt with credit; commercial use by permission |
 
 ![Scan page](docs/images/screenshot-scan.png)
 
@@ -616,13 +616,13 @@ The design is in [`docs/architecture.md`](docs/architecture.md).
 
 ## 12. License
 
-LinScanner is shared under the
-[**LinScanner Community License (Noncommercial)**](LICENSE).
+LinScanner is shared under the [**Creative Commons
+Attribution-NonCommercial 4.0 International**](LICENSE) licence (CC BY-NC 4.0).
 
-- **You're welcome to** use it free of charge, and to copy, modify and share
-  it for any noncommercial purpose. This includes personal and household
-  use, education, research, and not-for-profit community work. Please keep
-  the license with every copy.
+- **You're welcome to** use it free of charge, and to share and adapt it for
+  any noncommercial purpose. This includes personal and household use,
+  education, research, and not-for-profit community work. Give credit, link
+  to the licence, and say if you changed anything.
 - **Commercial use** needs our written permission first. This covers
   selling it, bundling it into a paid product or service, or using it in the
   operations of a business. We're happy to talk; please contact
@@ -631,4 +631,6 @@ LinScanner is shared under the
   Pillow, vendor drivers, the dashboard framework, …) keep their own
   licenses.
 
-This is a summary; the [`LICENSE`](LICENSE) file is the authoritative text.
+This is a summary, not a substitute: the [`LICENSE`](LICENSE) file carries the
+full legal code, and https://creativecommons.org/licenses/by-nc/4.0/ has the
+official deed.
